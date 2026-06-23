@@ -4,9 +4,11 @@
  */
 import { MidiCore } from './midi-core.js';
 import * as CA99 from './ca99.js';
+import { RotateEngine, diversePool } from './auto-rotate.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
+let rotateEngine = null;   // 自动换音色引擎（模块6使用，提前声明避免 TDZ）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -63,7 +65,11 @@ async function connect() {
 
 function onMidiIn(bytes) {
   const m = CA99.parseMessage(bytes);
-  if (m.type === 'noteon') addMonitorLine(`音符 ON  ${CA99.noteName(m.note)} (${m.note}) 力度 ${m.velocity}`, 'note-on');
+  if (m.type === 'noteon') {
+    addMonitorLine(`音符 ON  ${CA99.noteName(m.note)} (${m.note}) 力度 ${m.velocity}`, 'note-on');
+    // 驱动 beat 模式的自动换音色
+    if (rotateEngine && rotateEngine.running && rotateEngine.mode === 'beat') rotateEngine.tick();
+  }
   else if (m.type === 'noteoff') addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
   else if (m.type === 'cc') addMonitorLine(`CC ${m.controller} = ${m.value}`);
   else if (m.type === 'sysex') addMonitorLine(`SysEx ← ${CA99.toHex(m.data)}`);
@@ -210,6 +216,115 @@ function addMonitorLine(text, cls = '') {
   while (monitorEl.children.length > 200) monitorEl.lastChild.remove();
 }
 
+// ========== 模块 6: 自动换音色 ==========
+function applySound(id, ch = 0) {
+  const s = SOUNDS.find(x => x.id === id);
+  if (!s) return;
+  sendMulti(CA99.buildSoundSelect(s, ch));
+  log(`🔄 自动切音色: ${s.name}`, 'ok');
+  // 高亮当前在自动模块的显示
+  const cur = $('#rotate-current');
+  if (cur) cur.textContent = `当前: ${s.name} (${s.category})`;
+}
+
+function renderAutoRotate() {
+  const root = $('#module-auto');
+  const cats = [...new Set(SOUNDS.map(s => s.category))];
+  // 默认多样化池：钢琴/电钢/弦乐/管风琴/颤音
+  const defaultCats = ['Piano 1', 'Electric Piano', 'Strings', 'Organ', 'Harpsi & Mallets']
+    .filter(c => cats.includes(c));
+  const defaultPool = diversePool(SOUNDS, defaultCats);
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🔄 自动换音色</h2>
+    <p style="color:var(--muted);margin-bottom:14px">定时或按节拍自动循环切换音色，演奏更有趣。你最初的想法 ✨</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>触发模式</label>
+        <select id="rot-mode">
+          <option value="time">按时间（每 N 秒）</option>
+          <option value="beat">按节拍（弹 N 个音符换一次）</option>
+        </select></div>
+      <div class="param-row"><label id="rot-interval-label">间隔（秒）</label>
+        <input type="range" id="rot-interval" min="1" max="30" value="6"><span class="val" id="rot-interval-val">6</span></div>
+      <div class="param-row"><label>顺序</label>
+        <select id="rot-order">
+          <option value="sequential">顺序循环</option>
+          <option value="random">随机</option>
+        </select></div>
+      <div class="param-row"><label>输出通道</label>
+        <select id="rot-ch"><option value="0">Main1</option><option value="1">Main2</option></select></div>
+    </div>
+
+    <h3 style="margin:16px 0 8px">音色池（点击切换是否包含）</h3>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:8px">默认选了几个分类的代表音色。点卡片增删。</p>
+    <div class="sound-grid" id="rot-pool"></div>
+
+    <div class="rotate-bar">
+      <button id="rot-toggle" class="big-btn">▶ 开始</button>
+      <span id="rotate-current" style="color:var(--muted)">未运行</span>
+    </div>`;
+
+  // 池状态：用 Set 存 id
+  const poolSet = new Set(defaultPool);
+  const poolGrid = $('#rot-pool');
+  function drawPool() {
+    // 展示常用分类的音色供选择（避免 346 全列）
+    const candidates = SOUNDS.filter(s => defaultCats.includes(s.category) || poolSet.has(s.id));
+    poolGrid.innerHTML = candidates.map(s => `
+      <div class="sound-card ${poolSet.has(s.id) ? 'active' : ''}" data-id="${s.id}">
+        <div class="name">${s.name}</div>
+        <div class="meta">${s.category}</div>
+      </div>`).join('');
+    poolGrid.querySelectorAll('.sound-card').forEach(card => {
+      card.onclick = () => {
+        const id = +card.dataset.id;
+        if (poolSet.has(id)) poolSet.delete(id); else poolSet.add(id);
+        card.classList.toggle('active');
+      };
+    });
+  }
+  drawPool();
+
+  // 模式切换时改 interval label/范围
+  const modeSel = $('#rot-mode'), intervalSlider = $('#rot-interval');
+  modeSel.onchange = () => {
+    const beat = modeSel.value === 'beat';
+    $('#rot-interval-label').textContent = beat ? '间隔（音符数）' : '间隔（秒）';
+    intervalSlider.min = beat ? 2 : 1;
+    intervalSlider.max = beat ? 64 : 30;
+    intervalSlider.value = beat ? 16 : 6;
+    $('#rot-interval-val').textContent = intervalSlider.value;
+  };
+  intervalSlider.oninput = () => $('#rot-interval-val').textContent = intervalSlider.value;
+
+  $('#rot-toggle').onclick = () => {
+    if (rotateEngine && rotateEngine.running) {
+      rotateEngine.stop();
+      rotateEngine = null;
+      $('#rot-toggle').textContent = '▶ 开始';
+      $('#rot-toggle').classList.remove('running');
+      $('#rotate-current').textContent = '已停止';
+      log('自动换音色: 停止');
+      return;
+    }
+    const pool = [...poolSet];
+    if (!pool.length) { log('音色池为空，请先选音色', 'err'); return; }
+    const ch = +$('#rot-ch').value;
+    rotateEngine = new RotateEngine({
+      pool,
+      mode: modeSel.value,
+      interval: +intervalSlider.value,
+      order: $('#rot-order').value,
+    });
+    rotateEngine.onChange = (id) => applySound(id, ch);
+    rotateEngine.start();
+    $('#rot-toggle').textContent = '⏸ 停止';
+    $('#rot-toggle').classList.add('running');
+    log(`自动换音色: 启动（${modeSel.value} 模式, ${pool.length} 个音色）`, 'ok');
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -219,7 +334,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
