@@ -16,6 +16,7 @@ app/
     ca99.test.mjs     ← 协议库单元测试（20 用例，node 运行）
     auto-rotate.js    ← 自动换音色引擎（纯逻辑，21 单元测试）
     vt-morph.js       ← VT 参数渐变引擎（纯逻辑，32 单元测试）
+    velocity-switch.js← 力度感应换音色路由（纯逻辑，33 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -34,6 +35,7 @@ app/
 | 🥁 节奏 | ✅ | 100 鼓点节奏选择 |
 | 🔄 自动换音色 | ✅ | 定时(每N秒)或按节拍(弹N个音符)循环切换音色，可选音色池+顺序/随机 |
 | 🌗 VT 渐变器 | ✅ | CA99 独有：边弹边把共鸣/击弦等 VT 参数从起点平滑插值到终点（缓动/往返循环） |
+| 🎚️ 力度换音色 | ✅ | 按弹奏力度自动切换音色（2-4 层），轻弹/重弹不同音色，演奏更有层次 |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -46,6 +48,7 @@ app/
 - **节拍模式**：监听 MIDI 输入的 note-on 驱动 `engine.tick()`，弹够 N 个音符就换
 - VT 渐变用独立引擎 `vt-morph.js`（纯逻辑，32 单元测试），定时器逐帧线性/缓动插值
 - **可渐变参数识别**：取 `sysex.json` 中 v1=0x50 且恰好 2 条值（min/max 范围）的连续型参数（如 StringResonance 0-127、DamperResonance 0-10），排除枚举型（Voicing）和命令型（PerNote）
+- 力度换音色用独立路由 `velocity-switch.js`（纯逻辑，33 单元测试），`splitZones()` 把 0-127 等分成层，note-on 力度命中哪层就切到该音色（仅在层变化时发 PC，避免每音符重复）
 
 ## 连接方式（默认双支持）
 
@@ -75,6 +78,8 @@ node js/ca99.test.mjs
 node js/auto-rotate.test.mjs
 # VT 渐变引擎单元测试（32 用例）
 node js/vt-morph.test.mjs
+# 力度换音色路由单元测试（33 用例）
+node js/velocity-switch.test.mjs
 ```
 
 ## 数据生成（如需重建）

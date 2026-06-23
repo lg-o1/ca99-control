@@ -6,11 +6,13 @@ import { MidiCore } from './midi-core.js';
 import * as CA99 from './ca99.js';
 import { RotateEngine, diversePool } from './auto-rotate.js';
 import { MorphEngine } from './vt-morph.js';
+import { VelocityRouter, splitZones } from './velocity-switch.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
 let rotateEngine = null;   // 自动换音色引擎（模块6使用，提前声明避免 TDZ）
 let morphEngine = null;    // VT 渐变引擎（模块7使用，提前声明避免 TDZ）
+let velocityRouter = null; // 力度换音色路由（模块8使用，提前声明避免 TDZ）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -71,6 +73,8 @@ function onMidiIn(bytes) {
     addMonitorLine(`音符 ON  ${CA99.noteName(m.note)} (${m.note}) 力度 ${m.velocity}`, 'note-on');
     // 驱动 beat 模式的自动换音色
     if (rotateEngine && rotateEngine.running && rotateEngine.mode === 'beat') rotateEngine.tick();
+    // 驱动力度感应换音色
+    if (velocityRouter) velocityRouter.feed(m.velocity);
   }
   else if (m.type === 'noteoff') addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
   else if (m.type === 'cc') addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -457,6 +461,98 @@ function renderMorph() {
   };
 }
 
+// ========== 模块 8: 力度感应换音色 ==========
+function renderVelocity() {
+  const root = $('#module-velocity');
+  // 默认用钢琴/电钢/弦乐三个力度层（找得到就用，找不到取前三）
+  const pickByName = (kw) => SOUNDS.find(s => (s.name || '').toLowerCase().includes(kw));
+  const def = [
+    pickByName('piano') || SOUNDS[0],
+    pickByName('e.piano') || pickByName('electric') || SOUNDS[1],
+    pickByName('strings') || pickByName('pad') || SOUNDS[2],
+  ].filter(Boolean);
+
+  // 当前分层状态：力度从弱到强的音色 id 列表
+  let layerIds = def.map(s => s.id);
+
+  const soundOptions = (selId) => SOUNDS.map(s =>
+    `<option value="${s.id}" ${s.id === selId ? 'selected' : ''}>${s.name}（${s.category}）</option>`).join('');
+
+  function render() {
+    const zones = splitZones(layerIds);
+    root.innerHTML = `
+      <h2 style="margin-bottom:6px">🎚️ 力度感应换音色</h2>
+      <p style="color:var(--muted);margin-bottom:14px">按弹奏力度自动切换音色：轻弹一个音色，重弹换另一个，演奏更有层次。需先在顶栏选好 <b>MIDI 输入</b>端口。</p>
+
+      <div class="card-panel">
+        <div class="param-row"><label>输出通道</label>
+          <select id="vel-ch"><option value="0">Main1</option><option value="1">Main2</option></select></div>
+        <div class="param-row"><label>层数</label>
+          <select id="vel-layers">
+            <option value="2" ${layerIds.length === 2 ? 'selected' : ''}>2 层</option>
+            <option value="3" ${layerIds.length === 3 ? 'selected' : ''}>3 层</option>
+            <option value="4" ${layerIds.length === 4 ? 'selected' : ''}>4 层</option>
+          </select></div>
+      </div>
+
+      <h3 style="margin:16px 0 8px">力度分层（从弱到强）</h3>
+      <div>
+        ${layerIds.map((id, i) => `
+          <div class="card-panel" style="margin-bottom:8px">
+            <div class="param-row"><label>力度 ${zones[i].min}–${zones[i].max}</label>
+              <select class="vel-sound" data-i="${i}" style="flex:1">${soundOptions(id)}</select></div>
+          </div>`).join('')}
+      </div>
+
+      <div class="rotate-bar">
+        <button id="vel-toggle" class="big-btn">▶ 启用</button>
+        <span id="vel-status" style="color:var(--muted)">未启用</span>
+      </div>`;
+
+    $('#vel-layers').onchange = (e) => {
+      const n = +e.target.value;
+      const cur = layerIds.slice(0, n);
+      while (cur.length < n) cur.push(SOUNDS[cur.length] ? SOUNDS[cur.length].id : layerIds[0]);
+      layerIds = cur;
+      const wasOn = velocityRouter != null;
+      render();
+      if (wasOn) startRouter(); // 保持启用并刷新分区
+    };
+    root.querySelectorAll('.vel-sound').forEach(sel => {
+      sel.onchange = () => {
+        layerIds[+sel.dataset.i] = +sel.value;
+        if (velocityRouter) startRouter(); // 实时更新
+      };
+    });
+    $('#vel-toggle').onclick = () => {
+      if (velocityRouter) {
+        velocityRouter = null;
+        $('#vel-toggle').textContent = '▶ 启用';
+        $('#vel-toggle').classList.remove('running');
+        $('#vel-status').textContent = '已停用';
+        log('力度换音色: 停用');
+      } else {
+        startRouter();
+        $('#vel-toggle').textContent = '⏸ 停用';
+        $('#vel-toggle').classList.add('running');
+        log(`力度换音色: 启用（${layerIds.length} 层）`, 'ok');
+      }
+    };
+  }
+
+  function startRouter() {
+    const ch = +($('#vel-ch')?.value || 0);
+    velocityRouter = new VelocityRouter(splitZones(layerIds));
+    velocityRouter.onSwitch = (id, zone) => {
+      applySound(id, ch);
+      const s = SOUNDS.find(x => x.id === id);
+      $('#vel-status').textContent = `当前: ${s ? s.name : id}（力度${zone.min}-${zone.max}）`;
+    };
+  }
+
+  render();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -466,7 +562,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
