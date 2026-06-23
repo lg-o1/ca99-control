@@ -28,6 +28,7 @@ import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
 import { ArticulationTrainer } from './articulation.js';
+import { PedalTiming, PEDAL_THRESHOLD } from './pedal-timing.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -54,6 +55,8 @@ let handsOnNote = null;     // 双手协调的 note-on 回调（模块25注册�
 let arpOnNote = null;       // 琶音跑动的 note-on 回调（模块26注册）
 let articOnNoteOn = null;   // 连奏/断奏的 note-on 回调（模块27注册）
 let articOnNoteOff = null;  // 连奏/断奏的 note-off 回调（模块27注册）
+let pedalTimeOnNote = null; // 踏板时机的 note-on 回调（模块28注册）
+let pedalTimeOnCC = null;   // 踏板时机的 CC 回调（模块28注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -192,6 +195,8 @@ function onMidiIn(bytes) {
     if (arpOnNote) arpOnNote(m.note, performance.now());
     // 驱动连奏/断奏控制（按键）
     if (articOnNoteOn) articOnNoteOn(m.note, performance.now());
+    // 驱动踏板配合时机（新音）
+    if (pedalTimeOnNote) pedalTimeOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -205,6 +210,8 @@ function onMidiIn(bytes) {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
     // 驱动踏板控制扩展
     if (pedalController) pedalController.feedCC(m.controller, m.value);
+    // 驱动踏板配合时机（延音踏板 CC64）
+    if (pedalTimeOnCC && m.controller === 64) pedalTimeOnCC(m.value, performance.now());
   }
   else if (m.type === 'sysex') addMonitorLine(`SysEx ← ${CA99.toHex(m.data)}`);
 }
@@ -2905,6 +2912,141 @@ function renderArticulation() {
   targetHint();
 }
 
+// ---------- 模块28：踏板配合时机 ----------
+function renderPedalTiming() {
+  const root = $('#module-pedt');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🦶 踏板配合时机</h2>
+    <p style="color:var(--muted);margin-bottom:14px">练"切分踏板法"（连奏踏板）：弹下新音后，先<b>抬起</b>延音踏板清掉上一个和声，再<b>重新踩下</b>接住新音。引擎测每次"新音→重新踩下"的时间间隔，判断换得<b>干净</b>（clean）、<b>脏</b>（muddy，踩太早）还是<b>发干</b>（dry，踩太晚）。没连琴可点下方模拟按钮体验。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>评估换踏板次数</label>
+        <select id="pt-changes"><option value="5">5 次</option><option value="8" selected>8 次</option><option value="12">12 次</option></select>
+      </div>
+      <div class="param-row"><label>难度（容许窗口）</label>
+        <select id="pt-diff">
+          <option value="wide">宽松（音后 40–220ms）</option>
+          <option value="std" selected>标准（音后 50–180ms）</option>
+          <option value="tight">严格（音后 60–140ms）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div class="pt-pedal-wrap">
+        <div id="pt-pedal" class="pt-pedal">踏板<br><span id="pt-pedal-state">踩下</span></div>
+      </div>
+      <div id="pt-dots" class="pt-dots"></div>
+      <div id="pt-feedback" class="sight-feedback" style="margin-top:12px">点"开始"，然后按"演示一次换踏板"</div>
+      <div class="pt-sim">
+        <button id="pt-sim-clean" class="pt-sim-btn">✅ 演示干净换踏板</button>
+        <button id="pt-sim-muddy" class="pt-sim-btn">🌫 演示脏（踩太早）</button>
+        <button id="pt-sim-dry" class="pt-sim-btn">🏜 演示干（踩太晚）</button>
+      </div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="pt-avg" class="sight-stat-num">—</div><div class="sight-stat-lbl">平均分</div></div>
+      <div class="sight-stat"><div id="pt-clean" class="sight-stat-num">0</div><div class="sight-stat-lbl">干净次数</div></div>
+      <div class="sight-stat"><div id="pt-cnt" class="sight-stat-num">0</div><div class="sight-stat-lbl">已评估</div></div>
+      <div class="sight-stat"><div id="pt-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="pt-start" class="big-btn">▶ 开始 / 重来</button>
+      <span id="pt-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  const DIFF = {
+    wide: { catchLow: 40, catchHigh: 220, earlyMax: 50, lateMax: 260 },
+    std: { catchLow: 50, catchHigh: 180, earlyMax: 45, lateMax: 230 },
+    tight: { catchLow: 60, catchHigh: 140, earlyMax: 40, lateMax: 200 },
+  };
+
+  let pt = null;
+  const dotsBox = $('#pt-dots');
+  let simT = 0;
+  let simNote = 60;
+
+  function setPedalVisual(down) {
+    const el = $('#pt-pedal');
+    el.classList.toggle('down', down);
+    $('#pt-pedal-state').textContent = down ? '踩下' : '抬起';
+  }
+
+  function addDot(r) {
+    const d = document.createElement('div');
+    const cls = r.kind === 'clean' ? 'clean' : r.kind === 'muddy' ? 'muddy' : 'dry';
+    d.className = 'pt-dot ' + cls;
+    d.textContent = r.kind === 'clean' ? '净' : r.kind === 'muddy' ? '脏' : '干';
+    d.title = `${r.score} 分 · 间隔 ${Math.round(r.gap)}ms`;
+    dotsBox.appendChild(d);
+  }
+
+  function refresh() {
+    if (!pt) return;
+    $('#pt-avg').textContent = pt.count ? pt.avgScore : '—';
+    $('#pt-clean').textContent = pt.breakdown.clean;
+    $('#pt-cnt').textContent = pt.count;
+    $('#pt-best').textContent = pt.best;
+  }
+
+  function onChange(r) {
+    addDot(r);
+    refresh();
+    const fb = $('#pt-feedback');
+    if (r.kind === 'clean') { fb.className = 'sight-feedback ok'; fb.textContent = `✅ 干净！间隔 ${Math.round(r.gap)}ms（${r.score} 分）`; }
+    else if (r.kind === 'muddy') { fb.className = 'sight-feedback no'; fb.textContent = `🌫 脏了——踩得太早（${Math.round(r.gap)}ms），上一个和声没清掉`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `🏜 发干——踩得太晚（${Math.round(r.gap)}ms），新音失去延音`; }
+  }
+
+  function stop() {
+    if (pt) {
+      pt.finish();
+      refresh();
+      if (pt.count) recordPractice('pedt', '踏板时机', pt.count, pt.breakdown.clean, pt.best);
+    }
+    pedalTimeOnNote = null; pedalTimeOnCC = null;
+  }
+
+  $('#pt-start').onclick = () => {
+    if (pt && !pt.done) stop();
+    pt = new PedalTiming({ changes: +$('#pt-changes').value, ...DIFF[$('#pt-diff').value] });
+    pt.onChange = onChange;
+    pt.onComplete = (info) => {
+      const fb = $('#pt-feedback');
+      fb.className = info.avgScore >= 70 ? 'sight-feedback ok' : 'sight-feedback';
+      fb.textContent = `🎉 完成 ${info.count} 次换踏板！平均 ${info.avgScore} 分（干净 ${info.breakdown.clean} 次）`;
+      stop();
+      $('#pt-status').textContent = '完成 · 可重来';
+    };
+    pedalTimeOnNote = (note, t) => { if (pt && !pt.done) pt.noteOn(note, t); };
+    pedalTimeOnCC = (val, t) => { if (pt && !pt.done) { pt.feedCC(val, t); setPedalVisual(val >= PEDAL_THRESHOLD); } };
+    dotsBox.innerHTML = '';
+    setPedalVisual(true);
+    $('#pt-feedback').className = 'sight-feedback';
+    $('#pt-feedback').textContent = '🎧 弹新音后，抬踏板再重新踩下';
+    $('#pt-status').textContent = '进行中…';
+    refresh();
+  };
+
+  // 模拟一次换踏板：note@simT，lift，repress@simT+gap
+  function simulate(gap) {
+    if (!pt || pt.done) { simT = 0; simNote = 60; $('#pt-start').click(); }
+    pt.noteOn(simNote, simT);
+    pt.feedCC(0, simT + 20); setPedalVisual(false);       // 抬起
+    pt.feedCC(127, simT + gap); setPedalVisual(true);     // 重新踩下
+    simT += 600;
+    simNote = simNote >= 71 ? 60 : simNote + 2;
+  }
+  $('#pt-sim-clean').onclick = () => simulate(110);  // 干净
+  $('#pt-sim-muddy').onclick = () => simulate(8);    // 踩太早
+  $('#pt-sim-dry').onclick = () => simulate(420);    // 踩太晚
+
+  setPedalVisual(true);
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -3036,7 +3178,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;
