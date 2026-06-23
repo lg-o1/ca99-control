@@ -97,12 +97,28 @@ app/
 
 `midi-core.js` 用 `navigator.requestMIDIAccess({sysex:true})` 枚举所有端口——**USB 和蓝牙 MIDI 都在列表里**，运行时在顶栏下拉选择，或自动选含 "CA99"/"Kawai" 的端口。无需改代码切换连接方式。
 
-## 运行
+## 前置依赖
+
+| 用途 | 需要 | 说明 |
+|------|------|------|
+| 运行 app | **Chrome 或 Edge** | Web MIDI 仅 Chromium 系支持；Firefox/Safari 不行 |
+| 起本地服务器 | **Python 3** 或 Node | 任选其一起静态服务器（Web MIDI 需 http/https，不能 file://） |
+| 跑单元测试 | **Node ≥ 16** | 测试是原生 ESM（`.mjs`），无需安装任何 npm 依赖 |
+| 真机 USB 验证脚本 | **Python 3 + mido + python-rtmidi** | 仅 `scripts/validate_ca99_usb.py` 需要，见下方 |
+
+> 本项目零构建、零 npm 依赖：HTML/CSS/JS 直接跑，测试用 Node 内置能力。
+
+## 安装与运行
 
 ```bash
-# 1. 本地起静态服务器（Web MIDI 需要 http/https，不能 file://）
-cd app
-python -m http.server 8099
+# 0. 克隆仓库
+git clone https://github.com/lg-o1/ca99-control.git
+cd ca99-control/app
+
+# 1. 本地起静态服务器（二选一；Web MIDI 需要 http/https，不能 file://）
+python -m http.server 8099        # 用 Python
+#   或
+npx http-server -p 8099           # 用 Node
 
 # 2. 用 Chrome 或 Edge 打开（Firefox/Safari 不支持 Web MIDI）
 #    http://localhost:8099/index.html
@@ -110,9 +126,26 @@ python -m http.server 8099
 # 3. 点"连接" → 授权 MIDI（含 SysEx）→ 选 CA99 端口 → 玩
 ```
 
+**不连钢琴也能用**：所有训练模块（视奏/听辨/力度/音阶/节奏/和弦）都能在没有真机时玩——
+听辨/听写用 Web Audio 发声，节奏跟拍可用空格键敲击，其余可在浏览器控制台用调试钩子
+`window.__feedMidi(note, velocity)` / `window.__feedNoteOff(note)` / `window.__feedCC(cc, val)` 模拟弹奏。
+
 手机：Android Chrome 同样可用（USB-OTG 或蓝牙 MIDI）。
 
 ## 测试
+
+**一键跑全部 18 套测试（共 792 用例）**：
+
+```bash
+cd app
+# Bash / Linux / macOS
+for f in js/*.test.mjs; do node "$f"; done
+
+# 或 PowerShell（Windows）
+Get-ChildItem js\*.test.mjs | ForEach-Object { node $_.FullName }
+```
+
+全绿即每行输出 `xxx: N passed, 0 failed`。单独跑某一套：
 
 ```bash
 # 协议库单元测试（20 用例）
