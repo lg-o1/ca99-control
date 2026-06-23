@@ -19,31 +19,45 @@
 
   <div id="layout">
     <nav id="sidebar">
-      <button class="nav-btn active" data-module="sounds">🎵 音色浏览器</button>
-      <button class="nav-btn" data-module="vt">🔧 VT 调音台</button>
-      <button class="nav-btn" data-module="system">🎛️ 系统/混响</button>
-      <button class="nav-btn" data-module="rhythm">🥁 节奏</button>
-      <button class="nav-btn" data-module="auto">🔄 自动换音色</button>
-      <button class="nav-btn" data-module="morph">🌗 VT 渐变器</button>
-      <button class="nav-btn" data-module="velocity">🎚️ 力度换音色</button>
-      <button class="nav-btn" data-module="velvt">💫 力度→VT联动</button>
-      <button class="nav-btn" data-module="pedal">🦶 踏板控制</button>
-      <button class="nav-btn" data-module="presets">⭐ 演出预设</button>
-      <button class="nav-btn" data-module="chord">🎓 和弦练习</button>
-      <button class="nav-btn" data-module="metro">🎵 节拍器</button>
-      <button class="nav-btn" data-module="recorder">⏺ 录制回放</button>
-      <button class="nav-btn" data-module="scale">🎼 音阶练习</button>
-      <button class="nav-btn" data-module="sight">👀 视奏闪卡</button>
-      <button class="nav-btn" data-module="ear">👂 音程听辨</button>
-      <button class="nav-btn" data-module="dynamics">💪 力度练习</button>
-      <button class="nav-btn" data-module="transpose">🎹 移调器</button>
-      <button class="nav-btn" data-module="rhythmtrain">🥁 节奏跟拍</button>
-      <button class="nav-btn" data-module="melody">🎼 旋律听写</button>
-      <button class="nav-btn" data-module="chordprog">🎹 和弦进行</button>
-      <button class="nav-btn" data-module="beat">📈 节拍稳定度</button>
-      <button class="nav-btn" data-module="dash">🏆 成就仪表盘</button>
-      <button class="nav-btn" data-module="monitor">📡 MIDI 监视器</button>
-      <!-- 后续玩法模块在此追加：VT渐变/自动伴奏/灯光 -->
+      <div id="nav-search-wrap">
+        <input id="nav-search" type="text" placeholder="🔍 搜索模块…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="nav-scroll">
+        <div class="nav-group" data-group="控制台">
+          <div class="nav-group-title">🎛️ 演奏控制</div>
+          <button class="nav-btn active" data-module="sounds">🎵 音色浏览器</button>
+          <button class="nav-btn" data-module="vt">🔧 VT 调音台</button>
+          <button class="nav-btn" data-module="system">🎛️ 系统/混响</button>
+          <button class="nav-btn" data-module="rhythm">🥁 节奏</button>
+          <button class="nav-btn" data-module="auto">🔄 自动换音色</button>
+          <button class="nav-btn" data-module="morph">🌗 VT 渐变器</button>
+          <button class="nav-btn" data-module="velocity">🎚️ 力度换音色</button>
+          <button class="nav-btn" data-module="velvt">💫 力度→VT联动</button>
+          <button class="nav-btn" data-module="pedal">🦶 踏板控制</button>
+          <button class="nav-btn" data-module="presets">⭐ 演出预设</button>
+        </div>
+        <div class="nav-group" data-group="练习室">
+          <div class="nav-group-title">🎓 练习训练</div>
+          <button class="nav-btn" data-module="chord">🎓 和弦练习</button>
+          <button class="nav-btn" data-module="scale">🎼 音阶练习</button>
+          <button class="nav-btn" data-module="sight">👀 视奏闪卡</button>
+          <button class="nav-btn" data-module="ear">👂 音程听辨</button>
+          <button class="nav-btn" data-module="dynamics">💪 力度练习</button>
+          <button class="nav-btn" data-module="transpose">🎹 移调器</button>
+          <button class="nav-btn" data-module="rhythmtrain">🥁 节奏跟拍</button>
+          <button class="nav-btn" data-module="melody">🎼 旋律听写</button>
+          <button class="nav-btn" data-module="chordprog">🎹 和弦进行</button>
+          <button class="nav-btn" data-module="beat">📈 节拍稳定度</button>
+        </div>
+        <div class="nav-group" data-group="工具箱">
+          <div class="nav-group-title">🛠️ 工具</div>
+          <button class="nav-btn" data-module="metro">🎵 节拍器</button>
+          <button class="nav-btn" data-module="recorder">⏺ 录制回放</button>
+          <button class="nav-btn" data-module="dash">🏆 成就仪表盘</button>
+          <button class="nav-btn" data-module="monitor">📡 MIDI 监视器</button>
+        </div>
+        <div id="nav-empty" class="nav-empty" hidden>没有匹配的模块</div>
+      </div>
     </nav>
     <main id="content">
       <section id="module-sounds" class="module active"></section>

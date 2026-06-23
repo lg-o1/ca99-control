@@ -2515,6 +2515,34 @@ function switchModule(name) {
   if (name === 'dash' && dashboardOnUpdate) dashboardOnUpdate();
 }
 
+// 侧边栏模块搜索：按标题文字实时过滤导航按钮，隐藏空分组
+function setupNavSearch() {
+  const input = $('#nav-search');
+  if (!input) return;
+  const groups = [...document.querySelectorAll('.nav-group')];
+  const empty = $('#nav-empty');
+  const apply = () => {
+    const q = input.value.trim().toLowerCase();
+    let anyVisible = false;
+    groups.forEach((g) => {
+      let groupHas = false;
+      g.querySelectorAll('.nav-btn').forEach((b) => {
+        const match = !q || b.textContent.toLowerCase().includes(q);
+        b.classList.toggle('hide-search', !match);
+        if (match) groupHas = true;
+      });
+      g.style.display = groupHas ? '' : 'none';
+      if (groupHas) anyVisible = true;
+    });
+    if (empty) empty.hidden = anyVisible;
+  };
+  input.addEventListener('input', apply);
+  // Esc 清空搜索
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { input.value = ''; apply(); input.blur(); }
+  });
+}
+
 // ---------- 模块20：练习成就仪表盘 ----------
 function renderDashboard() {
   const root = $('#module-dash');
@@ -2613,6 +2641,7 @@ async function main() {
   await loadData();
   renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
+  setupNavSearch();
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
   $('#input-select').onchange = (e) => { if (e.target.value) midi.selectInput(e.target.value); };
