@@ -1,0 +1,34 @@
+﻿KEY SYSTEM PARAMETERS (CA99) - SysEx: F0 40 7F 10 08 02 [v1] [v2] [part] [val] F7
+========================================================================================
+v1=0x53: Keyboard/Play settings
+  KeyboardMode:  v2=0x00 | Single=0x00, Dual=0x01, Split=0x02, 4Hands=0x03
+  TransposeValue: v2=0x02 | -12=0x34..0=0x40..+12=0x4C
+  OctaveShift:   v2=0x03 | -3=0x3D..0=0x40..+3=0x43
+  Balance:       v2=0x04 | 9-1=0x00, 9-5=0x40(center), 1-9=0x7F
+  Dynamics:      v2=0x05 | 0..127 (0x00..0x7F)
+  SplitPoint:    v2=0x06 | KeyNum value
+
+v1=0x55: Sound/FX settings (part-aware)
+  Volume:        v2=0x01 | 0=0x00..127=0x7F
+  ReverbDepth:   v2=0x03 | 0..127
+  ReverbType:    v2=0x08 | Room=0x00, Lounge=0x01, SmallHall=0x02, ConcertHall=0x03, LiveHall=0x04, Cathedral=0x05
+  Sound:         v2=0x00 | F0 40 7F 10 08 02 55 00 [part] [msb] [lsb] [pc] F7
+  AmbienceType:  v2=0x60 | Natural=0x00..Echo=0x09
+  AmbienceDepth: v2=0x61 | 0..127
+
+v1=0x56: Metronome/Music
+  MetronomeTempo:  v2=0x01 | BPM value (variable length)
+  MetronomeVolume: v2=0x03 | 0..127
+  MetronomeMode:   v2=0x04 | several values
+  RhythmSelect:    v2=0x09 | 0x00..0x63 (100 patterns)
+
+v1=0x58: MIDI
+  LocalControl:  v2=0x01 | Off=0x00, On=0x01
+  MIDIChannel:   v2=0x02 | 1..16
+
+v1=0x50: Virtual Technician (see VT section above)
+
+STATUS REQUEST COMMANDS (fn=0x02):
+  Request all params: F0 40 7F 02 08 02 [v1] [v2] [v3] F7
+  Headphones status:  F0 40 7F 02 08 02 51 29 7F F7
+  USB Memory status:  F0 40 7F 02 08 02 51 2E 7F F7

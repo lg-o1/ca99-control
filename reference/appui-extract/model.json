@@ -1,0 +1,1722 @@
+[
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K3",
+    "groupNo": "0x00",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K3m",
+    "groupNo": "0x00",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K5",
+    "groupNo": "0x00",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K5m",
+    "groupNo": "0x00",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K1",
+    "groupNo": "0x00",
+    "machineNo": "0x03",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K1m",
+    "groupNo": "0x00",
+    "machineNo": "0x03",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K4",
+    "groupNo": "0x00",
+    "machineNo": "0x04",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K4r",
+    "groupNo": "0x00",
+    "machineNo": "0x04",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "KC10",
+    "groupNo": "0x00",
+    "machineNo": "0x05",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "XD-5",
+    "groupNo": "0x00",
+    "machineNo": "0x06",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K6",
+    "groupNo": "0x00",
+    "machineNo": "0x07",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K6r",
+    "groupNo": "0x00",
+    "machineNo": "0x07",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K6000",
+    "groupNo": "0x00",
+    "machineNo": "0x07",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "Gmega",
+    "groupNo": "0x00",
+    "machineNo": "0x08",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K11",
+    "groupNo": "0x00",
+    "machineNo": "0x08",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "KC20",
+    "groupNo": "0x00",
+    "machineNo": "0x09",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "GMegaLX",
+    "groupNo": "0x00",
+    "machineNo": "0x09",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K5000W",
+    "groupNo": "0x00",
+    "machineNo": "0x0A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K5000S",
+    "groupNo": "0x00",
+    "machineNo": "0x0A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "K5000R",
+    "groupNo": "0x00",
+    "machineNo": "0x0A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP9000",
+    "groupNo": "0x00",
+    "machineNo": "0x0B",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP9500",
+    "groupNo": "0x00",
+    "machineNo": "0x0C",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP4",
+    "groupNo": "0x00",
+    "machineNo": "0x0D",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP8",
+    "groupNo": "0x00",
+    "machineNo": "0x0E",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP8II",
+    "groupNo": "0x00",
+    "machineNo": "0x0E",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP5",
+    "groupNo": "0x00",
+    "machineNo": "0x0E",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP6",
+    "groupNo": "0x00",
+    "machineNo": "0x0F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP10",
+    "groupNo": "0x00",
+    "machineNo": "0x10",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP7",
+    "groupNo": "0x00",
+    "machineNo": "0x11",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP11",
+    "groupNo": "0x00",
+    "machineNo": "0x12",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP7SE",
+    "groupNo": "0x00",
+    "machineNo": "0x13",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "MP11SE",
+    "groupNo": "0x00",
+    "machineNo": "0x14",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "SP-10",
+    "groupNo": "0x00",
+    "machineNo": "0x42",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Synthesizer",
+    "machineName": "Ignore ID",
+    "groupNo": "0x00",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "SR-5",
+    "groupNo": "0x01",
+    "machineNo": "0x05",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "SR-6",
+    "groupNo": "0x01",
+    "machineNo": "0x06",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "SR-7",
+    "groupNo": "0x01",
+    "machineNo": "0x07",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "T-20",
+    "groupNo": "0x01",
+    "machineNo": "0x08",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "SR-300D",
+    "groupNo": "0x01",
+    "machineNo": "0x09",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "SR-550",
+    "groupNo": "0x01",
+    "machineNo": "0x0A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "SR-650",
+    "groupNo": "0x01",
+    "machineNo": "0x0B",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "SR-750",
+    "groupNo": "0x01",
+    "machineNo": "0x0C",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR300",
+    "groupNo": "0x01",
+    "machineNo": "0x10",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR500",
+    "groupNo": "0x01",
+    "machineNo": "0x12",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR600",
+    "groupNo": "0x01",
+    "machineNo": "0x12",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR7000",
+    "groupNo": "0x01",
+    "machineNo": "0x14",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR9000",
+    "groupNo": "0x01",
+    "machineNo": "0x16",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR100",
+    "groupNo": "0x01",
+    "machineNo": "0x17",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR150",
+    "groupNo": "0x01",
+    "machineNo": "0x18",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "XR200",
+    "groupNo": "0x01",
+    "machineNo": "0x19",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "DT9",
+    "groupNo": "0x01",
+    "machineNo": "0x20",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "DT7",
+    "groupNo": "0x01",
+    "machineNo": "0x21",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "DT5",
+    "groupNo": "0x01",
+    "machineNo": "0x23",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "DT1",
+    "groupNo": "0x01",
+    "machineNo": "0x27",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Organ",
+    "machineName": "Ignore ID",
+    "groupNo": "0x01",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Drum Machine",
+    "machineName": "R-100",
+    "groupNo": "0x02",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Drum Machine",
+    "machineName": "R-50",
+    "groupNo": "0x02",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Drum Machine",
+    "machineName": "GB-2",
+    "groupNo": "0x02",
+    "machineNo": "0x03",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Drum Machine",
+    "machineName": "GB-4",
+    "groupNo": "0x02",
+    "machineNo": "0x04",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Drum Machine",
+    "machineName": "Ignore ID",
+    "groupNo": "0x02",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "PV-30",
+    "groupNo": "0x04",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "PW(w/o accomp.)",
+    "groupNo": "0x04",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "with accomp.",
+    "groupNo": "0x04",
+    "machineNo": "0x03",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "KES",
+    "groupNo": "0x04",
+    "machineNo": "0x04",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "es2",
+    "groupNo": "0x04",
+    "machineNo": "0x05",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CPxx5 Series",
+    "groupNo": "0x04",
+    "machineNo": "0x06",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CP95",
+    "groupNo": "0x04",
+    "machineNo": "0x07",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "PN4",
+    "groupNo": "0x04",
+    "machineNo": "0x08",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN4",
+    "groupNo": "0x04",
+    "machineNo": "0x08",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "DP1",
+    "groupNo": "0x04",
+    "machineNo": "0x09",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN25",
+    "groupNo": "0x04",
+    "machineNo": "0x0A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN35",
+    "groupNo": "0x04",
+    "machineNo": "0x0B",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN350GP",
+    "groupNo": "0x04",
+    "machineNo": "0x0B",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES8",
+    "groupNo": "0x04",
+    "machineNo": "0x0C",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA17",
+    "groupNo": "0x04",
+    "machineNo": "0x0D",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA97",
+    "groupNo": "0x04",
+    "machineNo": "0x0E",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA67",
+    "groupNo": "0x04",
+    "machineNo": "0x0E",
+    "subId1": "0x01",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA9700GP",
+    "groupNo": "0x04",
+    "machineNo": "0x0E",
+    "subId1": "0x02",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CS11",
+    "groupNo": "0x04",
+    "machineNo": "0x0E",
+    "subId1": "0x03",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CS8",
+    "groupNo": "0x04",
+    "machineNo": "0x0E",
+    "subId1": "0x04",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "S1s",
+    "groupNo": "0x04",
+    "machineNo": "0x0F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CS5",
+    "groupNo": "0x04",
+    "machineNo": "0x10",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES110",
+    "groupNo": "0x04",
+    "machineNo": "0x11",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN27",
+    "groupNo": "0x04",
+    "machineNo": "0x12",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN37",
+    "groupNo": "0x04",
+    "machineNo": "0x13",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN370GP",
+    "groupNo": "0x04",
+    "machineNo": "0x13",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA48",
+    "groupNo": "0x04",
+    "machineNo": "0x14",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "KDP110",
+    "groupNo": "0x04",
+    "machineNo": "0x15",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN17",
+    "groupNo": "0x04",
+    "machineNo": "0x15",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA98",
+    "groupNo": "0x04",
+    "machineNo": "0x16",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA78",
+    "groupNo": "0x04",
+    "machineNo": "0x16",
+    "subId1": "0x01",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA9800GP",
+    "groupNo": "0x04",
+    "machineNo": "0x16",
+    "subId1": "0x03",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "NV10",
+    "groupNo": "0x04",
+    "machineNo": "0x16",
+    "subId1": "0x07",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ATX3",
+    "groupNo": "0x04",
+    "machineNo": "0x16",
+    "subId1": "0x08",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ATX3L",
+    "groupNo": "0x04",
+    "machineNo": "0x17",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "Mini Piano",
+    "groupNo": "0x04",
+    "machineNo": "0x18",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA33",
+    "groupNo": "0x04",
+    "machineNo": "0x19",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "KDP70",
+    "groupNo": "0x04",
+    "machineNo": "0x1A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN29",
+    "groupNo": "0x04",
+    "machineNo": "0x1B",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN39",
+    "groupNo": "0x04",
+    "machineNo": "0x1C",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA49",
+    "groupNo": "0x04",
+    "machineNo": "0x1D",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA4900GP",
+    "groupNo": "0x04",
+    "machineNo": "0x1D",
+    "subId1": "0x01",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA28G",
+    "groupNo": "0x04",
+    "machineNo": "0x1D",
+    "subId1": "0x02",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA99",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x01",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA79",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x02",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA9900GP",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x04",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "NV10S",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x07",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "NV5S",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x08",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ATX4UP",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x09",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "AURES2UP",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x0A",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ATX4GP",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x0B",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "AURES2GP",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x0C",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "NV10SPL",
+    "groupNo": "0x04",
+    "machineNo": "0x1E",
+    "subId1": "0x00",
+    "subId2": "0x0D",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA59",
+    "groupNo": "0x04",
+    "machineNo": "0x1F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES520",
+    "groupNo": "0x04",
+    "machineNo": "0x20",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES920",
+    "groupNo": "0x04",
+    "machineNo": "0x21",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "DG30",
+    "groupNo": "0x04",
+    "machineNo": "0x22",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "KDP120",
+    "groupNo": "0x04",
+    "machineNo": "0x23",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "KDP120G",
+    "groupNo": "0x04",
+    "machineNo": "0x23",
+    "subId1": "0x01",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "KDP75",
+    "groupNo": "0x04",
+    "machineNo": "0x24",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "KDP88G",
+    "groupNo": "0x04",
+    "machineNo": "0x24",
+    "subId1": "0x01",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES120",
+    "groupNo": "0x04",
+    "machineNo": "0x25",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES120G",
+    "groupNo": "0x04",
+    "machineNo": "0x25",
+    "subId1": "0x02",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN301",
+    "groupNo": "0x04",
+    "machineNo": "0x26",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN201",
+    "groupNo": "0x04",
+    "machineNo": "0x27",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA901",
+    "groupNo": "0x04",
+    "machineNo": "0x28",
+    "subId1": "0x00",
+    "subId2": "0x01",
+    "sysEx": true,
+    "soundQuantity": "large"
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA701",
+    "groupNo": "0x04",
+    "machineNo": "0x28",
+    "subId1": "0x00",
+    "subId2": "0x02",
+    "sysEx": true,
+    "soundQuantity": "large"
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "SCA901",
+    "groupNo": "0x04",
+    "machineNo": "0x28",
+    "subId1": "0x00",
+    "subId2": "0x04",
+    "sysEx": true,
+    "soundQuantity": "large"
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "NV12",
+    "groupNo": "0x04",
+    "machineNo": "0x28",
+    "subId1": "0x00",
+    "subId2": "0x07",
+    "sysEx": true,
+    "soundQuantity": "large"
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "NV6",
+    "groupNo": "0x04",
+    "machineNo": "0x28",
+    "subId1": "0x00",
+    "subId2": "0x08",
+    "sysEx": true,
+    "soundQuantity": "large"
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA401",
+    "groupNo": "0x04",
+    "machineNo": "0x29",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "SCA401",
+    "groupNo": "0x04",
+    "machineNo": "0x29",
+    "subId1": "0x01",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA501",
+    "groupNo": "0x04",
+    "machineNo": "0x2A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN301-CE",
+    "groupNo": "0x04",
+    "machineNo": "0x2B",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CA450YB",
+    "groupNo": "0x04",
+    "machineNo": "0x2C",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES120-CE",
+    "groupNo": "0x04",
+    "machineNo": "0x2D",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "ES60",
+    "groupNo": "0x04",
+    "machineNo": "0x2E",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CN108",
+    "groupNo": "0x04",
+    "machineNo": "0x2F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CX102",
+    "groupNo": "0x04",
+    "machineNo": "0x30",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CX202",
+    "groupNo": "0x04",
+    "machineNo": "0x31",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "CX302",
+    "groupNo": "0x04",
+    "machineNo": "0x32",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": true,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Digital Piano",
+    "machineName": "Ignore ID",
+    "groupNo": "0x04",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "MK-20",
+    "groupNo": "0x05",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "MK-10",
+    "groupNo": "0x05",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "FS680",
+    "groupNo": "0x05",
+    "machineNo": "0x03",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "FS800",
+    "groupNo": "0x05",
+    "machineNo": "0x03",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "FS2000",
+    "groupNo": "0x05",
+    "machineNo": "0x04",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "FS900",
+    "groupNo": "0x05",
+    "machineNo": "0x05",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "FS780",
+    "groupNo": "0x05",
+    "machineNo": "0x05",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "ARA10",
+    "groupNo": "0x05",
+    "machineNo": "0x06",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "X50-D",
+    "groupNo": "0x05",
+    "machineNo": "0x07",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "X55-D",
+    "groupNo": "0x05",
+    "machineNo": "0x07",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "X40-D",
+    "groupNo": "0x05",
+    "machineNo": "0x08",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "X45-D",
+    "groupNo": "0x05",
+    "machineNo": "0x08",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "PXG-30",
+    "groupNo": "0x05",
+    "machineNo": "0x09",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "X65-D",
+    "groupNo": "0x05",
+    "machineNo": "0x0A",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "X130",
+    "groupNo": "0x05",
+    "machineNo": "0x0B",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "X150-D",
+    "groupNo": "0x05",
+    "machineNo": "0x0C",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "Z-1000D",
+    "groupNo": "0x05",
+    "machineNo": "0x0D",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Single Keyboard",
+    "machineName": "Ignore ID",
+    "groupNo": "0x05",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Master Keyboard",
+    "machineName": "VPC1",
+    "groupNo": "0x06",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Master Keyboard",
+    "machineName": "Ignore ID",
+    "groupNo": "0x06",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Controler",
+    "machineName": "MM-16",
+    "groupNo": "0x07",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Controler",
+    "machineName": "RV-4",
+    "groupNo": "0x07",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Controler",
+    "machineName": "Ignore ID",
+    "groupNo": "0x07",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Application",
+    "machineName": "Band Producer",
+    "groupNo": "0x08",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Application",
+    "machineName": "Kawaipiano.js",
+    "groupNo": "0x08",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Application",
+    "machineName": "Ignore ID",
+    "groupNo": "0x08",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Development",
+    "machineName": "Factory Test Host",
+    "groupNo": "0x71",
+    "machineNo": "0x01",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Development",
+    "machineName": "Factory Test Sub",
+    "groupNo": "0x71",
+    "machineNo": "0x02",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Development",
+    "machineName": "Ignore ID",
+    "groupNo": "0x71",
+    "machineNo": "0x7F",
+    "subId1": "0x00",
+    "subId2": "0x00",
+    "sysEx": false,
+    "soundQuantity": ""
+  },
+  {
+    "groupName": "Ignore ID",
+    "machineName": "",
+    "groupNo": "0x7F",
+    "machineNo": "",
+    "subId1": "",
+    "subId2": "",
+    "sysEx": false,
+    "soundQuantity": ""
+  }
+]

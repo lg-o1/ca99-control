@@ -1,0 +1,37 @@
+﻿
+KAWAI CA99 SysEx PROTOCOL (GENERAL FORMAT)
+==========================================
+Base format (from kawaipiano.js getMidi() function):
+  F0  - SysEx start
+  40  - Kawai ID
+  7F  - channel (0x7F = broadcast/all)
+  [fn]  - function number (0x10=set, 0x02=request, 0x31=mode, 0x32=action, 0x7E=system)
+  08  - Gn constant
+  02  - Mn constant
+  [v1]  - parameter group/category
+  [v2]  - parameter sub-address
+  [v3]  - part (0x00=Main1, 0x01=Main2, 0x08=Layer, 0x09=Lower, 0x0F=Global, 0x7F=System)
+  [data bytes] - value(s)
+  F7  - SysEx end
+
+NOTES:
+- fn=0x02: request (no data bytes appended)
+- fn=0x10: set parameter
+- fn=0x31: mode change
+- fn=0x32: action/save
+- fn=0x7E: system control
+- ACK response to SysEx: F0 40 [ch] 07 08 02 [v1] [v2] [v3] F7
+
+CROSS-REFERENCE WITH KNOWN DATA:
+- This matches general Kawai SysEx: F0 40 [ch] [fn] [Gn=08] [Mn=02] [v1] [v2] [v3] [data] F7
+- untouch/const.go uses fn=0x10, Gn=0x08, Mn=0x02 with different groupings:
+  * instr: fn=0x10 v1=0x04 (DIFFERENT - likely older protocol for older models)
+  * revrb: fn=0x10 v1=0x08 (DIFFERENT)
+  * vTech: fn=0x10 v1=0x11 (DIFFERENT)
+  CA99 uses: v1=0x50 for VT, v1=0x55 for sound, v1=0x56 for music/metronome
+  The untouch constants appear to be from an OLDER protocol (pre-CA99 generation)
+
+- PianoWorld layer sound format: "F0 40 00 10 04 02 20 [s1] [s2] F7" → OLDER protocol
+  CA99 uses: F0 40 7F 10 08 02 55 00 [part] [msb] [lsb] [pc] F7
+
+- MP11 mapper: "F0 40 00 10 00 12 40 00 60 02" → v1=0x00, different structure

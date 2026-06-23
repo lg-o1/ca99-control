@@ -1,0 +1,103 @@
+﻿CA99 RHYTHM PATTERNS (100 patterns)
+SysEx: F0 40 7F 10 08 02 56 09 7F [v4] F7  (RhythmSelect: fn=0x10 v1=0x56 v2=0x09)
+======================================================================================
+  [0x00] 8 Beat               | 8Beat1
+  [0x01] 8 Beat               | 8Beat2
+  [0x02] 8 Beat               | 8Beat3
+  [0x03] 8 Beat               | Pop1
+  [0x04] 8 Beat               | Pop2
+  [0x05] 8 Beat               | Pop3
+  [0x06] 8 Beat               | Pop4
+  [0x07] 8 Beat               | Pop5
+  [0x08] 8 Beat               | Pop6
+  [0x09] 8 Beat               | RideBeat1
+  [0x0A] 8 Beat               | RideBeat2
+  [0x0B] 8 Beat               | DancePop1
+  [0x0C] 8 Beat               | CountryPop
+  [0x0D] 8 Beat               | SmoothBeat
+  [0x0E] 8 Beat               | RimBeat
+  [0x0F] 8 Beat Rock          | ModernRock1
+  [0x10] 8 Beat Rock          | ModernRock2
+  [0x11] 8 Beat Rock          | ModernRock3
+  [0x12] 8 Beat Rock          | ModernRock4
+  [0x13] 8 Beat Rock          | PopRock
+  [0x14] 8 Beat Rock          | RideRock
+  [0x15] 8 Beat Rock          | JazzRock
+  [0x16] 8 Beat Rock          | SurfRock
+  [0x17] 16 Beat              | 16Beat
+  [0x18] 16 Beat              | IndiePop1
+  [0x19] 16 Beat              | AcidJazz1
+  [0x1A] 16 Beat              | RideBeat3
+  [0x1B] 16 Beat              | DancePop2
+  [0x1C] 16 Beat              | DancePop3
+  [0x1D] 16 Beat              | DancePop4
+  [0x1E] 16 Beat              | DancePop5
+  [0x1F] 16 Beat              | DancePop6
+  [0x20] 16 Beat              | DancePop7
+  [0x21] 16 Beat              | DancePop8
+  [0x22] 16 Beat              | IndiePop2
+  [0x23] 16 Beat              | CajunRock
+  [0x24] 8 Beat Ballad        | PopBallad1
+  [0x25] 8 Beat Ballad        | PopBallad2
+  [0x26] 8 Beat Ballad        | PopBallad3
+  [0x27] 8 Beat Ballad        | RockBallad1
+  [0x28] 8 Beat Ballad        | RockBallad2
+  [0x29] 8 Beat Ballad        | SlowJam
+  [0x2A] 8 Beat Ballad        | 6/8R&BBallad
+  [0x2B] 8 Beat Ballad        | TripletBallad1
+  [0x2C] 8 Beat Ballad        | TripletBallad2
+  [0x2D] 16 Beat Ballad       | 16Ballad1
+  [0x2E] 16 Beat Ballad       | DanceBallad1
+  [0x2F] 16 Beat Ballad       | DanceBallad2
+  [0x30] 16 Beat Ballad       | DanceBallad3
+  [0x31] 16 Beat Ballad       | ElectroPop
+  [0x32] 16 Beat Ballad       | 16Ballad2
+  [0x33] 16 Beat Ballad       | ModPopBallad
+  [0x34] 16 Beat Dance        | Dance1
+  [0x35] 16 Beat Dance        | Dance2
+  [0x36] 16 Beat Dance        | Dance3
+  [0x37] 16 Beat Dance        | Disco
+  [0x38] 16 Beat Dance        | Techno1
+  [0x39] 16 Beat Dance        | Techno2
+  [0x3A] 16 Beat Swing        | 16Shuffle1
+  [0x3B] 16 Beat Swing        | 16Shuffle2
+  [0x3C] 16 Beat Swing        | 16Shuffle3
+  [0x3D] 16 Beat Swing        | AcidJazz2
+  [0x3E] 16 Beat Swing        | AcidJazz3
+  [0x3F] 16 Beat Swing        | NewJackSwing
+  [0x40] 16 Beat Swing        | ModernDance
+  [0x41] 16 Beat Swing        | IndiePop3
+  [0x42] 8 Beat Swing         | SwingBeat
+  [0x43] 8 Beat Swing         | Motown
+  [0x44] 8 Beat Swing         | Country2Beat
+  [0x45] 8 Beat Swing         | Boogie
+  [0x46] Triplet              | 8Shuffle1
+  [0x47] Triplet              | 8Shuffle2
+  [0x48] Triplet              | 8Shuffle3
+  [0x49] Triplet              | DanceShuffle
+  [0x4A] Triplet              | Triplet1
+  [0x4B] Triplet              | Triplet2
+  [0x4C] Triplet              | TripletRock
+  [0x4D] Triplet              | Reggae
+  [0x4E] Jazz                 | H.H.Swing
+  [0x4F] Jazz                 | RideSwing
+  [0x50] Jazz                 | Fast4Beat
+  [0x51] Jazz                 | AfroCuban
+  [0x52] Jazz                 | JazzBossa
+  [0x53] Jazz                 | JazzWaltz
+  [0x54] Jazz                 | 5/4Swing
+  [0x55] Latin/Traditional    | H.H.BossaNova
+  [0x56] Latin/Traditional    | RideBossaNova
+  [0x57] Latin/Traditional    | Beguine
+  [0x58] Latin/Traditional    | Rhumba
+  [0x59] Latin/Traditional    | ChaCha
+  [0x5A] Latin/Traditional    | Mambo
+  [0x5B] Latin/Traditional    | Samba
+  [0x5C] Latin/Traditional    | Salsa
+  [0x5D] Latin/Traditional    | Merenge
+  [0x5E] Latin/Traditional    | Tango
+  [0x5F] Latin/Traditional    | Habanera
+  [0x60] Latin/Traditional    | Waltz
+  [0x61] Latin/Traditional    | Ragtime
+  [0x62] Latin/Traditional    | March
+  [0x63] Latin/Traditional    | 6/8March

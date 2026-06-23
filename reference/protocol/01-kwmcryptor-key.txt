@@ -1,0 +1,31 @@
+﻿
+DECRYPTION PARAMETERS (KWMCryptor)
+===================================
+Algorithm: AES/CBC/PKCS7Padding (256-bit key, 128-bit IV)
+PRNG: Java-style LCG (seed * 25214903917 + 11) & 0xFFFFFFFFFFFF
+
+For version.xxx:
+  setSrandWithName("version") → seed = sum(ord(c)-48 for c in "version") = 438
+  setSeed(438) → seed = (438 ^ 25214903917) & 0xFFFFFFFFFFFF
+  key = generateRandomBytes(32):
+    1187df2e078848cc815f5685c7afa033ed6bd4887dacfbfa52c401fcc692746e
+  iv  = generateRandomBytes(16):
+    0f178c55e6496bce6927a43f410d01d0
+
+version.xxx decrypts to:
+  Line 0 (version):  "1.3.11"
+  Line 1 (cipher1):  "jn5HdF313uWvqwuJLzB8/rNH6vco2bFIZ37XTDlzc2Gq4ky0qEDZXjTMkBl62R6A"
+  Line 2 (cipher2):  "GVXgbez4f0uiu1NXdWDWdV5sKZV4uqXYt3aVUs+MbxKWACIerTafJZX5oX0prH8v"
+
+For appUI.xxx (4-quarter derivation from cipher1, len=64, v4_4=16):
+  setSrand(cipher1, 0,  4) → seed=53138  → key_c2 = 5c4f65dd...   [cipher2 AES key]
+  setSrand(cipher1, 16, 4) → seed=86237  → iv_c2  = 98d01f99...   [cipher2 AES IV]
+  setSrand(cipher1, 32, 4) → seed=37240  → appui_key = 07b17c45c213dc15acb7a87e122ecf7d41a3db3b495356a3043c6a345614c717
+  setSrand(cipher1, 48, 4) → seed=626    → appui_iv  = 64e0a97b5d79334ea09f525be9875efb
+
+cipher2 base64-decoded + decrypted → MD5 hash: "1273dc59d3d1aedad5561072192d8bb8" (integrity check)
+
+For SMF files (e.g. Kawai-default.xxx):
+  setSrandWithName("Kawai-default") → seed = sum(ord(c)-48 for c in "Kawai-default") = 655
+  key = generateRandomBytes(32)
+  iv  = generateRandomBytes(16)

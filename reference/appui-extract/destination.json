@@ -1,0 +1,98 @@
+[
+  {
+    "name": "EU",
+    "bench": true,
+    "bluetooth": false,
+    "v3": "0x00",
+    "v4": "0x00",
+    "model": "CA99, CA79, CA9900GP, CA59, ES920, ES520, NV10S, NV5S, ATX4UP, AURES2UP, ATX4GP, AURES2GP, DG30, NV10SPL, CN301, CA901, CA701, CA501,NV6,NV12"
+  },
+  {
+    "name": "EU",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x01",
+    "model": "CA99, CA79, CA9900GP, CA59, ES920, ES520, NV10S, NV5S, ATX4UP, AURES2UP, ATX4GP, AURES2GP, DG30, NV10SPL, CN301, CA901, CA701, CA501,NV6,NV12"
+  },
+  {
+    "name": "US",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x02",
+    "model": "CA99, CA79, CA9900GP, CA59, ES920, ES520, NV10S, NV5S, ATX4UP, AURES2UP, ATX4GP, AURES2GP, DG30, NV10SPL, CN301, CA901, CA701, CA501,NV6,NV12"
+  },
+  {
+    "name": "AU",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x03",
+    "model": "CA99, CA79, CA9900GP, CA59, NV10S, NV5S, ATX4UP, AURES2UP, ATX4GP, AURES2GP, DG30, NV10SPL, CN301, CA901, CA701, CA501,NV6,NV12"
+  },
+  {
+    "name": "D",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x04",
+    "model": "CA99, CA79, CA9900GP, CA59, ES920, ES520, NV10S, NV5S, ATX4UP, AURES2UP, ATX4GP, AURES2GP, NV10SPL, CN301, CA901, CA701, SCA901, CA501,NV6,NV12"
+  },
+  {
+    "name": "UK",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x05",
+    "model": "CA49, KDP120, KDP75, DG30, CN201, ES120, CN301, CA401, CX102, CX202"
+  },
+  {
+    "name": "CV",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x06",
+    "model": "CA28G, KDP120, KDP75, DG30, KDP120G, KDP88G, ES120G, CN301, CA450YB, CN108, CX102, CX202"
+  },
+  {
+    "name": "UK",
+    "bench": true,
+    "bluetooth": false,
+    "v3": "0x00",
+    "v4": "0x07",
+    "model": "CA49, ES920, ES520, KDP120, DG30, CN201, ES120, CN301, CA401, CX102, CX202"
+  },
+  {
+    "name": "EU",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x08",
+    "model": "CA49, KDP120, KDP75, CN201, ES120, CA401, CX102, CX202"
+  },
+  {
+    "name": "EU",
+    "bench": true,
+    "bluetooth": false,
+    "v3": "0x00",
+    "v4": "0x09",
+    "model": "CA49, KDP120, CN201, ES120, CA401, CX102, CX202"
+  },
+  {
+    "name": "US",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x0A",
+    "model": "CA49, KDP120, KDP75, CN201, ES120, CA401, CX102, CX202"
+  },
+  {
+    "name": "D",
+    "bench": true,
+    "bluetooth": true,
+    "v3": "0x00",
+    "v4": "0x0B",
+    "model": "CA49, CA4900GP, KDP120, KDP75, CN201, ES120, CA401, SCA401,ES60, CX102, CX202, CX302"
+  }
+]

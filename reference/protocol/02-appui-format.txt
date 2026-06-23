@@ -1,0 +1,15 @@
+﻿
+appUI.xxx DECRYPTED FORMAT
+===========================
+appUI.xxx decrypts to a ZIP archive (magic: PK\x03\x04) containing 286 files:
+  appUI/ui/js/app.js          (293 KB)  - main Vue.js UI application
+  appUI/ui/js/asset.js        (98 KB)   - asset/text strings
+  appUI/ui/html/index.html    (225 KB)  - main HTML
+  appUI/lib/kawaipianojs/     - core MIDI library
+    kawaipiano.js             (177 KB)  - getMidi() function, Database
+    kawaipiano.dev.js         (6.5 MB)  - webpack bundle with all domain logic
+    json/sysex.json           (1.2 MB)  - 986 SysEx parameter definitions
+    json/sound.json           (5.4 MB)  - 7613 sounds (346 for CA99)
+    json/vt.json              (108 KB)  - 131 VT preset entries
+    json/rhythm.json          (21 KB)   - 100 rhythm patterns
+    json/model.json           (35 KB)   - 172 model entries

@@ -1,0 +1,7675 @@
+﻿[
+  {
+    "Model": "CA99",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for CA99 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 2,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 2157,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2181,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA99",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for CA99 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 2157,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2181,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA99",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for CA99 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off"
+      },
+      "Layer": {
+        "Timbre": 2157,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2181,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA99",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for CA99 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 2157,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2181,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2099,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2099,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA79",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for CA79 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 2487,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2505,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA79",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for CA79 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 2487,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2505,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA79",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for CA79 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off"
+      },
+      "Layer": {
+        "Timbre": 2487,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2505,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA79",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for CA79 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 2487,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2505,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2445,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2445,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA9900GP",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for CA9900GP embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 2,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 2823,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 2843,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 2767,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 2767,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 2767,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 2767,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 2767,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 2767,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV5S",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for NV5S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 2,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4471,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4495,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV5S",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for NV5S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4471,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4495,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV5S",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for NV5S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off"
+      },
+      "Layer": {
+        "Timbre": 4471,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4495,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV5S",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for NV5S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4471,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4495,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4413,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4413,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10S",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for NV10S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10S",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for NV10S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10S",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for NV10S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off"
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10S",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for NV10S embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10SPL",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for NV10SPL embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10SPL",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for NV10SPL embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10SPL",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for NV10SPL embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off"
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV10SPL",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for NV10SPL embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "LineInLevel": 0,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "On",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0
+      },
+      "Layer": {
+        "Timbre": 4125,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "Lower": {
+        "Timbre": 4149,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsRight": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "FourHandsLeft": {
+        "Timbre": 4067,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "StringResonance": 63,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": -4,
+        "StretchTuning": 1
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 4067,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA901",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for CA901 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 2,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6352,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6377,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA901",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for CA901 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6352,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6377,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA901",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for CA901 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off",
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6352,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6377,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA901",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for CA901 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6352,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6377,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6285,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6285,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA701",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for CA701 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6657,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6682,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA701",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for CA701 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6657,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6682,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA701",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for CA701 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off",
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6657,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6682,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "CA701",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for CA701 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6657,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6682,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6590,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6590,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "SCA901",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for SCA901 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 2,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0
+      },
+      "Layer": {
+        "Timbre": 6845,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 6865,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 6781,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 6781,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 6781,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 6781,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 6781,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 6781,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV6",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for NV6 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 2,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7218,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7243,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV6",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for NV6 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7218,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7243,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV6",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for NV6 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off",
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7218,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7243,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV6",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for NV6 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "WallEQ": 1,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7218,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7243,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7151,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7151,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV12",
+    "Destination": "D",
+    "Language": "JA",
+    "Description": "initial data for NV12 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7445,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7470,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV12",
+    "Destination": "EU",
+    "Language": "EN",
+    "Description": "initial data for NV12 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 1,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7445,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7470,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV12",
+    "Destination": "US",
+    "Language": "EN",
+    "Description": "initial data for NV12 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "HymnPlayer": "Off",
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7445,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7470,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  },
+  {
+    "Model": "NV12",
+    "Destination": "AU",
+    "Language": "EN",
+    "Description": "initial data for NV12 embeded touch panel",
+    "data": {
+      "Sound": 0,
+      "System": {
+        "RenderingStatus": 0,
+        "Tuning": 440,
+        "ToneControl": 0,
+        "Brilliance": 0,
+        "EqualizeMasterVolume": 3,
+        "SpeakerVolume": 1,
+        "LineOutVolume": 127,
+        "SHSMode": 2,
+        "PhonesType": 0,
+        "PhonesVolume": 0,
+        "MIDIChannel": 1,
+        "SendProgramChangeNumber": 1,
+        "LocalControl": "On",
+        "TransmitProgramChange": {
+          "value": 0,
+          "subValue": "On"
+        },
+        "MultiTimbralMode": 0,
+        "BluetoothMIDI": "Off",
+        "BluetoothAudio": "Off",
+        "BluetoothSetting": 0,
+        "AutoPowerOff": 0,
+        "LockMode": {
+          "value": 0,
+          "subValue": 0
+        },
+        "AudioRecFormat": 1,
+        "AudioRecGain": 9,
+        "AudioPlayVolume": 100,
+        "UserEqGainLow": 0,
+        "UserEqFreqMidLow": 560,
+        "UserEqGainMidLow": 0,
+        "UserEqFreqMidHigh": 1250,
+        "UserEqGainMidHigh": 0,
+        "UserEqGainHigh": 0,
+        "SpeakerCharacter": 0,
+        "UsbAudioInputVolume": 0
+      },
+      "Layer": {
+        "Timbre": 7445,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Dynamics": 127,
+        "Balance": 8,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "Lower": {
+        "Timbre": 7470,
+        "TransposeValue": 0,
+        "OctaveShift": 0,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsRight": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": -2,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "FourHandsLeft": {
+        "Timbre": 7378,
+        "TransposeValue": 0,
+        "OctaveShift": 2,
+        "Balance": 8,
+        "SplitPoint": 60,
+        "DamperNoise": 50,
+        "FallbackNoise": 50,
+        "KeyAttackNoise": 68,
+        "HammerDelay": "Off",
+        "KeyVolume": 0,
+        "HalfPedalAdjust": 4,
+        "UndampedStringResonance": 63,
+        "DecayTime": 4,
+        "DCAReleaseTime": 0,
+        "StretchTuning": 1,
+        "ResonanceRendering": 63
+      },
+      "RecorderGlobal": {
+        "Volume": 100
+      },
+      "Main1": {
+        "Effect": "Off",
+        "EffectSetting1": 50,
+        "EffectSetting2": 21,
+        "EffectType": {
+          "subValue": 0,
+          "value": 0
+        },
+        "Reverb": "On",
+        "ReverbDepth": 38,
+        "ReverbTime": 40,
+        "ReverbType": 2
+      },
+      "MIDI1ch": {
+        "ChannelMute": 1
+      },
+      "MIDI2ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI3ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI4ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI5ch": {
+        "ChannelMute": 1,
+        "Timbre": 7378,
+        "Volume": 100,
+        "Panpot": 64,
+        "ReverbDepth": 0,
+        "ChorusDepth": 0
+      },
+      "MIDI6ch": {
+        "ChannelMute": 1
+      },
+      "MIDI7ch": {
+        "ChannelMute": 1
+      },
+      "MIDI8ch": {
+        "ChannelMute": 1
+      },
+      "MIDI9ch": {
+        "ChannelMute": 1
+      },
+      "MIDI10ch": {
+        "ChannelMute": 1
+      },
+      "MIDI11ch": {
+        "ChannelMute": 1
+      },
+      "MIDI12ch": {
+        "ChannelMute": 1
+      },
+      "MIDI13ch": {
+        "ChannelMute": 1
+      },
+      "MIDI14ch": {
+        "ChannelMute": 1
+      },
+      "MIDI15ch": {
+        "ChannelMute": 1
+      },
+      "MIDI16ch": {
+        "ChannelMute": 1
+      }
+    }
+  }
+]

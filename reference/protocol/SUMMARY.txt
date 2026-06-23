@@ -1,0 +1,164 @@
+﻿==========================================================================
+KAWAI CA99 PianoRemote APK REVERSE ENGINEERING SUMMARY
+==========================================================================
+
+1. DECRYPTION KEY/IV/ALGORITHM
+================================
+Cipher: AES/CBC/PKCS7Padding
+Key size: 256-bit (32 bytes)
+IV size: 128-bit (16 bytes)
+
+Key derivation: Java LCG PRNG: new_seed = (seed * 25214903917 + 11) & 0xFFFFFFFFFFFF
+                return = new_seed >> 16  (unsigned 32-bit)
+                byte = next_rand() % 256
+
+For version.xxx:
+  - Seed: setSrandWithName("version") → sum(ord(c)-48) = 438 → setSeed(438)
+  - Key (32B): 1187df2e078848cc815f5685c7afa033ed6bd4887dacfbfa52c401fcc692746e
+  - IV  (16B): 0f178c55e6496bce6927a43f410d01d0
+
+For appUI.xxx (uses cipher1="jn5HdF313uWvqwuJLzB8/rNH6vco2bFIZ37XTDlzc2Gq4ky0qEDZXjTMkBl62R6A" from version):
+  - seed=37240 (from cipher1 pos 32) → Key (32B): 07b17c45c213dc15acb7a87e122ecf7d41a3db3b495356a3043c6a345614c717
+  - seed=626   (from cipher1 pos 48) → IV  (16B): 64e0a97b5d79334ea09f525be9875efb
+
+For SMF files: setSrandWithName(filename_without_extension) → generate key/iv
+
+2. DECRYPTED appUI.xxx
+========================
+SUCCESS. appUI.xxx → ZIP archive, 286 files.
+Key contents:
+  - appUI/lib/kawaipianojs/json/sysex.json   (986 SysEx param defs)
+  - appUI/lib/kawaipianojs/json/sound.json   (7613 sounds, 346 for CA99)
+  - appUI/lib/kawaipianojs/json/vt.json      (131 VT preset entries)
+  - appUI/lib/kawaipianojs/json/rhythm.json  (100 rhythm patterns)
+  - appUI/lib/kawaipianojs/kawaipiano.js     getMidi() SysEx assembly function
+
+3. SYSEX COMMANDS
+==================
+GENERAL FORMAT: F0 40 7F [fn] 08 02 [v1] [v2] [v3=part] [data...] F7
+
+fn codes:
+  0x10 = SET parameter
+  0x02 = REQUEST parameter
+  0x31 = MODE CHANGE
+  0x32 = ACTION/SAVE
+  0x7E = SYSTEM CONTROL
+
+Part bytes: Main1=0x00, Main2=0x01, Layer=0x08, Lower=0x09, Global=0x0F, System=0x7F
+
+SOUND SELECTION:
+  F0 40 7F 10 08 02 55 00 [part] [msb] [lsb] [pc] F7
+  e.g. Concert Grand (msb=0x79, lsb=0x00, pc=0x00) on Main1:
+       F0 40 7F 10 08 02 55 00 00 79 00 00 F7
+
+VIRTUAL TECHNICIAN (all on v1=0x50):
+  TouchCurve:          F0 40 7F 10 08 02 50 00 [part] [val] F7
+    Light4=0x00, Normal=0x01, Heavy4=0x02, Off=0x03
+  Voicing:             F0 40 7F 10 08 02 50 01 [part] [val] F7
+    Normal=0x00, Mellow1=0x01, Mellow2=0x02, Dynamic=0x03, Bright=0x04
+  DamperResonance:     F0 40 7F 10 08 02 50 02 [part] [val] F7  (0x00=Off, 0x7F=max)
+  DamperNoise:         F0 40 7F 10 08 02 50 03 [part] [val] F7  (0x00=Off, 0x7F=max)
+  StringResonance:     F0 40 7F 10 08 02 50 04 [part] [val] F7  (0x00=Off, 0x7F=max)
+  KeyOffEffect:        F0 40 7F 10 08 02 50 05 [part] [val] F7  (0x00=Off, 0x7F=max)
+  FallbackNoise:       F0 40 7F 10 08 02 50 06 [part] [val] F7  (0x00=Off, 0x7F=max)
+  HammerDelay:         F0 40 7F 10 08 02 50 07 [part] [val] F7  (0x00=Off, 0x7F=max)
+  TopboardSimulation:  F0 40 7F 10 08 02 50 08 [part] [val] F7
+    Closed2=0x00, Closed1=0x01, Open1=0x02, Open2=0x03, Open3=0x04
+  DecayTime:           F0 40 7F 10 08 02 50 09 [part] [val] F7  (1=0x0C..10=0x7F)
+  MinimumTouch:        F0 40 7F 10 08 02 50 0A [part] [val] F7  (1..20)
+  StretchTuning:       F0 40 7F 10 08 02 50 0B [part] [val] F7
+    Off=0x00, Normal=0x03, Wide=0x08, User=0x40
+  Temperament:         F0 40 7F 10 08 02 50 0D [part] [val] F7
+    Equal=0x00, PureMajor=0x01, PureMinor=0x02, Pythagorean=0x03, Kirnberger=0x04..
+  KeyVolume:           F0 40 7F 10 08 02 50 0F [part] [val] F7
+    Normal=0x00, HighDamping=0x01, LowDamping=0x02, HighLowDamping=0x03
+  HalfPedalAdjust:     F0 40 7F 10 08 02 50 11 [part] [val] F7  (1=0x0C..10=0x7F)
+  SoftPedalDepth:      F0 40 7F 10 08 02 50 12 [part] [val] F7  (1=0x0C..10=0x7F)
+  Brilliance:          F0 40 7F 10 08 02 50 14 [part] [val] F7  (-10=0x36..0=0x40..+10=0x4A)
+  UndampedStringRes:   F0 40 7F 10 08 02 50 15 [part] [val] F7  (0x00=Off, 0x7F=max)
+  CabinetResonance:    F0 40 7F 10 08 02 50 16 [part] [val] F7  (0x00=Off, 0x7F=max)
+  KeyAttackNoise:      F0 40 7F 10 08 02 50 28 [part] [val] F7  (0x00=Off, 0x7F=max)
+  DCAReleaseTime:      F0 40 7F 10 08 02 50 (via ResonanceDepth?)
+  RenderingCharacter:  F0 40 7F 10 08 02 50 26 [part] [val] F7
+    Classic=0x00, Romantic=0x01, Full=0x02, Classic2=0x0A
+  Rendering On/Off:    F0 40 7F 10 08 02 50 29 [part] [val] F7  (0x00=Off, 0x01=On)
+
+SYSTEM PARAMS:
+  Volume:        F0 40 7F 10 08 02 55 01 [part] [val] F7  (0..127)
+  Balance:       F0 40 7F 10 08 02 53 04 [part] [val] F7  (9-9=0x40 center)
+  Dynamics:      F0 40 7F 10 08 02 53 05 [part] [val] F7  (0..127)
+  KeyboardMode:  F0 40 7F 10 08 02 53 00 7F [val] F7  (Single=0x00,Dual=0x01,Split=0x02,4Hands=0x03)
+  TransposeVal:  F0 40 7F 10 08 02 53 02 7F [val] F7  (-12=0x34..0=0x40..+12=0x4C)
+  OctaveShift:   F0 40 7F 10 08 02 53 03 [part] [val] F7  (-3=0x3D..0=0x40..+3=0x43)
+  SplitPoint:    F0 40 7F 10 08 02 53 06 [part] [key_num] F7
+  LocalControl:  F0 40 7F 10 08 02 58 01 7F [val] F7  (0=Off, 1=On)
+
+REVERB/EFFECTS:
+  ReverbType:    F0 40 7F 10 08 02 55 08 [part] [val] F7
+    Room=0x00, Lounge=0x01, SmallHall=0x02, ConcertHall=0x03, LiveHall=0x04, Cathedral=0x05
+  ReverbDepth:   F0 40 7F 10 08 02 55 03 [part] [val] F7  (0..127)
+  AmbienceType:  F0 40 7F 10 08 02 55 60 [part] [val] F7
+    Natural=0x00, SmallRoom=0x01, MediumRoom=0x02, LargeRoom=0x03, Studio=0x04,
+    WoodStudio=0x05, MellowLounge=0x06, BrightLounge=0x07, LiveStage=0x08, Echo=0x09
+  AmbienceDepth: F0 40 7F 10 08 02 55 61 [part] [val] F7  (0..127)
+
+METRONOME:
+  MetronomeTempo:  F0 40 7F 10 08 02 56 01 7F [bpm] F7
+  MetronomeVolume: F0 40 7F 10 08 02 56 03 7F [val] F7  (0..127)
+
+RHYTHM (100 patterns, v4=0x00..0x63):
+  RhythmSelect:  F0 40 7F 10 08 02 56 09 7F [v4] F7
+  e.g. 8Beat1=0x00, 16Beat=0x17, Waltz=0x60, Tango=0x5E
+
+REQUEST COMMANDS (fn=0x02, no data bytes):
+  Request any param: F0 40 7F 02 08 02 [v1] [v2] [part] F7
+  Headphones status: F0 40 7F 02 08 02 51 29 7F F7
+  USB Memory status:  F0 40 7F 02 08 02 51 2E 7F F7
+
+MIDI SEND MECHANISM (KWMMidiManager):
+  MidiInputPort.send(byte[], offset, count, timestamp=0)
+  - All devices: iterates midiInputPortMap
+  - Specific device: looks up by ID
+
+4. CROSS-REFERENCE WITH KNOWN DATA
+=====================================
+untouch/const.go format (OLDER protocol - different Kawai models):
+  The untouch tool uses: F0 40 [ch] [cmd=10] [topic] [subtopic] [value(s)] F7
+  where topics: instr=0x02, revrb=0x08, effct=0x09, vTech=0x11
+  
+  CA99 uses NEWER format with Gn=0x08, Mn=0x02, v1=0x50(VT)/0x55(Sound)/0x56(Music)
+  
+  Comparison of VT parameter addresses:
+    untouch tCurv=vTech(0x11)/0x00 → CA99: fn=0x10/v1=0x50/v2=0x00 ✓ (same sub-addr!)
+    untouch voicg=vTech(0x11)/0x01 → CA99: fn=0x10/v1=0x50/v2=0x01 ✓
+    untouch dmpRs=vTech(0x11)/0x02 → CA99: fn=0x10/v1=0x50/v2=0x02 ✓
+    untouch strRs=vTech(0x11)/0x04 → CA99: fn=0x10/v1=0x50/v2=0x04 ✓
+    untouch koEff=vTech(0x11)/0x07 → CA99: fn=0x10/v1=0x50/v2=0x05 (different! KoEff=0x05, not 0x07)
+    untouch topBd=vTech(0x11)/0x0A → CA99: fn=0x10/v1=0x50/v2=0x08 (Topboard=0x08, not 0x0A)
+    untouch tmpmt=vTech(0x11)/0x0E → CA99: fn=0x10/v1=0x50/v2=0x0D ✓ (Temperament=0x0D)
+    untouch keyVo=vTech(0x11)/0x10 → CA99: fn=0x10/v1=0x50/v2=0x0F ✓ (KeyVolume=0x0F)
+  
+  The untouch protocol wraps v1=0x11(vTech) as a group/topic byte; CA99 uses v1=0x50.
+  The v2 (sub-addr) values mostly MATCH but the outer framing differs.
+  CONCLUSION: untouch was designed for an older Kawai model; CA99 uses an evolved format.
+
+PianoWorld layer format: F0 40 00 10 04 02 20 [s1][s2] F7
+  CA99 Sound format:     F0 40 7F 10 08 02 55 00 [part] [msb][lsb][pc] F7
+  Different: CA99 uses 3-byte (msb/lsb/pc) sound identifier vs 2-byte in older protocol.
+
+5. VERDICT: FULL CA99 CONTROL PROTOCOL EXTRACTED
+==================================================
+YES - the full protocol is now available:
+  ✓ 986 SysEx parameter definitions from official app source (sysex.json)
+  ✓ 346 CA99 sounds with exact PC/MSB/LSB values (sound.json)
+  ✓ 34 Virtual Technician parameters with all values (sysex.json fn=0x10/v1=0x50)
+  ✓ 100 rhythm patterns with v4 selection codes (rhythm.json)
+  ✓ All system params: volume, transpose, keyboard mode, reverb, effects, metronome
+  ✓ Request commands for status queries
+  ✓ MIDI delivery: MidiInputPort.send() via USB/BLE (no SysEx framing, raw bytes)
+  ✓ Format confirmed: F0 40 7F [fn] 08 02 [v1] [v2] [v3=part] [data...] F7
+  ✓ ACK format: F0 40 [ch] 07 08 02 [v1] [v2] [v3] F7
+
+The CA99 uses firmware version 1.3.11 (per version.xxx).
+The app supports 40+ Kawai piano models; CA99 is a tier-1 supported device.
+==========================================================================
