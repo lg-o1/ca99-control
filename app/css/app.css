@@ -315,6 +315,22 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   transform: translateX(-50%);
 }
 
+/* ---- 移调器 ---- */
+.trans-display { margin: 8px 0 18px; }
+.trans-amt { font-size: 64px; font-weight: 800; line-height: 1; color: var(--text); transition: color .15s; }
+.trans-sub { font-size: 14px; color: var(--muted); margin-top: 6px; }
+.trans-sub b { color: #667eea; font-size: 18px; }
+.trans-controls { display: flex; align-items: center; gap: 14px; justify-content: center; margin: 10px 0; }
+.trans-btn {
+  width: 52px; height: 52px; border-radius: 50%; font-size: 26px; font-weight: 700; line-height: 1;
+  background: var(--panel2); border: 2px solid var(--line); color: var(--text); cursor: pointer;
+  transition: transform .12s, border-color .12s, box-shadow .12s;
+}
+.trans-btn:hover { transform: translateY(-2px); border-color: #667eea; box-shadow: 0 6px 16px rgba(102,126,234,.3); }
+.trans-btn:active { transform: scale(.94); }
+.trans-slider { flex: 1; max-width: 280px; accent-color: #667eea; height: 6px; }
+.trans-presets { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

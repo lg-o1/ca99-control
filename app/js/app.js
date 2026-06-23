@@ -19,6 +19,7 @@ import { noteName as chordNoteName } from './chord-detect.js';
 import { SightReadingGame, staffPosition, needsLedger, noteLabel as sightNoteLabel } from './sight-reading.js';
 import { INTERVALS, EarTrainingGame, intervalName } from './ear-training.js';
 import { DYNAMICS, DynamicsGame, velocityToDynamic } from './dynamics-trainer.js';
+import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -1711,6 +1712,71 @@ function renderDynamics() {
   };
 }
 
+// ========== 模块 19: 移调器 ==========
+function renderTransposer() {
+  const root = $('#module-transpose');
+  const transposer = new Transposer();
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 移调器</h2>
+    <p style="color:var(--muted);margin-bottom:14px">一键把整个键盘升/降调（-12 ~ +12 半音）。用熟悉的指法弹任意调的曲子——发 CA99 移调 SysEx，钢琴自身发声也跟着移调。需先连接钢琴。</p>
+
+    <div class="card-panel" style="text-align:center">
+      <div class="trans-display">
+        <div class="trans-amt" id="trans-amt">0</div>
+        <div class="trans-sub">半音 · 听感调 <b id="trans-key">C</b></div>
+      </div>
+      <div class="trans-controls">
+        <button id="trans-minus" class="trans-btn">−</button>
+        <input type="range" id="trans-slider" min="-12" max="12" step="1" value="0" class="trans-slider">
+        <button id="trans-plus" class="trans-btn">＋</button>
+      </div>
+      <div class="trans-presets" id="trans-presets"></div>
+      <div class="rotate-bar" style="justify-content:center;margin-top:14px">
+        <button id="trans-reset" class="big-btn" style="max-width:160px">↺ 归零</button>
+      </div>
+      <p id="trans-hint" style="color:var(--muted);font-size:13px;margin-top:10px">移调 0：原调</p>
+    </div>`;
+
+  const presets = [
+    { s: -12, t: '低八度' }, { s: -5, t: '降4度' }, { s: -2, t: '降全音' },
+    { s: 2, t: '升全音' }, { s: 5, t: '升4度' }, { s: 12, t: '高八度' },
+  ];
+  $('#trans-presets').innerHTML = presets.map(p =>
+    `<button class="ear-chip" data-s="${p.s}">${p.t} (${semitoneLabel(p.s)})</button>`).join('');
+
+  function paint() {
+    const s = transposer.semitones;
+    $('#trans-amt').textContent = semitoneLabel(s);
+    $('#trans-key').textContent = transposer.keyName;
+    $('#trans-slider').value = s;
+    $('#trans-amt').style.color = s === 0 ? 'var(--text)' : '#667eea';
+    let hint = '移调 0：原调';
+    if (s > 0) hint = `升 ${s} 半音：用 C 的指法弹出 ${transposer.keyName} 调`;
+    else if (s < 0) hint = `降 ${-s} 半音：用 C 的指法弹出 ${transposer.keyName} 调`;
+    $('#trans-hint').textContent = hint;
+    $('#trans-presets').querySelectorAll('.ear-chip').forEach(b =>
+      b.classList.toggle('on', +b.dataset.s === s));
+  }
+
+  function apply(s) {
+    transposer.set(s);
+    paint();
+    send(CA99.buildTranspose(transposer.semitones));
+    log(`移调: ${semitoneLabel(transposer.semitones)} 半音（听感调 ${transposer.keyName}）`, 'ok');
+  }
+
+  $('#trans-minus').onclick = () => apply(transposer.semitones - 1);
+  $('#trans-plus').onclick = () => apply(transposer.semitones + 1);
+  $('#trans-slider').oninput = () => apply(+$('#trans-slider').value);
+  $('#trans-reset').onclick = () => apply(0);
+  $('#trans-presets').querySelectorAll('.ear-chip').forEach(b => {
+    b.onclick = () => apply(+b.dataset.s);
+  });
+
+  paint();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -1720,7 +1786,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };

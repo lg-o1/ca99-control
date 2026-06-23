@@ -73,6 +73,12 @@ export function buildKeyboardMode(mode) {
   return buildSysEx(0x10, 0x53, 0x00, PART.System, [mode & 0x03]);
 }
 
+/** 移调 (v1=0x53 v2=0x02)，半音 -12..+12，数据字节 = 0x40 + 半音（实测 -12→0x34, +12→0x4C） */
+export function buildTranspose(semitones) {
+  const s = Math.max(-12, Math.min(12, Math.round(semitones) || 0));
+  return buildSysEx(0x10, 0x53, 0x02, PART.System, [(0x40 + s) & 0x7F]);
+}
+
 /** 鼓点节奏 (v1=0x56 v2=0x09) 0x00-0x63 */
 export function buildRhythmSelect(index) {
   return buildSysEx(0x10, 0x56, 0x09, PART.System, [index & 0x7F]);
