@@ -18,6 +18,7 @@ import { SCALE_TYPES, buildScale, buildScaleUpDown, ScaleSession } from './scale
 import { noteName as chordNoteName } from './chord-detect.js';
 import { SightReadingGame, staffPosition, needsLedger, noteLabel as sightNoteLabel } from './sight-reading.js';
 import { INTERVALS, EarTrainingGame, intervalName } from './ear-training.js';
+import { DYNAMICS, DynamicsGame, velocityToDynamic } from './dynamics-trainer.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -35,6 +36,7 @@ const recorder = new Recorder(); // 弹奏录制器（模块14使用）
 let recorderOnChange = null;      // 录制状态变化回调（模块14注册）
 let scaleOnNote = null;    // 音阶练习的 note-on 回调（模块15注册）
 let sightOnNote = null;    // 视奏闪卡的 note-on 回调（模块16注册）
+let dynOnNote = null;      // 力度练习的 note-on 回调（模块18注册）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -142,6 +144,8 @@ function onMidiIn(bytes) {
     if (scaleOnNote) scaleOnNote(m.note);
     // 驱动视奏闪卡
     if (sightOnNote) sightOnNote(m.note);
+    // 驱动力度练习
+    if (dynOnNote) dynOnNote(m.note, m.velocity);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -1580,6 +1584,133 @@ function renderEar() {
   };
 }
 
+// ========== 模块 18: 力度练习 ==========
+function renderDynamics() {
+  const root = $('#module-dynamics');
+  let game = null;
+  const enabled = new Set(['p', 'mf', 'f']);
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">💪 力度练习</h2>
+    <p style="color:var(--muted);margin-bottom:14px">屏幕给出目标力度（pp~ff），用对应的<b>触键强弱</b>弹任意一个琴键命中它，训练你的强弱控制。需先选好 <b>MIDI 输入</b>端口。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>练习档位</label>
+        <div class="ear-chips" id="dyn-chips"></div></div>
+      <div class="param-row"><label>容差</label>
+        <select id="dyn-tol">
+          <option value="0">严格（必须精确命中该档）</option>
+          <option value="1" selected>宽松（相邻一档也算对）</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <div class="dyn-target" id="dyn-target">按"开始"出题</div>
+      <div class="dyn-meter"><div class="dyn-bands" id="dyn-bands"></div><div class="dyn-needle" id="dyn-needle" style="left:0%"></div></div>
+      <div id="dyn-feedback" class="sight-feedback">选好档位，按"开始"</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="dyn-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="dyn-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="dyn-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="dyn-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="dyn-start" class="big-btn">▶ 开始练习</button>
+      <span id="dyn-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawChips() {
+    $('#dyn-chips').innerHTML = DYNAMICS.map(d =>
+      `<button class="ear-chip ${enabled.has(d.key) ? 'on' : ''}" data-key="${d.key}">${d.sym} <small>${d.name}</small></button>`).join('');
+    $('#dyn-chips').querySelectorAll('.ear-chip').forEach(b => {
+      b.onclick = () => {
+        if (game) return;
+        const k = b.dataset.key;
+        if (enabled.has(k)) { if (enabled.size > 1) enabled.delete(k); } else enabled.add(k);
+        drawChips();
+      };
+    });
+  }
+  drawChips();
+
+  // 力度刻度条：6 档色带
+  function drawBands(targetKey) {
+    $('#dyn-bands').innerHTML = DYNAMICS.map(d => {
+      const w = (d.max - d.min + 1) / 127 * 100;
+      const isT = d.key === targetKey;
+      return `<div class="dyn-band ${isT ? 'target' : ''}" style="width:${w}%">${d.sym}</div>`;
+    }).join('');
+  }
+  drawBands(null);
+
+  function setNeedle(vel) {
+    $('#dyn-needle').style.left = (vel / 127 * 100) + '%';
+  }
+
+  function refreshStats() {
+    $('#dyn-score').textContent = game.score;
+    $('#dyn-streak').textContent = game.streak;
+    $('#dyn-best').textContent = game.best;
+    $('#dyn-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  let answering = false;
+  function showTarget() {
+    const t = game.target();
+    $('#dyn-target').innerHTML = `请弹出 <b class="dyn-sym">${t.sym}</b>（${t.name}）`;
+    drawBands(game.current);
+  }
+
+  function onNote(note, velocity) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    setNeedle(velocity);
+    const played = velocityToDynamic(velocity);
+    const ok = game.check(velocity);
+    refreshStats();
+    const fb = $('#dyn-feedback');
+    if (ok) { fb.textContent = `✅ 命中 ${game.target().sym}！你弹了力度 ${velocity}（${played.sym}）· 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 你弹了 ${played.sym}（力度 ${velocity}），目标是 ${game.target().sym}`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1200);
+  }
+
+  function nextQuestion() {
+    answering = false;
+    game.next();
+    showTarget();
+    $('#dyn-feedback').textContent = '🎹 触键弹出目标力度';
+    $('#dyn-feedback').className = 'sight-feedback';
+  }
+
+  $('#dyn-start').onclick = () => {
+    if (game) {
+      game = null; dynOnNote = null; answering = false;
+      $('#dyn-start').textContent = '▶ 开始练习';
+      $('#dyn-start').classList.remove('running');
+      $('#dyn-status').textContent = '已停止';
+      $('#dyn-target').textContent = '按"开始"出题';
+      $('#dyn-feedback').textContent = '选好档位，按"开始"';
+      $('#dyn-feedback').className = 'sight-feedback';
+      drawBands(null); setNeedle(0);
+      drawChips();
+      log('力度练习: 停止');
+      return;
+    }
+    game = new DynamicsGame({ levels: [...enabled], tolerance: +$('#dyn-tol').value });
+    dynOnNote = (note, velocity) => onNote(note, velocity);
+    $('#dyn-start').textContent = '⏸ 停止练习';
+    $('#dyn-start').classList.add('running');
+    $('#dyn-status').textContent = '进行中…';
+    drawChips();
+    refreshStats();
+    nextQuestion();
+    log('力度练习: 开始', 'ok');
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -1589,7 +1720,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };

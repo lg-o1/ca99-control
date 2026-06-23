@@ -27,6 +27,7 @@ app/
     scale-trainer.js  ← 音阶练习引导（纯逻辑，41 单元测试）
     sight-reading.js  ← 视奏闪卡（五线谱→音名，纯逻辑，62 单元测试）
     ear-training.js   ← 音程听辨（听辨音程，纯逻辑，49 单元测试）
+    dynamics-trainer.js ← 力度练习（弹出目标强弱，纯逻辑，52 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -55,6 +56,7 @@ app/
 | 🎼 音阶练习 | ✅ | 选调+音阶类型，按高亮提示依次弹奏，实时检查对错+进度（8 种音阶/上下行/忽略八度） |
 | 👀 视奏闪卡 | ✅ | SVG 五线谱出题，看谱在琴键弹出对应音，弹对自动出下一题（高/低音谱号/连击/正确率/忽略八度） |
 | 👂 音程听辨 | ✅ | 电脑发声播放两个音，辨认它们的音程并点按钮作答（上行/下行/和声/混合，可选音程范围，连击/正确率） |
+| 💪 力度练习 | ✅ | 屏幕给目标力度（pp~ff），用触键强弱命中它，力度刻度条+指针实时显示你的 velocity（6 档/容差可调/连击/正确率） |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -79,6 +81,7 @@ app/
 - 音阶练习用 `scale-trainer.js`（纯逻辑，41 单元测试）：`buildScale`/`buildScaleUpDown` 生成 8 种音阶（大调/三种小调/五声/布鲁斯/半音阶）的 MIDI 序列，`ScaleSession` 按依次弹奏检查进度（可忽略八度），note-on 驱动前进/报错/完成，UI 高亮当前应弹的音
 - 视奏闪卡用 `sight-reading.js`（纯逻辑，62 单元测试）：`staffPosition`/`needsLedger`/`randomNote` 把 MIDI 音符映射到五线谱位置（高/低音谱号、自动加线），`SightReadingGame` 随机出题并校验（可忽略八度），记录得分/连击/最佳/正确率，UI 用 SVG 实时绘制谱表+符头，note-on 驱动判分与翻题
 - 音程听辨用 `ear-training.js`（纯逻辑，49 单元测试）：`INTERVALS` 表（0..12 半音）+ `EarTrainingGame` 随机出根音+音程（方向 up/down/harmonic/mixed，可选音程集合，自动保证音符落在合法 MIDI 范围），`check` 校验并记录得分/连击/最佳/正确率，UI 用 Web Audio 三角波发声播放，点按钮作答（无需连钢琴）
+- 力度练习用 `dynamics-trainer.js`（纯逻辑，52 单元测试）：`DYNAMICS` 把 velocity 1..127 无缝划成 6 档（pp/p/mp/mf/f/ff），`velocityToIndex` 定位档位，`DynamicsGame` 出目标力度并按 note-on velocity 校验（容差可调，相邻档可算对），记录得分/连击/最佳/正确率，UI 用刻度色带+指针实时显示你弹的力度落点
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -131,6 +134,8 @@ node js/scale-trainer.test.mjs
 node js/sight-reading.test.mjs
 # 音程听辨单元测试（49 用例）
 node js/ear-training.test.mjs
+# 力度练习单元测试（52 用例）
+node js/dynamics-trainer.test.mjs
 ```
 
 ## 数据生成（如需重建）
