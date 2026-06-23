@@ -421,6 +421,12 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 @keyframes cpPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(102,126,234,.2); } 50% { box-shadow: 0 0 14px rgba(102,126,234,.55), 0 0 0 3px rgba(102,126,234,.3); } }
 .cp-target { text-align: center; font-size: 22px; font-weight: 800; margin-top: 16px; color: var(--text); }
 
+/* ---- 模块24：节拍稳定度 ---- */
+.bs-score { font-size: 64px; font-weight: 900; line-height: 1; color: var(--text); }
+.bs-trend { margin-top: 12px; font-size: 15px; font-weight: 700; color: var(--muted); }
+.bs-bars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 70px; margin-top: 16px; }
+.bs-bar { width: 8px; border-radius: 3px 3px 0 0; transition: height .1s; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

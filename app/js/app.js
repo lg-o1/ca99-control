@@ -24,6 +24,7 @@ import { PracticeStats } from './practice-stats.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
+import { BeatStability } from './beat-stability.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -45,6 +46,7 @@ let dynOnNote = null;      // 力度练习的 note-on 回调（模块18注册）
 let rhythmTapOnNote = null; // 节奏跟拍的 note-on 回调（模块21注册）
 let melodyOnNote = null;    // 旋律听写的 note-on 回调（模块22注册）
 let chordProgOnNotesChanged = null; // 和弦进行练习的音符变化回调（模块23注册）
+let beatTapOnNote = null;   // 节拍稳定度的 note-on 回调（模块24注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -175,6 +177,8 @@ function onMidiIn(bytes) {
     if (melodyOnNote) melodyOnNote(m.note);
     // 驱动和弦进行练习
     if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
+    // 驱动节拍稳定度分析
+    if (beatTapOnNote) beatTapOnNote(performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -2363,6 +2367,147 @@ function renderChordProg() {
   drawChips();
 }
 
+// ---------- 模块24：节拍稳定度分析 ----------
+function renderBeatStability() {
+  const root = $('#module-beat');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">📈 节拍稳定度分析</h2>
+    <p style="color:var(--muted);margin-bottom:14px">持续均匀地弹（或敲空格键），引擎采集你的击键间隔，算出稳定度评分、估算 BPM，并判断你是越弹越快（赶拍）还是越弹越慢（拖拍）。开"跟拍"模式可对照固定 BPM 测准度。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>模式</label>
+        <select id="bs-mode"><option value="free" selected>自由（测自身稳定度）</option><option value="target">跟拍（对照目标 BPM）</option></select>
+      </div>
+      <div class="param-row" id="bs-bpm-row" style="display:none"><label>目标 BPM</label>
+        <input id="bs-bpm" type="range" min="40" max="200" value="90" class="trans-slider" style="max-width:240px">
+        <span id="bs-bpm-val" style="color:#667eea;font-weight:700;min-width:64px">90</span>
+        <button id="bs-click" class="grid-btn" style="margin-left:8px">🔊 试听节拍</button>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div id="bs-score" class="bs-score">—</div>
+      <div id="bs-score-lbl" style="color:var(--muted);margin-top:2px">稳定度评分</div>
+      <div id="bs-trend" class="bs-trend">敲 4 下以上开始分析</div>
+      <div id="bs-bars" class="bs-bars"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="bs-count" class="sight-stat-num">0</div><div class="sight-stat-lbl">击键</div></div>
+      <div class="sight-stat"><div id="bs-bpm-est" class="sight-stat-num">—</div><div class="sight-stat-lbl">估算 BPM</div></div>
+      <div class="sight-stat"><div id="bs-cv" class="sight-stat-num">—</div><div class="sight-stat-lbl">波动 CV</div></div>
+      <div class="sight-stat"><div id="bs-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">跟拍准度</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="bs-start" class="big-btn">▶ 开始采集</button>
+      <button id="bs-reset" class="big-btn" style="background:var(--panel2)">🔄 清空</button>
+      <span id="bs-status" style="color:var(--muted)">未开始；采集中也可按空格键敲</span>
+    </div>`;
+
+  let bs = null, ac = null, clickTimer = null, keyHandler = null;
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function click(when) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'square'; o.frequency.value = 1500;
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.2, when + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+      o.start(when); o.stop(when + 0.06);
+    } catch { /* 忽略 */ }
+  }
+  function startClick() {
+    stopClick();
+    const bpm = +$('#bs-bpm').value; const period = 60000 / bpm;
+    let n = 0; const c = ctx();
+    const tick = () => { click(c.currentTime + 0.01); };
+    tick();
+    clickTimer = setInterval(tick, period);
+  }
+  function stopClick() { if (clickTimer) { clearInterval(clickTimer); clickTimer = null; } }
+
+  function drawBars() {
+    const wrap = $('#bs-bars');
+    if (!bs) { wrap.innerHTML = ''; return; }
+    const io = bs.iois();
+    if (!io.length) { wrap.innerHTML = ''; return; }
+    const mx = Math.max(...io);
+    const target = bs.targetBpm ? 60000 / bs.targetBpm : (io.reduce((a, b) => a + b, 0) / io.length);
+    wrap.innerHTML = io.slice(-40).map(v => {
+      const h = Math.max(6, Math.round((v / mx) * 60));
+      const dev = Math.abs(v - target) / target;
+      const col = dev < 0.05 ? 'var(--ok)' : dev < 0.12 ? '#facc15' : 'var(--hi2)';
+      return `<div class="bs-bar" style="height:${h}px;background:${col}" title="${Math.round(v)}ms"></div>`;
+    }).join('');
+  }
+
+  function refresh() {
+    if (!bs) return;
+    const s = bs.stats();
+    $('#bs-count').textContent = s.count;
+    $('#bs-bpm-est').textContent = s.bpm || '—';
+    $('#bs-cv').textContent = s.intervals >= 2 ? (s.cv * 100).toFixed(1) + '%' : '—';
+    $('#bs-acc').textContent = s.target ? s.target.accuracy + '%' : '—';
+    const scoreEl = $('#bs-score');
+    if (s.intervals >= 2) {
+      scoreEl.textContent = s.stability;
+      scoreEl.style.color = s.stability >= 80 ? 'var(--ok)' : s.stability >= 50 ? '#facc15' : 'var(--hi2)';
+    } else { scoreEl.textContent = '—'; scoreEl.style.color = 'var(--text)'; }
+    const trEl = $('#bs-trend');
+    if (s.intervals >= 3) {
+      const map = { rushing: '⏩ 越弹越快（赶拍）', dragging: '⏪ 越弹越慢（拖拍）', steady: '✅ 速度稳定' };
+      trEl.textContent = `${map[s.trend.label]} · ${s.intervals} 个间隔` + (s.stdMs ? ` · 抖动 ±${s.stdMs}ms` : '');
+      trEl.style.color = s.trend.label === 'steady' ? 'var(--ok)' : '#facc15';
+    } else { trEl.textContent = '敲 4 下以上开始分析'; trEl.style.color = 'var(--muted)'; }
+    drawBars();
+  }
+
+  function doTap() {
+    if (!bs) return;
+    bs.tap(performance.now());
+    refresh();
+  }
+
+  function stop() {
+    if (bs && bs.count >= 3) {
+      const s = bs.stats();
+      const acc = s.target ? s.target.accuracy : s.stability;
+      recordPractice('beat', '节拍稳定度', s.count, Math.round((acc / 100) * s.count), s.count);
+    }
+    bs = null; beatTapOnNote = null;
+    if (keyHandler) { window.removeEventListener('keydown', keyHandler); keyHandler = null; }
+    stopClick();
+    $('#bs-start').textContent = '▶ 开始采集';
+    $('#bs-start').classList.remove('running');
+    $('#bs-status').textContent = '已停止';
+  }
+
+  $('#bs-mode').onchange = () => {
+    $('#bs-bpm-row').style.display = $('#bs-mode').value === 'target' ? 'flex' : 'none';
+  };
+  $('#bs-bpm').oninput = () => {
+    $('#bs-bpm-val').textContent = $('#bs-bpm').value;
+    if (clickTimer) startClick();
+  };
+  $('#bs-click').onclick = () => { if (clickTimer) stopClick(); else startClick(); };
+  $('#bs-reset').onclick = () => { if (bs) { bs.reset(); refresh(); } };
+  $('#bs-start').onclick = () => {
+    if (bs) { stop(); return; }
+    const target = $('#bs-mode').value === 'target' ? +$('#bs-bpm').value : 0;
+    bs = new BeatStability({ targetBpm: target });
+    beatTapOnNote = () => doTap();
+    keyHandler = (e) => { if (e.code === 'Space') { e.preventDefault(); doTap(); } };
+    window.addEventListener('keydown', keyHandler);
+    $('#bs-start').textContent = '⏸ 停止采集';
+    $('#bs-start').classList.add('running');
+    $('#bs-status').textContent = '采集中：均匀弹琴或按空格键';
+    ['#bs-count'].forEach(s => $(s).textContent = '0');
+    refresh();
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -2466,7 +2611,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
