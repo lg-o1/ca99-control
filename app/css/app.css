@@ -222,6 +222,16 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   background: var(--grad-hi); box-shadow: 0 0 26px rgba(233,69,96,.7);
 }
 
+/* ---- 录制回放 ---- */
+.rec-indicator {
+  font-size: 64px; line-height: 1; color: var(--line);
+  transition: color .2s;
+}
+.rec-indicator.active {
+  color: var(--hi); animation: recPulse 1s infinite;
+}
+@keyframes recPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

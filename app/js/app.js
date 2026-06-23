@@ -13,6 +13,7 @@ import { PresetStore } from './preset-store.js';
 import { describeNotes, detectChord } from './chord-detect.js';
 import { HeldNotes, ChordChallenge } from './chord-trainer.js';
 import { Metronome, TempoTracker } from './metronome.js';
+import { Recorder } from './recorder.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -26,6 +27,8 @@ const heldNotes = new HeldNotes(); // 当前按下的音符（模块12和弦练�
 let chordOnNotesChanged = null;    // 和弦面板的音符变化回调（模块12注册）
 let metronome = null;      // 节拍器（模块13使用，提前声明避免 TDZ）
 let tempoOnNote = null;    // 演奏速度检测的 note-on 回调（模块13注册）
+const recorder = new Recorder(); // 弹奏录制器（模块14使用）
+let recorderOnChange = null;      // 录制状态变化回调（模块14注册）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -111,6 +114,11 @@ async function connect() {
 
 function onMidiIn(bytes) {
   const m = CA99.parseMessage(bytes);
+  // 录制：记录所有输入的 MIDI 事件
+  if (recorder.recording) {
+    recorder.record(bytes, performance.now());
+    if (recorderOnChange) recorderOnChange();
+  }
   if (m.type === 'noteon') {
     addMonitorLine(`音符 ON  ${CA99.noteName(m.note)} (${m.note}) 力度 ${m.velocity}`, 'note-on');
     // 驱动 beat 模式的自动换音色
@@ -1082,6 +1090,99 @@ function renderMetro() {
   };
 }
 
+// ========== 模块 14: 录制回放 ==========
+function renderRecorder() {
+  const root = $('#module-recorder');
+  let playTimers = [];
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">⏺ 录制回放</h2>
+    <p style="color:var(--muted);margin-bottom:14px">录下你在钢琴上的弹奏，回放欣赏，或导出为标准 MIDI 文件（.mid）保存/分享。需先选好 <b>MIDI 输入</b>端口。</p>
+
+    <div class="card-panel" style="text-align:center;padding:24px">
+      <div id="rec-indicator" class="rec-indicator">●</div>
+      <div id="rec-info" style="color:var(--muted);font-size:14px;margin-top:8px">未录制 · 0 个事件</div>
+    </div>
+
+    <div class="rotate-bar" style="flex-wrap:wrap">
+      <button id="rec-toggle" class="big-btn">⏺ 开始录制</button>
+      <button id="rec-play" class="grid-btn" style="padding:12px 20px">▶ 回放</button>
+      <button id="rec-stop-play" class="grid-btn" style="padding:12px 20px">⏹ 停止回放</button>
+      <button id="rec-export" class="grid-btn" style="padding:12px 20px">⬇ 导出 .mid</button>
+      <button id="rec-clear" class="grid-btn" style="padding:12px 20px;border-color:var(--hi)">🗑 清空</button>
+    </div>
+
+    <div class="card-panel" style="margin-top:16px">
+      <div class="param-row" style="border:none"><label>导出速度（BPM）</label>
+        <input type="range" id="rec-bpm" min="40" max="208" value="120"><span class="val" id="rec-bpm-val">120</span></div>
+    </div>`;
+
+  function paintInfo() {
+    const ind = $('#rec-indicator');
+    if (recorder.recording) {
+      ind.classList.add('active');
+      $('#rec-info').textContent = `🔴 录制中 · ${recorder.count} 个事件 · ${(recorder.durationMs / 1000).toFixed(1)}s`;
+    } else {
+      ind.classList.remove('active');
+      $('#rec-info').textContent = recorder.isEmpty
+        ? '未录制 · 0 个事件'
+        : `已录制 · ${recorder.count} 个事件 · ${(recorder.durationMs / 1000).toFixed(1)}s`;
+    }
+  }
+  recorderOnChange = paintInfo;
+
+  $('#rec-bpm').oninput = (e) => $('#rec-bpm-val').textContent = e.target.value;
+
+  $('#rec-toggle').onclick = () => {
+    if (recorder.recording) {
+      recorder.stop();
+      $('#rec-toggle').textContent = '⏺ 开始录制';
+      $('#rec-toggle').classList.remove('running');
+      log(`录制结束：${recorder.count} 个事件`, 'ok');
+    } else {
+      recorder.start(performance.now());
+      $('#rec-toggle').textContent = '⏹ 停止录制';
+      $('#rec-toggle').classList.add('running');
+      log('开始录制…弹琴吧', 'ok');
+    }
+    paintInfo();
+  };
+
+  $('#rec-play').onclick = () => {
+    if (recorder.isEmpty) { log('还没有录制内容', 'err'); return; }
+    playTimers = recorder.play((bytes) => send(bytes));
+    log(`回放：${recorder.count} 个事件`, 'ok');
+  };
+  $('#rec-stop-play').onclick = () => {
+    playTimers.forEach(t => clearTimeout(t));
+    playTimers = [];
+    log('停止回放');
+  };
+
+  $('#rec-export').onclick = () => {
+    if (recorder.isEmpty) { log('还没有录制内容', 'err'); return; }
+    const bytes = recorder.toMidiFile({ ppq: 480, bpm: +$('#rec-bpm').value });
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'audio/midi' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ca99-recording-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.mid`;
+    a.click();
+    URL.revokeObjectURL(url);
+    log(`导出 MIDI 文件（${bytes.length} 字节）`, 'ok');
+  };
+
+  $('#rec-clear').onclick = () => {
+    recorder.clear();
+    $('#rec-toggle').textContent = '⏺ 开始录制';
+    $('#rec-toggle').classList.remove('running');
+    paintInfo();
+    log('已清空录制');
+  };
+
+  paintInfo();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -1091,7 +1192,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
