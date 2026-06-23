@@ -9,6 +9,7 @@ import { MorphEngine } from './vt-morph.js';
 import { VelocityRouter, splitZones } from './velocity-switch.js';
 import { VelVtLink } from './vel-vt-link.js';
 import { PedalController, PEDAL_CC } from './pedal-control.js';
+import { PresetStore } from './preset-store.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -17,6 +18,7 @@ let morphEngine = null;    // VT 渐变引擎（模块7使用，提前声明避�
 let velocityRouter = null; // 力度换音色路由（模块8使用，提前声明避免 TDZ）
 let velVtLink = null;      // 力度→VT 联动（模块9使用，提前声明避免 TDZ）
 let pedalController = null;// 踏板控制扩展（模块10使用，提前声明避免 TDZ）
+let presetStore = null;    // 演出预设存储（模块11使用，提前声明避免 TDZ）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -759,6 +761,134 @@ function renderPedal() {
   refresh();
 }
 
+// ========== 模块 11: 演出预设 ==========
+/** 捕获当前设置快照：激活音色 + VT 控件当前值 */
+function capturePreset() {
+  const snap = { vt: [] };
+  // 激活的音色卡（音色浏览器里点过的）
+  const activeCard = document.querySelector('#module-sounds .sound-card.active');
+  if (activeCard) {
+    snap.sound = { id: +activeCard.dataset.id, channel: +($('#sound-part')?.value || 0) };
+  }
+  // VT 调音台当前所有控件值
+  document.querySelectorAll('#module-vt [data-v2]').forEach(el => {
+    snap.vt.push({ v2: +el.dataset.v2, value: +el.value });
+  });
+  return snap;
+}
+
+/** 应用预设快照到钢琴（发 MIDI） */
+function applyPreset(snap) {
+  let n = 0;
+  if (snap.sound) {
+    const s = SOUNDS.find(x => x.id === snap.sound.id);
+    if (s) { sendMulti(CA99.buildSoundSelect(s, snap.sound.channel || 0)); n++; }
+  }
+  for (const p of (snap.vt || [])) {
+    send(CA99.buildSysEx(0x10, 0x50, p.v2, CA99.PART.System, [p.value & 0x7f]));
+    n++;
+  }
+  return n;
+}
+
+function renderPresets() {
+  const root = $('#module-presets');
+  if (!presetStore) {
+    const storage = (typeof localStorage !== 'undefined') ? localStorage : undefined;
+    presetStore = new PresetStore({ storage, key: 'ca99-presets' });
+  }
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">⭐ 演出预设</h2>
+    <p style="color:var(--muted);margin-bottom:14px">把当前的<b>音色 + VT 调音</b>组合命名保存，演出时一键调用。数据存于浏览器本地（localStorage），可导出备份。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>预设名</label>
+        <input type="text" id="preset-name" placeholder="如：温暖爵士 / 明亮古典" style="flex:1;background:var(--accent);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:14px"></div>
+      <div class="param-row" style="border:none">
+        <button id="preset-save" class="big-btn" style="padding:11px 24px;font-size:15px">💾 保存当前设置</button>
+      </div>
+    </div>
+
+    <h3 style="margin:18px 0 8px">已保存预设 <span id="preset-count" style="color:var(--muted);font-size:13px"></span></h3>
+    <div id="preset-list"></div>
+
+    <div class="toolbar" style="margin-top:18px">
+      <button id="preset-export" class="grid-btn">⬇ 导出 JSON</button>
+      <button id="preset-import" class="grid-btn">⬆ 导入 JSON</button>
+    </div>
+    <textarea id="preset-io" placeholder="导出的 JSON 会显示在这里；粘贴 JSON 后点导入" style="display:none;width:100%;height:140px;margin-top:10px;background:#0d1020;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:12px;font-family:ui-monospace,monospace;font-size:12px"></textarea>`;
+
+  function drawList() {
+    const names = presetStore.list();
+    $('#preset-count').textContent = `(${names.length})`;
+    const box = $('#preset-list');
+    if (!names.length) {
+      box.innerHTML = '<p style="color:var(--muted)">还没有预设。设好音色和 VT 后，输入名字点"保存当前设置"。</p>';
+      return;
+    }
+    box.innerHTML = names.map(name => {
+      const d = presetStore.load(name) || {};
+      const sn = d.sound ? (SOUNDS.find(s => s.id === d.sound.id)?.name || `音色#${d.sound.id}`) : '（无音色）';
+      const vtCount = (d.vt || []).length;
+      return `<div class="card-panel preset-item" style="margin-bottom:8px;display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:15px">${name}</div>
+          <div style="color:var(--muted);font-size:12px;margin-top:3px">🎵 ${sn} · 🔧 ${vtCount} 个 VT 参数</div>
+        </div>
+        <button class="grid-btn preset-apply" data-name="${name}" style="border-color:var(--ok)">▶ 调用</button>
+        <button class="grid-btn preset-del" data-name="${name}" style="border-color:var(--hi)">🗑</button>
+      </div>`;
+    }).join('');
+    box.querySelectorAll('.preset-apply').forEach(b => {
+      b.onclick = () => {
+        const d = presetStore.load(b.dataset.name);
+        if (!d) return;
+        const n = applyPreset(d);
+        log(`调用预设「${b.dataset.name}」：发送 ${n} 条设置`, 'ok');
+      };
+    });
+    box.querySelectorAll('.preset-del').forEach(b => {
+      b.onclick = () => {
+        presetStore.remove(b.dataset.name);
+        log(`删除预设「${b.dataset.name}」`);
+        drawList();
+      };
+    });
+  }
+
+  $('#preset-save').onclick = () => {
+    const name = $('#preset-name').value.trim();
+    if (!name) { log('请先输入预设名', 'err'); return; }
+    const snap = capturePreset();
+    presetStore.save(name, snap);
+    $('#preset-name').value = '';
+    const vtN = (snap.vt || []).length;
+    log(`保存预设「${name}」：${snap.sound ? '含音色' : '无音色'} + ${vtN} 个 VT 参数`, 'ok');
+    drawList();
+  };
+
+  $('#preset-export').onclick = () => {
+    const io = $('#preset-io');
+    io.style.display = 'block';
+    io.value = presetStore.exportJSON();
+    log('已导出预设 JSON（可复制备份）', 'ok');
+  };
+  $('#preset-import').onclick = () => {
+    const io = $('#preset-io');
+    if (io.style.display === 'none') { io.style.display = 'block'; io.placeholder = '在此粘贴预设 JSON，再点一次导入'; return; }
+    const text = io.value.trim();
+    if (!text) { log('请先在文本框粘贴 JSON', 'err'); return; }
+    try {
+      const n = presetStore.importJSON(text, true);
+      log(`导入成功：${n} 个预设`, 'ok');
+      drawList();
+    } catch (e) { log('导入失败: ' + e.message, 'err'); }
+  };
+
+  drawList();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -768,7 +898,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
