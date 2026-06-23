@@ -22,6 +22,7 @@ import { DYNAMICS, DynamicsGame, velocityToDynamic } from './dynamics-trainer.js
 import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 import { PracticeStats } from './practice-stats.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
+import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -41,6 +42,7 @@ let scaleOnNote = null;    // 音阶练习的 note-on 回调（模块15注册）
 let sightOnNote = null;    // 视奏闪卡的 note-on 回调（模块16注册）
 let dynOnNote = null;      // 力度练习的 note-on 回调（模块18注册）
 let rhythmTapOnNote = null; // 节奏跟拍的 note-on 回调（模块21注册）
+let melodyOnNote = null;    // 旋律听写的 note-on 回调（模块22注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -167,6 +169,8 @@ function onMidiIn(bytes) {
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
     if (rhythmTapOnNote) rhythmTapOnNote(performance.now());
+    // 驱动旋律听写
+    if (melodyOnNote) melodyOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -1999,6 +2003,188 @@ function renderRhythmTrainer() {
   drawTrack(patternObj());
 }
 
+// ---------- 模块22：旋律听写 ----------
+function renderMelody() {
+  const root = $('#module-melody');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎼 旋律听写</h2>
+    <p style="color:var(--muted);margin-bottom:14px">先听一段调内短旋律（首音为主音作锚点），再在琴键上把它复奏出来。引擎逐音校验，弹对的灯变绿，整条全对自动出下一条。没连琴可点下方音符按钮当琴键。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调</label>
+        <select id="mel-key">${MEL_KEYS.map(k => `<option value="${k.id}">${k.name}</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>旋律长度</label>
+        <select id="mel-len"><option value="3">3 音（入门）</option><option value="4" selected>4 音</option><option value="5">5 音</option><option value="6">6 音（挑战）</option></select>
+      </div>
+      <div class="param-row"><label>忽略八度</label>
+        <select id="mel-octave"><option value="1" selected>是（任意八度都算对）</option><option value="0">否（须同八度）</option></select>
+      </div>
+      <div class="param-row"><label>速度</label>
+        <input id="mel-tempo" type="range" min="60" max="160" value="100" class="trans-slider" style="max-width:220px">
+        <span id="mel-tempo-val" style="color:#667eea;font-weight:700;min-width:64px">100/分</span>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="mel-dots" class="mel-dots"></div>
+      <div id="mel-feedback" class="sight-feedback" style="margin-top:14px">按"开始"出题并听旋律</div>
+      <div id="mel-keyboard" class="mel-keyboard"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="mel-score" class="sight-stat-num">0</div><div class="sight-stat-lbl">通过</div></div>
+      <div class="sight-stat"><div id="mel-streak" class="sight-stat-num">0</div><div class="sight-stat-lbl">连击</div></div>
+      <div class="sight-stat"><div id="mel-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+      <div class="sight-stat"><div id="mel-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">通过率</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="mel-start" class="big-btn">▶ 开始练习</button>
+      <button id="mel-replay" class="big-btn" style="background:#667eea" disabled>🔊 再听一遍</button>
+      <button id="mel-giveup" class="big-btn" style="background:var(--panel2)" disabled>👀 放弃看答案</button>
+      <span id="mel-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let game = null, ac = null;
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function tone(midi, when, dur) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.25, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function keyObj() { return MEL_KEYS.find(k => k.id === $('#mel-key').value); }
+  function noteDur() { return 60 / (+$('#mel-tempo').value); }
+
+  function playMelody() {
+    if (!game || !game.melody.length) return;
+    const c = ctx(); const start = c.currentTime + 0.08; const d = noteDur();
+    game.melody.forEach((n, i) => tone(n, start + i * d, d * 0.9));
+  }
+
+  function drawDots() {
+    const wrap = $('#mel-dots');
+    if (!game || !game.melody.length) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = game.melody.map((n, i) => {
+      let cls = 'mel-dot';
+      if (i < game.pos) cls += ' done';
+      else if (i === game.pos) cls += ' current';
+      const label = game.revealed ? CA99.noteName(n) : (i < game.pos ? CA99.noteName(n) : '·');
+      return `<div class="${cls}">${label}</div>`;
+    }).join('');
+  }
+
+  // 屏幕琴键：覆盖该调主音上下一个八度的白键，方便无真机点按
+  function drawKeyboard() {
+    const k = keyObj();
+    const lo = k.tonic - 2, hi = k.tonic + 14;
+    let html = '';
+    for (let n = lo; n <= hi; n++) {
+      const pc = ((n % 12) + 12) % 12;
+      const isBlack = [1, 3, 6, 8, 10].includes(pc);
+      html += `<button class="mel-pk ${isBlack ? 'black' : 'white'}" data-n="${n}">${isBlack ? '' : CA99.noteName(n)}</button>`;
+    }
+    $('#mel-keyboard').innerHTML = html;
+    $('#mel-keyboard').querySelectorAll('.mel-pk').forEach(b => {
+      b.onclick = () => feed(+b.dataset.n);
+    });
+  }
+
+  function updateStats() {
+    if (!game) return;
+    $('#mel-score').textContent = game.score;
+    $('#mel-streak').textContent = game.streak;
+    $('#mel-best').textContent = game.best;
+    $('#mel-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function nextRound() {
+    game.revealed = false;
+    game.next();
+    drawDots();
+    $('#mel-feedback').textContent = '🎧 听好了，复奏出来…';
+    $('#mel-feedback').className = 'sight-feedback';
+    $('#mel-status').textContent = '复奏中';
+    setTimeout(playMelody, 200);
+  }
+
+  function feed(note) {
+    if (!game || !game.melody.length) return;
+    const r = game.play(note);
+    if (!r) return;
+    if (r.ok) {
+      drawDots();
+      const fb = $('#mel-feedback');
+      if (r.done) {
+        fb.className = 'sight-feedback ok';
+        fb.textContent = r.mistakes === 0 ? '✅ 完美复奏！' : `✅ 完成（错 ${r.mistakes} 次）`;
+        updateStats();
+        setTimeout(() => { if (game) nextRound(); }, 850);
+      } else {
+        fb.className = 'sight-feedback';
+        fb.textContent = `👍 对，继续（${game.pos}/${game.melody.length}）`;
+      }
+    } else {
+      const fb = $('#mel-feedback');
+      fb.className = 'sight-feedback no';
+      fb.textContent = '❌ 不对，再试这个音';
+    }
+  }
+
+  function stop() {
+    if (game) recordPractice('melody', '旋律听写', game.attempts, game.score, game.best);
+    game = null; melodyOnNote = null;
+    $('#mel-start').textContent = '▶ 开始练习';
+    $('#mel-start').classList.remove('running');
+    $('#mel-replay').disabled = true;
+    $('#mel-giveup').disabled = true;
+    $('#mel-status').textContent = '已停止';
+    $('#mel-feedback').textContent = '按"开始"出题并听旋律';
+    $('#mel-feedback').className = 'sight-feedback';
+    $('#mel-dots').innerHTML = '';
+  }
+
+  $('#mel-tempo').oninput = () => { $('#mel-tempo-val').textContent = $('#mel-tempo').value + '/分'; };
+  $('#mel-key').onchange = drawKeyboard;
+  $('#mel-replay').onclick = playMelody;
+  $('#mel-giveup').onclick = () => {
+    if (!game || !game.melody.length) return;
+    game.revealed = true;
+    drawDots();
+    $('#mel-feedback').className = 'sight-feedback no';
+    $('#mel-feedback').textContent = '答案已显示，听一遍后继续';
+    game.giveUp();
+    updateStats();
+    setTimeout(() => { if (game) nextRound(); }, 1600);
+  };
+  $('#mel-start').onclick = () => {
+    if (game) { stop(); return; }
+    game = new MelodyDictation({
+      key: keyObj(),
+      length: +$('#mel-len').value,
+      octaveAgnostic: $('#mel-octave').value === '1',
+    });
+    game.revealed = false;
+    melodyOnNote = (note) => feed(note);
+    $('#mel-start').textContent = '⏸ 停止练习';
+    $('#mel-start').classList.add('running');
+    $('#mel-replay').disabled = false;
+    $('#mel-giveup').disabled = false;
+    ['#mel-score', '#mel-streak', '#mel-best'].forEach(s => $(s).textContent = '0');
+    $('#mel-acc').textContent = '—';
+    nextRound();
+  };
+
+  drawKeyboard();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -2102,7 +2288,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
