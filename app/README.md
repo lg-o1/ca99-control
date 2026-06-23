@@ -18,6 +18,7 @@ app/
     vt-morph.js       ← VT 参数渐变引擎（纯逻辑，32 单元测试）
     velocity-switch.js← 力度感应换音色路由（纯逻辑，33 单元测试）
     vel-vt-link.js    ← 力度→VT 参数联动（纯逻辑，22 单元测试）
+    pedal-control.js  ← 踏板控制扩展（纯逻辑，27 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -38,6 +39,7 @@ app/
 | 🌗 VT 渐变器 | ✅ | CA99 独有：边弹边把共鸣/击弦等 VT 参数从起点平滑插值到终点（缓动/往返循环） |
 | 🎚️ 力度换音色 | ✅ | 按弹奏力度自动切换音色（2-4 层），轻弹/重弹不同音色，演奏更有层次 |
 | 💫 力度→VT联动 | ✅ | CA99 独有：弹奏力度实时驱动 VT 参数（越重击弦共鸣越强），带平滑防抖 |
+| 🦶 踏板控制 | ✅ | 实时显示三踏板（延音/保持/弱音）深度，可把踏板深度映射到 VT 参数 |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -53,7 +55,8 @@ app/
 - 力度换音色用独立路由 `velocity-switch.js`（纯逻辑，33 单元测试），`splitZones()` 把 0-127 等分成层，note-on 力度命中哪层就切到该音色（仅在层变化时发 PC，避免每音符重复）
 - 力度→VT 联动用独立引擎 `vel-vt-link.js`（纯逻辑，22 单元测试），`mapRange()` 把力度线性映射到 VT 输出范围，指数平滑（EMA）防抖，仅整数值变化时发 SysEx。可多通道、可反向映射
 - VT 连续参数检测抽成共享 `continuousVtParams()`，渐变器与联动模块共用
-- **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏，测试力度相关模块
+- 踏板控制用独立引擎 `pedal-control.js`（纯逻辑，27 单元测试），解析标准踏板 CC（延音64/保持66/弱音67/表情11），实时汇报开关+深度，并可把某踏板深度 `mapRange` 映射到一个 VT 参数（仅整数值变化时发 SysEx，支持反向）
+- **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
 
@@ -87,6 +90,8 @@ node js/vt-morph.test.mjs
 node js/velocity-switch.test.mjs
 # 力度→VT 联动单元测试（22 用例）
 node js/vel-vt-link.test.mjs
+# 踏板控制单元测试（27 用例）
+node js/pedal-control.test.mjs
 ```
 
 ## 数据生成（如需重建）

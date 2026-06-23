@@ -171,6 +171,27 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 5px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-hi); }
 
+/* ---- 踏板控制 ---- */
+.pedal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+.pedal-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  box-shadow: var(--shadow); transition: border-color .2s, transform .2s;
+}
+.pedal-card.on { border-color: var(--ok); transform: translateY(-2px); box-shadow: 0 6px 22px rgba(74,222,128,.25); }
+.pedal-name { font-size: 13px; color: var(--muted); text-align: center; font-weight: 600; }
+.pedal-card.on .pedal-name { color: var(--ok); }
+.pedal-bar {
+  width: 26px; height: 90px; background: var(--bg2); border-radius: 13px;
+  border: 1px solid var(--line); overflow: hidden; display: flex; align-items: flex-end;
+}
+.pedal-fill {
+  width: 100%; background: var(--grad); border-radius: 0 0 13px 13px;
+  transition: height .08s ease-out;
+}
+.pedal-card.on .pedal-fill { background: linear-gradient(180deg, var(--ok), #22c55e); }
+.pedal-val { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; color: var(--hi2); }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

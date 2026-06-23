@@ -8,6 +8,7 @@ import { RotateEngine, diversePool } from './auto-rotate.js';
 import { MorphEngine } from './vt-morph.js';
 import { VelocityRouter, splitZones } from './velocity-switch.js';
 import { VelVtLink } from './vel-vt-link.js';
+import { PedalController, PEDAL_CC } from './pedal-control.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -15,6 +16,7 @@ let rotateEngine = null;   // 自动换音色引擎（模块6使用，提前声�
 let morphEngine = null;    // VT 渐变引擎（模块7使用，提前声明避免 TDZ）
 let velocityRouter = null; // 力度换音色路由（模块8使用，提前声明避免 TDZ）
 let velVtLink = null;      // 力度→VT 联动（模块9使用，提前声明避免 TDZ）
+let pedalController = null;// 踏板控制扩展（模块10使用，提前声明避免 TDZ）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -110,7 +112,11 @@ function onMidiIn(bytes) {
     if (velVtLink) velVtLink.feed(m.velocity);
   }
   else if (m.type === 'noteoff') addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
-  else if (m.type === 'cc') addMonitorLine(`CC ${m.controller} = ${m.value}`);
+  else if (m.type === 'cc') {
+    addMonitorLine(`CC ${m.controller} = ${m.value}`);
+    // 驱动踏板控制扩展
+    if (pedalController) pedalController.feedCC(m.controller, m.value);
+  }
   else if (m.type === 'sysex') addMonitorLine(`SysEx ← ${CA99.toHex(m.data)}`);
 }
 
@@ -661,6 +667,98 @@ function renderVelVt() {
   };
 }
 
+// ========== 模块 10: 踏板控制扩展 ==========
+function renderPedal() {
+  const root = $('#module-pedal');
+  const continuous = continuousVtParams();
+  const pedalNames = { damper: '延音踏板（右）', sostenuto: '保持踏板（中）', soft: '弱音踏板（左）', expression: '表情' };
+
+  const vtOptions = (selV2) => continuous.map(c =>
+    `<option value="${c.v2}" data-min="${c.min}" data-max="${c.max}" ${c.v2 === selV2 ? 'selected' : ''}>${c.name}（${c.min}-${c.max}）</option>`).join('');
+  const defaultParam = continuous.find(c => c.name === 'StringResonance') || continuous[0];
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🦶 踏板控制扩展</h2>
+    <p style="color:var(--muted);margin-bottom:14px">实时显示三个踏板的状态，并可把<b>踏板深度</b>映射到一个 VT 参数（例：延音踏板踩得越深，击弦共鸣越强）。需先选好 <b>MIDI 输入</b>端口。</p>
+
+    <h3 style="margin:0 0 8px">踏板状态</h3>
+    <div class="pedal-grid" id="pedal-status">
+      ${Object.entries(pedalNames).map(([k, label]) => `
+        <div class="pedal-card" data-pedal="${k}">
+          <div class="pedal-name">${label}</div>
+          <div class="pedal-bar"><div class="pedal-fill" style="height:0%"></div></div>
+          <div class="pedal-val">0</div>
+        </div>`).join('')}
+    </div>
+
+    <h3 style="margin:18px 0 8px">踏板 → VT 映射（可选）</h3>
+    <div class="card-panel">
+      <div class="param-row"><label>映射开关</label>
+        <select id="ped-map-on"><option value="0">关闭</option><option value="1">开启</option></select></div>
+      <div class="param-row"><label>用哪个踏板</label>
+        <select id="ped-map-pedal">
+          ${Object.entries(pedalNames).map(([k, label]) => `<option value="${k}">${label}</option>`).join('')}
+        </select></div>
+      <div class="param-row"><label>驱动哪个 VT 参数</label>
+        <select id="ped-map-vt">${vtOptions(defaultParam?.v2)}</select></div>
+      <div class="param-row"><label>映射方向</label>
+        <select id="ped-map-dir">
+          <option value="0">踩得越深越强</option>
+          <option value="1">踩得越深越弱</option>
+        </select></div>
+    </div>
+    <div class="rotate-bar"><span id="ped-map-status" style="color:var(--muted)">映射未开启</span></div>`;
+
+  // 踏板状态实时反映
+  function paintPedal(pedal, st) {
+    const card = root.querySelector(`.pedal-card[data-pedal="${pedal}"]`);
+    if (!card) return;
+    const pct = Math.round((st.value / 127) * 100);
+    card.querySelector('.pedal-fill').style.height = pct + '%';
+    card.querySelector('.pedal-val').textContent = st.value;
+    card.classList.toggle('on', st.on);
+  }
+
+  function buildMap() {
+    const vtSel = $('#ped-map-vt');
+    const opt = vtSel.options[vtSel.selectedIndex];
+    return {
+      pedal: $('#ped-map-pedal').value,
+      v2: +vtSel.value,
+      outMin: +opt.dataset.min,
+      outMax: +opt.dataset.max,
+      invert: $('#ped-map-dir').value === '1',
+    };
+  }
+
+  function refresh() {
+    const on = $('#ped-map-on').value === '1';
+    // 控制器始终存在（用于状态显示），映射按需设置
+    if (!pedalController) {
+      pedalController = new PedalController();
+      pedalController.onPedal = paintPedal;
+      pedalController.onApply = (v2, value) => {
+        send(CA99.buildSysEx(0x10, 0x50, v2, CA99.PART.System, [value]));
+      };
+    }
+    if (on) {
+      pedalController.setMap(buildMap());
+      const opt = $('#ped-map-vt').options[$('#ped-map-vt').selectedIndex];
+      $('#ped-map-status').textContent = `映射开启：${pedalNames[$('#ped-map-pedal').value]} → ${opt.textContent}`;
+      log(`踏板映射: ${$('#ped-map-pedal').value} → VT v2=${$('#ped-map-vt').value}`, 'ok');
+    } else {
+      pedalController.setMap(null);
+      $('#ped-map-status').textContent = '映射未开启（踏板状态仍实时显示）';
+    }
+  }
+
+  ['#ped-map-on', '#ped-map-pedal', '#ped-map-vt', '#ped-map-dir'].forEach(sel => {
+    $(sel).onchange = refresh;
+  });
+  // 初始化控制器（仅状态显示，无映射）
+  refresh();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -670,7 +768,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
@@ -679,5 +777,6 @@ async function main() {
   // 调试钩子：无真机时可在控制台 window.__feedMidi(note, velocity) 模拟弹奏，
   // 用于测试力度感应/联动等依赖 MIDI 输入的模块。
   window.__feedMidi = (note = 60, velocity = 64) => onMidiIn([0x90, note & 0x7f, velocity & 0x7f]);
+  window.__feedCC = (controller = 64, value = 127) => onMidiIn([0xB0, controller & 0x7f, value & 0x7f]);
 }
 main();
