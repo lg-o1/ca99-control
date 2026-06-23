@@ -14,6 +14,8 @@ import { describeNotes, detectChord } from './chord-detect.js';
 import { HeldNotes, ChordChallenge } from './chord-trainer.js';
 import { Metronome, TempoTracker } from './metronome.js';
 import { Recorder } from './recorder.js';
+import { SCALE_TYPES, buildScale, buildScaleUpDown, ScaleSession } from './scale-trainer.js';
+import { noteName as chordNoteName } from './chord-detect.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -29,6 +31,7 @@ let metronome = null;      // 节拍器（模块13使用，提前声明避免 TD
 let tempoOnNote = null;    // 演奏速度检测的 note-on 回调（模块13注册）
 const recorder = new Recorder(); // 弹奏录制器（模块14使用）
 let recorderOnChange = null;      // 录制状态变化回调（模块14注册）
+let scaleOnNote = null;    // 音阶练习的 note-on 回调（模块15注册）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -132,6 +135,8 @@ function onMidiIn(bytes) {
     if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
     // 驱动演奏速度检测
     if (tempoOnNote) tempoOnNote(performance.now());
+    // 驱动音阶练习
+    if (scaleOnNote) scaleOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -1183,6 +1188,112 @@ function renderRecorder() {
   paintInfo();
 }
 
+// ========== 模块 15: 音阶练习 ==========
+function renderScale() {
+  const root = $('#module-scale');
+  let session = null;
+
+  const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎼 音阶练习</h2>
+    <p style="color:var(--muted);margin-bottom:14px">选调和音阶类型，按高亮提示依次弹奏音阶。弹对自动前进，弹错给提示。需先选好 <b>MIDI 输入</b>端口。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>根音（调）</label>
+        <select id="scale-root">${roots.map(r => `<option value="${r}" ${r === 'C' ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+      <div class="param-row"><label>音阶类型</label>
+        <select id="scale-type">${Object.entries(SCALE_TYPES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div>
+      <div class="param-row"><label>方向</label>
+        <select id="scale-dir">
+          <option value="up">上行</option>
+          <option value="updown">上行+下行</option>
+        </select></div>
+      <div class="param-row"><label>忽略八度</label>
+        <select id="scale-octave">
+          <option value="0">否（要弹准八度）</option>
+          <option value="1">是（任意八度都算对）</option>
+        </select></div>
+    </div>
+
+    <div class="scale-keys" id="scale-keys"></div>
+
+    <div class="rotate-bar">
+      <button id="scale-start" class="big-btn">▶ 开始练习</button>
+      <span id="scale-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function currentSeq() {
+    const r = $('#scale-root').value, type = $('#scale-type').value;
+    return $('#scale-dir').value === 'updown' ? buildScaleUpDown(r, type, 4) : buildScale(r, type, 4);
+  }
+
+  function drawKeys() {
+    const seq = currentSeq();
+    const idx = session ? session.index : -1;
+    $('#scale-keys').innerHTML = seq.map((n, i) => {
+      let cls = 'scale-key';
+      if (session) {
+        if (i < idx) cls += ' done';
+        else if (i === idx) cls += ' current';
+      }
+      return `<div class="${cls}">${chordNoteName(n)}</div>`;
+    }).join('');
+  }
+  drawKeys();
+
+  ['#scale-root', '#scale-type', '#scale-dir'].forEach(sel => {
+    $(sel).onchange = () => { if (!session) drawKeys(); };
+  });
+
+  $('#scale-start').onclick = () => {
+    if (session) {
+      session = null;
+      scaleOnNote = null;
+      $('#scale-start').textContent = '▶ 开始练习';
+      $('#scale-start').classList.remove('running');
+      $('#scale-status').textContent = '已停止';
+      drawKeys();
+      log('音阶练习: 停止');
+      return;
+    }
+    const seq = currentSeq();
+    session = new ScaleSession(seq, { octaveAgnostic: $('#scale-octave').value === '1' });
+    session.onAdvance = () => { drawKeys(); paintStatus(); };
+    session.onError = (exp) => {
+      $('#scale-status').textContent = `❌ 弹错了，下一个应是 ${chordNoteName(exp)}`;
+      $('#scale-status').style.color = 'var(--hi2)';
+    };
+    session.onComplete = () => {
+      $('#scale-status').textContent = `🎉 完成！错误 ${session.errors} 次`;
+      $('#scale-status').style.color = 'var(--ok)';
+      $('#scale-start').textContent = '▶ 开始练习';
+      $('#scale-start').classList.remove('running');
+      const done = session;
+      session = null; scaleOnNote = null;
+      drawKeysFor(done.sequence, done.sequence.length);
+      log(`音阶练习完成：错误 ${done.errors} 次`, 'ok');
+    };
+    scaleOnNote = (note) => session && session.feed(note);
+    $('#scale-start').textContent = '⏸ 停止练习';
+    $('#scale-start').classList.add('running');
+    paintStatus();
+    drawKeys();
+    log('音阶练习: 开始', 'ok');
+  };
+
+  function paintStatus() {
+    if (!session) return;
+    $('#scale-status').style.color = 'var(--muted)';
+    $('#scale-status').textContent = `进度 ${session.index}/${session.total} · 下一个: ${chordNoteName(session.nextNote)}`;
+  }
+
+  function drawKeysFor(seq, idx) {
+    $('#scale-keys').innerHTML = seq.map((n, i) =>
+      `<div class="scale-key ${i < idx ? 'done' : ''}">${chordNoteName(n)}</div>`).join('');
+  }
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -1192,7 +1303,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };

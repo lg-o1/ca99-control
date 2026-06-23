@@ -232,6 +232,19 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 }
 @keyframes recPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
+/* ---- 音阶练习 ---- */
+.scale-keys { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 24px 0; }
+.scale-key {
+  min-width: 48px; padding: 12px 10px; text-align: center; border-radius: 10px;
+  background: var(--panel2); border: 2px solid var(--line); font-weight: 700;
+  font-size: 14px; transition: transform .12s, background .12s, box-shadow .12s;
+}
+.scale-key.done { background: rgba(74,222,128,.15); border-color: var(--ok); color: var(--ok); }
+.scale-key.current {
+  background: var(--grad); border-color: transparent; color: #fff;
+  transform: scale(1.15) translateY(-2px); box-shadow: 0 6px 18px rgba(102,126,234,.5);
+}
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

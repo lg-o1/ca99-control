@@ -24,6 +24,7 @@ app/
     chord-trainer.js  ← 和弦练习挑战逻辑（纯逻辑，32 单元测试）
     metronome.js      ← 节拍器 + 演奏速度检测（纯逻辑，33 单元测试）
     recorder.js       ← 弹奏录制 + 标准 MIDI 文件编码（纯逻辑，38 单元测试）
+    scale-trainer.js  ← 音阶练习引导（纯逻辑，41 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -49,6 +50,7 @@ app/
 | 🎓 和弦练习 | ✅ | 实时识别弹奏的和弦/音程（含转位），挑战模式按提示弹和弦闯关计分 |
 | 🎵 节拍器 | ✅ | 可视+可听节拍器（强弱拍/拍号），弹奏时实测你的实际速度 BPM |
 | ⏺ 录制回放 | ✅ | 录下弹奏，回放欣赏，或导出标准 MIDI 文件（.mid）保存/分享 |
+| 🎼 音阶练习 | ✅ | 选调+音阶类型，按高亮提示依次弹奏，实时检查对错+进度（8 种音阶/上下行/忽略八度） |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -70,6 +72,7 @@ app/
 - 和弦练习挑战用 `chord-trainer.js`（纯逻辑，32 单元测试），`HeldNotes` 追踪当前按下音符，`ChordChallenge` 随机出题+计分/连击（rng 可注入便于测试）。onMidiIn 的 note-on/off 维护 heldNotes 并驱动面板
 - 节拍器用 `metronome.js`（纯逻辑，33 单元测试）：`Metronome` 按 BPM 产生强/弱拍（定时器可注入），UI 用 Web Audio 发 click 声 + 节拍点闪烁；`TempoTracker` 用相邻 note-on 间隔的移动平均实测演奏 BPM（大间隔自动重置乐句）
 - 录制回放用 `recorder.js`（纯逻辑，38 单元测试）：`Recorder` 以毫秒时间戳记录 MIDI 事件，回放用注入定时器按相对时间重派发，`toMidiFile()` 编码标准 MIDI 文件（Type 0，VLQ delta、tempo meta、跳过非通道事件）。onMidiIn 录制所有输入；导出用 Blob 触发 .mid 下载
+- 音阶练习用 `scale-trainer.js`（纯逻辑，41 单元测试）：`buildScale`/`buildScaleUpDown` 生成 8 种音阶（大调/三种小调/五声/布鲁斯/半音阶）的 MIDI 序列，`ScaleSession` 按依次弹奏检查进度（可忽略八度），note-on 驱动前进/报错/完成，UI 高亮当前应弹的音
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -116,6 +119,8 @@ node js/chord-trainer.test.mjs
 node js/metronome.test.mjs
 # 录制 + SMF 编码单元测试（38 用例）
 node js/recorder.test.mjs
+# 音阶练习单元测试（41 用例）
+node js/scale-trainer.test.mjs
 ```
 
 ## 数据生成（如需重建）
