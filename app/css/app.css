@@ -245,6 +245,34 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   transform: scale(1.15) translateY(-2px); box-shadow: 0 6px 18px rgba(102,126,234,.5);
 }
 
+/* ---- 视奏闪卡 ---- */
+.sight-stage { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 18px 0; }
+.sight-staff-wrap {
+  width: 100%; max-width: 420px; border-radius: 16px; padding: 8px;
+  background: var(--panel2); border: 2px solid var(--line);
+  transition: box-shadow .2s, border-color .2s;
+}
+.sight-staff-wrap.flash-ok { border-color: var(--ok); box-shadow: 0 0 0 3px rgba(74,222,128,.25); animation: sightPop .3s; }
+.sight-staff-wrap.flash-no { border-color: var(--hi2); box-shadow: 0 0 0 3px rgba(248,113,113,.25); animation: sightShake .3s; }
+@keyframes sightPop { 50% { transform: scale(1.03); } }
+@keyframes sightShake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.sight-svg { width: 100%; height: auto; display: block; }
+.sight-svg .staff-line { stroke: var(--muted); stroke-width: 1.4; }
+.sight-svg .ledger-line { stroke: var(--text); stroke-width: 1.6; }
+.sight-svg .clef-glyph { font-size: 56px; fill: var(--text); font-family: serif; }
+.sight-svg .note-head { fill: url(#none); fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.sight-svg .note-sharp { font-size: 26px; fill: var(--text); font-family: serif; }
+.sight-feedback { font-weight: 700; font-size: 15px; min-height: 22px; color: var(--muted); }
+.sight-feedback.ok { color: var(--ok); }
+.sight-feedback.no { color: var(--hi2); }
+.sight-stats { display: flex; gap: 10px; justify-content: center; margin: 16px 0; flex-wrap: wrap; }
+.sight-stat {
+  display: flex; flex-direction: column; align-items: center; min-width: 72px;
+  padding: 12px 14px; border-radius: 12px; background: var(--panel2); border: 2px solid var(--line);
+}
+.sight-stat-num { font-size: 24px; font-weight: 800; color: var(--text); line-height: 1.1; }
+.sight-stat-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

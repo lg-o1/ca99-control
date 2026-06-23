@@ -16,6 +16,7 @@ import { Metronome, TempoTracker } from './metronome.js';
 import { Recorder } from './recorder.js';
 import { SCALE_TYPES, buildScale, buildScaleUpDown, ScaleSession } from './scale-trainer.js';
 import { noteName as chordNoteName } from './chord-detect.js';
+import { SightReadingGame, staffPosition, needsLedger, noteLabel as sightNoteLabel } from './sight-reading.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -32,6 +33,7 @@ let tempoOnNote = null;    // 演奏速度检测的 note-on 回调（模块13注
 const recorder = new Recorder(); // 弹奏录制器（模块14使用）
 let recorderOnChange = null;      // 录制状态变化回调（模块14注册）
 let scaleOnNote = null;    // 音阶练习的 note-on 回调（模块15注册）
+let sightOnNote = null;    // 视奏闪卡的 note-on 回调（模块16注册）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -137,6 +139,8 @@ function onMidiIn(bytes) {
     if (tempoOnNote) tempoOnNote(performance.now());
     // 驱动音阶练习
     if (scaleOnNote) scaleOnNote(m.note);
+    // 驱动视奏闪卡
+    if (sightOnNote) sightOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -1294,6 +1298,132 @@ function renderScale() {
   }
 }
 
+function renderSight() {
+  const root = $('#module-sight');
+  let game = null;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">👀 视奏闪卡</h2>
+    <p style="color:var(--muted);margin-bottom:14px">看五线谱上的音符，在琴键上弹出它。弹对自动出下一题，连对累计连击。需先选好 <b>MIDI 输入</b>端口。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>谱号</label>
+        <select id="sight-clef">
+          <option value="treble">高音谱号 𝄞</option>
+          <option value="bass">低音谱号 𝄢</option>
+        </select></div>
+      <div class="param-row"><label>忽略八度</label>
+        <select id="sight-octave">
+          <option value="1">是（任意八度都算对，适合初学）</option>
+          <option value="0">否（要弹准八度）</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <div class="sight-staff-wrap"><div id="sight-staff"></div></div>
+      <div id="sight-feedback" class="sight-feedback">按"开始"出题</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="sight-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sight-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sight-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sight-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="sight-start" class="big-btn">▶ 开始练习</button>
+      <span id="sight-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  // ---- SVG 五线谱绘制 ----
+  const CLEF_GLYPH = { treble: '𝄞', bass: '𝄢' };
+  function drawStaff(note, clef) {
+    const W = 240, H = 200;
+    const topY = 64, stepPx = 7;            // pos 8 = 顶线；每步 7px（两步=一线距14px）
+    const yForPos = (pos) => topY + (8 - pos) * stepPx;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="sight-svg" preserveAspectRatio="xMidYMid meet">`;
+    // 五条谱线（pos 0,2,4,6,8）
+    for (let p = 0; p <= 8; p += 2) {
+      const y = yForPos(p);
+      svg += `<line x1="30" y1="${y}" x2="${W - 16}" y2="${y}" class="staff-line"/>`;
+    }
+    // 谱号
+    svg += `<text x="38" y="${yForPos(2) + 6}" class="clef-glyph">${CLEF_GLYPH[clef]}</text>`;
+
+    if (note != null) {
+      const pos = staffPosition(note, clef);
+      const cy = yForPos(pos);
+      const cx = 150;
+      // 加线（音符超出谱表时）
+      if (pos > 8) { for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
+      if (pos < 0) { for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
+      // 符头（椭圆，略斜）
+      svg += `<g id="sight-head" transform="translate(${cx},${cy})"><ellipse rx="10" ry="7.5" transform="rotate(-20)" class="note-head"/></g>`;
+      // 升号
+      if (isSharpNote(note)) svg += `<text x="${cx - 26}" y="${cy + 5}" class="note-sharp">♯</text>`;
+    }
+    svg += `</svg>`;
+    $('#sight-staff').innerHTML = svg;
+  }
+  function isSharpNote(note) { return [1, 3, 6, 8, 10].includes(((note % 12) + 12) % 12); }
+
+  function refreshStats() {
+    if (!game) return;
+    $('#sight-score').textContent = game.score;
+    $('#sight-streak').textContent = game.streak;
+    $('#sight-best').textContent = game.best;
+    $('#sight-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function flash(ok) {
+    const wrap = $('#sight-staff');
+    wrap.classList.remove('flash-ok', 'flash-no');
+    void wrap.offsetWidth;
+    wrap.classList.add(ok ? 'flash-ok' : 'flash-no');
+  }
+
+  drawStaff(null, $('#sight-clef').value);
+
+  $('#sight-clef').onchange = () => { if (!game) drawStaff(null, $('#sight-clef').value); };
+
+  $('#sight-start').onclick = () => {
+    if (game) {
+      game = null; sightOnNote = null;
+      $('#sight-start').textContent = '▶ 开始练习';
+      $('#sight-start').classList.remove('running');
+      $('#sight-status').textContent = '已停止';
+      $('#sight-feedback').textContent = '按"开始"出题';
+      $('#sight-feedback').className = 'sight-feedback';
+      drawStaff(null, $('#sight-clef').value);
+      log('视奏闪卡: 停止');
+      return;
+    }
+    const clef = $('#sight-clef').value;
+    game = new SightReadingGame({ clef, octaveAgnostic: $('#sight-octave').value === '1' });
+    game.onNew = (note) => { drawStaff(note, clef); };
+    game.onResult = (ok, info) => {
+      refreshStats();
+      flash(ok);
+      const fb = $('#sight-feedback');
+      if (ok) {
+        fb.textContent = `✅ 对了！${sightNoteLabel(info.note)} · 连击 ${info.streak}`;
+        fb.className = 'sight-feedback ok';
+      } else {
+        fb.textContent = `❌ 不对，正确答案是 ${sightNoteLabel(game.current)}`;
+        fb.className = 'sight-feedback no';
+      }
+    };
+    sightOnNote = (note) => game && game.check(note);
+    $('#sight-start').textContent = '⏸ 停止练习';
+    $('#sight-start').classList.add('running');
+    $('#sight-status').textContent = '进行中…';
+    refreshStats();
+    game.next();
+    log('视奏闪卡: 开始', 'ok');
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -1303,7 +1433,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
