@@ -23,6 +23,7 @@ import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 import { PracticeStats } from './practice-stats.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
+import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -43,6 +44,7 @@ let sightOnNote = null;    // 视奏闪卡的 note-on 回调（模块16注册）
 let dynOnNote = null;      // 力度练习的 note-on 回调（模块18注册）
 let rhythmTapOnNote = null; // 节奏跟拍的 note-on 回调（模块21注册）
 let melodyOnNote = null;    // 旋律听写的 note-on 回调（模块22注册）
+let chordProgOnNotesChanged = null; // 和弦进行练习的音符变化回调（模块23注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -171,11 +173,14 @@ function onMidiIn(bytes) {
     if (rhythmTapOnNote) rhythmTapOnNote(performance.now());
     // 驱动旋律听写
     if (melodyOnNote) melodyOnNote(m.note);
+    // 驱动和弦进行练习
+    if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
     heldNotes.off(m.note);
     if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
+    if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
   }
   else if (m.type === 'cc') {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -2185,6 +2190,179 @@ function renderMelody() {
   drawKeyboard();
 }
 
+// ---------- 模块23：和弦进行练习 ----------
+function renderChordProg() {
+  const root = $('#module-chordprog');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 和弦进行练习</h2>
+    <p style="color:var(--muted);margin-bottom:14px">把"万能流行""ii–V–I""卡农"等著名和弦进行在所选调上展开成具体和弦，按顺序弹出每个和弦即推进（忽略转位）。没连琴可点"替我弹当前"演示推进。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调</label>
+        <select id="cp-key">${PROG_KEYS.map(k => `<option value="${k.id}">${k.name}</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>进行</label>
+        <select id="cp-prog">${PROGRESSIONS.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>循环</label>
+        <select id="cp-loop"><option value="1" selected>是（走完自动从头）</option><option value="0">否（走完即停）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="cp-chips" class="cp-chips"></div>
+      <div id="cp-target" class="cp-target">按"开始"出题</div>
+      <div id="cp-feedback" class="sight-feedback" style="margin-top:10px">选好调与进行，点开始</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="cp-score" class="sight-stat-num">0</div><div class="sight-stat-lbl">弹对</div></div>
+      <div class="sight-stat"><div id="cp-streak" class="sight-stat-num">0</div><div class="sight-stat-lbl">连击</div></div>
+      <div class="sight-stat"><div id="cp-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+      <div class="sight-stat"><div id="cp-laps" class="sight-stat-num">0</div><div class="sight-stat-lbl">完成圈</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="cp-start" class="big-btn">▶ 开始练习</button>
+      <button id="cp-listen" class="big-btn" style="background:#667eea" disabled>🔊 试听整条</button>
+      <button id="cp-auto" class="big-btn" style="background:var(--panel2)" disabled>🎹 替我弹当前</button>
+      <span id="cp-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let game = null, ac = null, judging = false;
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  // 把和弦符号转成根位 MIDI（C4 区域），用于试听与"替我弹"
+  const CP_INTERVALS = { '': [0, 4, 7], 'm': [0, 3, 7], 'dim': [0, 3, 6], 'aug': [0, 4, 8] };
+  function chordMidi(chord) {
+    const pc = CA99 && chordNoteName ? null : null;
+    const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const rootPc = NOTE.indexOf(chord.root);
+    const base = 60 + rootPc;
+    return (CP_INTERVALS[chord.suffix] || [0, 4, 7]).map(iv => base + iv);
+  }
+  function tone(midi, when, dur) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.18, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function playChord(chord, when, dur) {
+    chordMidi(chord).forEach(n => tone(n, when, dur));
+  }
+  function listenAll() {
+    if (!game) return;
+    const c = ctx(); let t = c.currentTime + 0.08; const d = 0.55;
+    game.list().forEach(ch => { playChord(ch, t, d * 0.92); t += d; });
+  }
+
+  function keyObj() { return PROG_KEYS.find(k => k.id === $('#cp-key').value); }
+  function progObj() { return PROGRESSIONS.find(p => p.id === $('#cp-prog').value); }
+
+  function drawChips() {
+    const wrap = $('#cp-chips');
+    if (!game) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = game.list().map((ch, i) => {
+      let cls = 'cp-chip';
+      if (i < game.pos) cls += ' done';
+      else if (i === game.pos) cls += ' current';
+      return `<div class="${cls}"><span class="cp-rom">${ch.roman}</span><span class="cp-sym">${ch.symbol}</span></div>`;
+    }).join('');
+  }
+
+  function showTarget() {
+    const t = game && game.current();
+    $('#cp-target').textContent = t ? `🎯 现在弹：${t.symbol}（${t.roman}）` : '✅ 已走完整条';
+  }
+
+  function updateStats() {
+    if (!game) return;
+    $('#cp-score').textContent = game.score;
+    $('#cp-streak').textContent = game.streak;
+    $('#cp-best').textContent = game.best;
+    $('#cp-laps').textContent = game.laps;
+  }
+
+  function judge(notes) {
+    if (!game || judging) return;
+    if (notes.length < 3) return; // 不足以构成和弦
+    const r = game.check(notes);
+    if (!r) return;
+    const fb = $('#cp-feedback');
+    if (r.ok) {
+      judging = true; // 防止同一把按住重复判定
+      drawChips(); showTarget(); updateStats();
+      if (r.completed) {
+        fb.className = 'sight-feedback ok';
+        fb.textContent = game.loop ? '🎉 完成整条！自动从头继续' : '🎉 完成整条！';
+        playChord(r.expected, ctx().currentTime + 0.02, 0.5);
+        if (!game.loop) finishStop();
+      } else {
+        fb.className = 'sight-feedback ok';
+        fb.textContent = `✓ ${r.expected.symbol} 对，继续`;
+      }
+    } else {
+      const chord = detectChord(notes);
+      if (chord) {
+        game.miss(); updateStats();
+        fb.className = 'sight-feedback no';
+        fb.textContent = `❌ 听到 ${chord.symbol}，目标是 ${r.expected.symbol}`;
+      }
+    }
+  }
+
+  function finishStop() {
+    if (game) recordPractice('chordprog', '和弦进行', game.attempts, game.score, game.best);
+    game = null; chordProgOnNotesChanged = null;
+    $('#cp-start').textContent = '▶ 开始练习';
+    $('#cp-start').classList.remove('running');
+    $('#cp-listen').disabled = true;
+    $('#cp-auto').disabled = true;
+    $('#cp-status').textContent = '已停止';
+  }
+
+  $('#cp-key').onchange = () => { if (game) restart(); };
+  $('#cp-prog').onchange = () => { if (game) restart(); };
+  $('#cp-loop').onchange = () => { if (game) restart(); };
+  $('#cp-listen').onclick = listenAll;
+  $('#cp-auto').onclick = () => {
+    if (!game) return;
+    const t = game.current();
+    if (!t) return;
+    judging = false;
+    judge(chordMidi(t));
+  };
+
+  function restart() {
+    game = new ChordProgression({ key: keyObj(), progression: progObj(), loop: $('#cp-loop').value === '1' });
+    drawChips(); showTarget(); updateStats();
+    chordProgOnNotesChanged = (notes) => {
+      if (notes.length < 3) judging = false; // 松开后允许下一次判定
+      judge(notes);
+    };
+    $('#cp-feedback').className = 'sight-feedback';
+    $('#cp-feedback').textContent = '🎧 按顺序弹出高亮的和弦';
+    $('#cp-status').textContent = '练习中';
+  }
+
+  $('#cp-start').onclick = () => {
+    if (game) { finishStop(); return; }
+    restart();
+    $('#cp-start').textContent = '⏸ 停止练习';
+    $('#cp-start').classList.add('running');
+    $('#cp-listen').disabled = false;
+    $('#cp-auto').disabled = false;
+    setTimeout(listenAll, 250);
+  };
+
+  drawChips();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -2288,7 +2466,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };

@@ -32,6 +32,7 @@ app/
     practice-stats.js ← 练习成就仪表盘（聚合各模块成绩+成就，纯逻辑，51 单元测试）
     rhythm-trainer.js ← 节奏跟拍训练（按拍点敲击判时间误差，纯逻辑，119 单元测试）
     melody-dictation.js ← 旋律听写（听调内短旋律后复奏，逐音校验，纯逻辑，486 单元测试）
+    chord-progression.js ← 和弦进行练习（著名进行展开成具体和弦按序弹，复用和弦识别，纯逻辑，120 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -64,7 +65,8 @@ app/
 | 🎹 移调器 | ✅ | 一键把整个键盘升/降调（-12~+12 半音），用熟悉指法弹任意调，发 CA99 移调 SysEx 让钢琴自身也移调（滑块/±按钮/预设/听感调显示） |
 | 🥁 节奏跟拍 | ✅ | 屏幕给节奏型（四分/八分/切分/附点），先一小节预备拍（节拍器引导），跟着拍点在琴键敲击，按时间误差判完美/良好/漏拍/多敲，播放头+落点高亮，平均误差统计（无琴可空格键敲） |
 | 🎼 旋律听写 | ✅ | 听一段调内短旋律（首音为主音锚点，Web Audio 三角波播放），在琴键上逐音复奏，对的灯变绿、错的不前进，整条全对自动出下一条；可选调/长度/忽略八度/速度，带屏幕琴键，可再听/放弃看答案，成绩入仪表盘 |
-| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
+| 🎹 和弦进行 | ✅ | 把"万能流行 I–V–vi–IV""ii–V–I""卡农""12 小节布鲁斯"等 7 条著名进行在所选调（含大小调）上展开成具体和弦（C–G–Am–F），按序弹出每个和弦即推进（忽略转位，复用和弦识别），罗马数字+和弦名高亮，可试听整条/替我弹演示，循环计圈，成绩入仪表盘 |
+| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -94,6 +96,7 @@ app/
 - 成就仪表盘用 `practice-stats.js`（纯逻辑，51 单元测试）：`PracticeStats` 注入存储+时钟（便于确定性测试），`record` 把每次练习成绩累加进 localStorage，算总练习/正确率/连续天数（`dayStreak` 含昨日宽限）/最佳连击，`allAchievements` 判定 10 枚徽章解锁状态；各训练模块（视奏/听辨/力度停止时、音阶完成时）调 `recordPractice()` 写入，仪表盘聚合展示柱状图/细分表/徽章墙
 - 节奏跟拍用 `rhythm-trainer.js`（纯逻辑，119 单元测试）：`beatsToOnsets` 把拍点位置按 BPM 换算成毫秒落点，`RhythmTrainer.tap(time)` 把每次敲击匹配到最近未命中落点并按时间误差 `rateError` 判完美(±55ms)/良好(±120ms)/多敲，`finish` 统计漏拍与平均误差；UI 有预备拍节拍器引导、播放头动画、落点高亮，note-on 或空格键触发敲击，完成后写入成就仪表盘
 - 旋律听写用 `melody-dictation.js`（纯逻辑，486 单元测试）：`degreeToMidi` 把音阶级数（含跨八度/下行）映射成 MIDI，`MelodyDictation.next()` 在所选调音阶内生成首音为主音的随机短旋律，`play(note)` 逐音校验复奏（`samePitchClass` 支持忽略八度），整条全对才计分、有错完成不计分、可 `giveUp` 看答案；UI 用 Web Audio 三角波播放旋律、屏幕琴键、note-on 复奏，完成后写入成就仪表盘
+- 和弦进行练习用 `chord-progression.js`（纯逻辑，120 单元测试）：`chordForDegree` 按调的音阶+各级品质把罗马数字级数（I/ii/.../vii°）展开成具体和弦，`expandProgression` 把整条进行换调展开，`ChordProgression.check(notes)` 复用 `chord-detect.js` 的 `detectChord` 比对根音+类型（忽略转位）判推进，整条走完计圈、可循环、`miss` 记错并清连击；UI 用 Web Audio 试听整条、罗马数字+和弦名 chip 高亮当前目标、"替我弹"演示推进，完成后写入成就仪表盘
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -137,7 +140,7 @@ npx http-server -p 8099           # 用 Node
 
 ## 测试
 
-**一键跑全部 19 套测试**：
+**一键跑全部 20 套测试**：
 
 ```bash
 cd app
@@ -189,6 +192,8 @@ node js/practice-stats.test.mjs
 node js/rhythm-trainer.test.mjs
 # 旋律听写单元测试（486 断言）
 node js/melody-dictation.test.mjs
+# 和弦进行练习单元测试（120 用例）
+node js/chord-progression.test.mjs
 ```
 
 ## 数据生成（如需重建）
