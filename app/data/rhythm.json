@@ -1,0 +1,902 @@
+[
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "8Beat1",
+  "nameJa": "8ビート 1",
+  "v4": "0x00",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "8Beat2",
+  "nameJa": "8ビート 2",
+  "v4": "0x01",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "8Beat3",
+  "nameJa": "8ビート 3",
+  "v4": "0x02",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "Pop1",
+  "nameJa": "ポップ 1",
+  "v4": "0x03",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "Pop2",
+  "nameJa": "ポップ 2",
+  "v4": "0x04",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "Pop3",
+  "nameJa": "ポップ 3",
+  "v4": "0x05",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "Pop4",
+  "nameJa": "ポップ 4",
+  "v4": "0x06",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "Pop5",
+  "nameJa": "ポップ 5",
+  "v4": "0x07",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "Pop6",
+  "nameJa": "ポップ 6",
+  "v4": "0x08",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "RideBeat1",
+  "nameJa": "ライドビート 1",
+  "v4": "0x09",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "RideBeat2",
+  "nameJa": "ライドビート 2",
+  "v4": "0x0A",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "DancePop1",
+  "nameJa": "ダンスポップ 1",
+  "v4": "0x0B",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "CountryPop",
+  "nameJa": "カントリーポップ",
+  "v4": "0x0C",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "SmoothBeat",
+  "nameJa": "スムースビート",
+  "v4": "0x0D",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat",
+  "categoryJa": "8 ビート",
+  "name": "RimBeat",
+  "nameJa": "リムビート",
+  "v4": "0x0E",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "ModernRock1",
+  "nameJa": "モダンロック 1",
+  "v4": "0x0F",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "ModernRock2",
+  "nameJa": "モダンロック 2",
+  "v4": "0x10",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "ModernRock3",
+  "nameJa": "モダンロック 3",
+  "v4": "0x11",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "ModernRock4",
+  "nameJa": "モダンロック 4",
+  "v4": "0x12",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "PopRock",
+  "nameJa": "ポップロック",
+  "v4": "0x13",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "RideRock",
+  "nameJa": "ライドロック",
+  "v4": "0x14",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "JazzRock",
+  "nameJa": "ジャズロック",
+  "v4": "0x15",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Rock",
+  "categoryJa": "8 ビートロック",
+  "name": "SurfRock",
+  "nameJa": "サーフロック",
+  "v4": "0x16",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "16Beat",
+  "nameJa": "16ビート",
+  "v4": "0x17",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "IndiePop1",
+  "nameJa": "インディーポップ 1",
+  "v4": "0x18",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "AcidJazz1",
+  "nameJa": "アシッドジャズ 1",
+  "v4": "0x19",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "RideBeat3",
+  "nameJa": "ライドビート 3",
+  "v4": "0x1A",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "DancePop2",
+  "nameJa": "ダンスポップ 2",
+  "v4": "0x1B",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "DancePop3",
+  "nameJa": "ダンスポップ 3",
+  "v4": "0x1C",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "DancePop4",
+  "nameJa": "ダンスポップ 4",
+  "v4": "0x1D",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "DancePop5",
+  "nameJa": "ダンスポップ 5",
+  "v4": "0x1E",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "DancePop6",
+  "nameJa": "ダンスポップ 6",
+  "v4": "0x1F",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "DancePop7",
+  "nameJa": "ダンスポップ 7",
+  "v4": "0x20",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "DancePop8",
+  "nameJa": "ダンスポップ 8",
+  "v4": "0x21",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "IndiePop2",
+  "nameJa": "インディーポップ 2",
+  "v4": "0x22",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat",
+  "categoryJa": "16 ビート",
+  "name": "CajunRock",
+  "nameJa": "ケイジャンロック",
+  "v4": "0x23",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "PopBallad1",
+  "nameJa": "ポップバラード 1",
+  "v4": "0x24",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "PopBallad2",
+  "nameJa": "ポップバラード 2",
+  "v4": "0x25",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "PopBallad3",
+  "nameJa": "ポップバラード 3",
+  "v4": "0x26",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "RockBallad1",
+  "nameJa": "ロックバラード 1",
+  "v4": "0x27",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "RockBallad2",
+  "nameJa": "ロックバラード 2",
+  "v4": "0x28",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "SlowJam",
+  "nameJa": "スロージャム",
+  "v4": "0x29",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "6/8R&BBallad",
+  "nameJa": "6/8 R&Bバラード",
+  "v4": "0x2A",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "TripletBallad1",
+  "nameJa": "トリプレットバラード 1",
+  "v4": "0x2B",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Ballad",
+  "categoryJa": "8 ビートバラード",
+  "name": "TripletBallad2",
+  "nameJa": "トリプレットバラード 2",
+  "v4": "0x2C",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Ballad",
+  "categoryJa": "16 ビートバラード",
+  "name": "16Ballad1",
+  "nameJa": "16バラード 1",
+  "v4": "0x2D",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Ballad",
+  "categoryJa": "16 ビートバラード",
+  "name": "DanceBallad1",
+  "nameJa": "ダンスバラード 1",
+  "v4": "0x2E",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Ballad",
+  "categoryJa": "16 ビートバラード",
+  "name": "DanceBallad2",
+  "nameJa": "ダンスバラード 2",
+  "v4": "0x2F",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Ballad",
+  "categoryJa": "16 ビートバラード",
+  "name": "DanceBallad3",
+  "nameJa": "ダンスバラード 3",
+  "v4": "0x30",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Ballad",
+  "categoryJa": "16 ビートバラード",
+  "name": "ElectroPop",
+  "nameJa": "エレクトロポップ",
+  "v4": "0x31",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Ballad",
+  "categoryJa": "16 ビートバラード",
+  "name": "16Ballad2",
+  "nameJa": "16バラード 2",
+  "v4": "0x32",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Ballad",
+  "categoryJa": "16 ビートバラード",
+  "name": "ModPopBallad",
+  "nameJa": "モダンポップバラード",
+  "v4": "0x33",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Dance",
+  "categoryJa": "16 ビートダンス",
+  "name": "Dance1",
+  "nameJa": "ダンス 1",
+  "v4": "0x34",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Dance",
+  "categoryJa": "16 ビートダンス",
+  "name": "Dance2",
+  "nameJa": "ダンス 2",
+  "v4": "0x35",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Dance",
+  "categoryJa": "16 ビートダンス",
+  "name": "Dance3",
+  "nameJa": "ダンス 3",
+  "v4": "0x36",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Dance",
+  "categoryJa": "16 ビートダンス",
+  "name": "Disco",
+  "nameJa": "ディスコ",
+  "v4": "0x37",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Dance",
+  "categoryJa": "16 ビートダンス",
+  "name": "Techno1",
+  "nameJa": "テクノ 1",
+  "v4": "0x38",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Dance",
+  "categoryJa": "16 ビートダンス",
+  "name": "Techno2",
+  "nameJa": "テクノ 2",
+  "v4": "0x39",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "16Shuffle1",
+  "nameJa": "16シャフル 1",
+  "v4": "0x3A",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "16Shuffle2",
+  "nameJa": "16シャフル 2",
+  "v4": "0x3B",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "16Shuffle3",
+  "nameJa": "16シャフル 3",
+  "v4": "0x3C",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "AcidJazz2",
+  "nameJa": "アシッドジャズ 2",
+  "v4": "0x3D",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "AcidJazz3",
+  "nameJa": "アシッドジャズ 3",
+  "v4": "0x3E",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "NewJackSwing",
+  "nameJa": "ニュージャックスウィング",
+  "v4": "0x3F",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "ModernDance",
+  "nameJa": "モダンダンス",
+  "v4": "0x40",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "16 Beat Swing",
+  "categoryJa": "16 ビートスウィング",
+  "name": "IndiePop3",
+  "nameJa": "インディーポップ 3",
+  "v4": "0x41",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Swing",
+  "categoryJa": "8 ビートスウィング",
+  "name": "SwingBeat",
+  "nameJa": "スウィングビート",
+  "v4": "0x42",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Swing",
+  "categoryJa": "8 ビートスウィング",
+  "name": "Motown",
+  "nameJa": "モータウン",
+  "v4": "0x43",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Swing",
+  "categoryJa": "8 ビートスウィング",
+  "name": "Country2Beat",
+  "nameJa": "カントリー2ビート",
+  "v4": "0x44",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "8 Beat Swing",
+  "categoryJa": "8 ビートスウィング",
+  "name": "Boogie",
+  "nameJa": "ブギ",
+  "v4": "0x45",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "8Shuffle1",
+  "nameJa": "8シャフル 1",
+  "v4": "0x46",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "8Shuffle2",
+  "nameJa": "8シャフル 2",
+  "v4": "0x47",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "8Shuffle3",
+  "nameJa": "8シャフル 3",
+  "v4": "0x48",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "DanceShuffle",
+  "nameJa": "ダンスシャフル",
+  "v4": "0x49",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "Triplet1",
+  "nameJa": "トリプレット 1",
+  "v4": "0x4A",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "Triplet2",
+  "nameJa": "トリプレット 2",
+  "v4": "0x4B",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "TripletRock",
+  "nameJa": "トリプレットロック",
+  "v4": "0x4C",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Triplet",
+  "categoryJa": "トリプレット",
+  "name": "Reggae",
+  "nameJa": "レゲエ",
+  "v4": "0x4D",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Jazz",
+  "categoryJa": "ジャズ",
+  "name": "H.H.Swing",
+  "nameJa": "H.H.スウィング",
+  "v4": "0x4E",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Jazz",
+  "categoryJa": "ジャズ",
+  "name": "RideSwing",
+  "nameJa": "ライドスウィング",
+  "v4": "0x4F",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Jazz",
+  "categoryJa": "ジャズ",
+  "name": "Fast4Beat",
+  "nameJa": "ファスト4ビート",
+  "v4": "0x50",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Jazz",
+  "categoryJa": "ジャズ",
+  "name": "AfroCuban",
+  "nameJa": "アフロキューバン",
+  "v4": "0x51",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Jazz",
+  "categoryJa": "ジャズ",
+  "name": "JazzBossa",
+  "nameJa": "ジャズボッサ",
+  "v4": "0x52",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Jazz",
+  "categoryJa": "ジャズ",
+  "name": "JazzWaltz",
+  "nameJa": "ジャズワルツ",
+  "v4": "0x53",
+  "beat": "3/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Jazz",
+  "categoryJa": "ジャズ",
+  "name": "5/4Swing",
+  "nameJa": "5/4スウィング",
+  "v4": "0x54",
+  "beat": "5/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "H.H.BossaNova",
+  "nameJa": "H.H.ボサノバ",
+  "v4": "0x55",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "RideBossaNova",
+  "nameJa": "ライドボサノバ",
+  "v4": "0x56",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Beguine",
+  "nameJa": "ビギン",
+  "v4": "0x57",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Rhumba",
+  "nameJa": "ルンバ",
+  "v4": "0x58",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "ChaCha",
+  "nameJa": "チャチャ",
+  "v4": "0x59",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Mambo",
+  "nameJa": "マンボ",
+  "v4": "0x5A",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Samba",
+  "nameJa": "サンバ",
+  "v4": "0x5B",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Salsa",
+  "nameJa": "サルサ",
+  "v4": "0x5C",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Merenge",
+  "nameJa": "メレンゲ",
+  "v4": "0x5D",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Tango",
+  "nameJa": "タンゴ",
+  "v4": "0x5E",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Habanera",
+  "nameJa": "ハバネラ",
+  "v4": "0x5F",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Waltz",
+  "nameJa": "ワルツ",
+  "v4": "0x60",
+  "beat": "3/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "Ragtime",
+  "nameJa": "ラグタイム",
+  "v4": "0x61",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "March",
+  "nameJa": "マーチ",
+  "v4": "0x62",
+  "beat": "4/4",
+  "model": "CA99,CA79,CA9900GP,"
+ },
+ {
+  "category": "Latin/Traditional",
+  "categoryJa": "ラテン/ワールド",
+  "name": "6/8March",
+  "nameJa": "6/8マーチ",
+  "v4": "0x63",
+  "beat": "6/8",
+  "model": "CA99,CA79,CA9900GP,"
+ }
+]

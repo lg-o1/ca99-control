@@ -1,0 +1,10 @@
+{
+  "name": "CA99 Control",
+  "short_name": "CA99",
+  "description": "Kawai CA99 统一控制 — 音色/VT/系统/节奏/创意玩法",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": []
+}
