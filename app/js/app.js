@@ -5,10 +5,12 @@
 import { MidiCore } from './midi-core.js';
 import * as CA99 from './ca99.js';
 import { RotateEngine, diversePool } from './auto-rotate.js';
+import { MorphEngine } from './vt-morph.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
 let rotateEngine = null;   // 自动换音色引擎（模块6使用，提前声明避免 TDZ）
+let morphEngine = null;    // VT 渐变引擎（模块7使用，提前声明避免 TDZ）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -325,6 +327,136 @@ function renderAutoRotate() {
   };
 }
 
+// ========== 模块 7: VT 参数渐变器（CA99 独有） ==========
+function renderMorph() {
+  const root = $('#module-morph');
+  // 取「连续数值型」VT 参数：v1=0x50 且恰好 2 条（首=最小值标签，次=最大值标签）
+  // 例：StringResonance ['Off','127'] / DamperResonance ['Off','10']。
+  // 排除枚举型（Voicing 7 条等离散模式）和 PerNote 命令（1 条）。
+  const parseRange = (v) => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    if (/^off$/i.test(s)) return 0;
+    const n = parseInt(s, 10);
+    return Number.isNaN(n) ? null : n;
+  };
+  const vtEntries = SYSEX.filter(e => CA99.hex(e.v1) === 0x50);
+  const byParam = {};
+  for (const e of vtEntries) (byParam[e.parameter] ||= []).push(e);
+  const continuous = Object.entries(byParam)
+    .filter(([, entries]) => entries.length === 2)
+    .map(([pname, entries]) => {
+      const min = parseRange(entries[0].value);
+      const max = parseRange(entries[1].value);
+      return { name: pname, v2: CA99.hex(entries[0].v2), min, max };
+    })
+    // 只保留 0..max 的正区间（可直接映射到 0-127 数据字节）
+    .filter(c => c.min !== null && c.max !== null && c.min >= 0 && c.max > c.min);
+
+  // 默认选最具"塑造感"的共鸣/击弦参数
+  const prefer = ['StringResonance', 'DamperResonance', 'KeyAttackNoise', 'CabinetResonance', 'DamperNoise'];
+  const defaults = new Set();
+  for (const p of prefer) {
+    const hit = continuous.find(c => c.name === p);
+    if (hit) defaults.add(hit.v2);
+    if (defaults.size >= 2) break;
+  }
+  if (defaults.size === 0) continuous.slice(0, 2).forEach(c => defaults.add(c.v2));
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🌗 VT 参数渐变器</h2>
+    <p style="color:var(--muted);margin-bottom:14px">边弹边把 Virtual Technician 参数从起点平滑变化到终点，营造"音色慢慢呼吸"的效果。<b>CA99 独有玩法</b> ✨</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>时长（秒）</label>
+        <input type="range" id="morph-dur" min="2" max="60" value="12"><span class="val" id="morph-dur-val">12</span></div>
+      <div class="param-row"><label>曲线</label>
+        <select id="morph-ease">
+          <option value="easeInOut">平滑（缓入缓出）</option>
+          <option value="linear">线性</option>
+        </select></div>
+      <div class="param-row"><label>往返循环</label>
+        <select id="morph-pingpong">
+          <option value="0">否（到终点停止）</option>
+          <option value="1">是（终点→起点反复）</option>
+        </select></div>
+    </div>
+
+    <h3 style="margin:16px 0 8px">渐变通道（勾选要变化的参数，设起点/终点）</h3>
+    <div id="morph-lanes"></div>
+
+    <div class="rotate-bar">
+      <button id="morph-toggle" class="big-btn">▶ 开始渐变</button>
+      <span id="morph-status" style="color:var(--muted)">未运行</span>
+    </div>`;
+
+  const lanesBox = $('#morph-lanes');
+  lanesBox.innerHTML = continuous.map(c => `
+    <div class="card-panel" style="margin-bottom:8px" data-v2="${c.v2}">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" class="morph-on" ${defaults.has(c.v2) ? 'checked' : ''}>
+        <b>${c.name}</b> <span style="color:var(--muted);font-size:12px">(${c.min}–${c.max})</span></label>
+      <div class="param-row"><label>起点</label>
+        <input type="range" class="morph-from" min="${c.min}" max="${c.max}" value="${c.min}"><span class="val">${c.min}</span></div>
+      <div class="param-row"><label>终点</label>
+        <input type="range" class="morph-to" min="${c.min}" max="${c.max}" value="${c.max}"><span class="val">${c.max}</span></div>
+    </div>`).join('') || '<p style="color:var(--muted)">无可用的连续 VT 参数</p>';
+
+  lanesBox.querySelectorAll('input[type=range]').forEach(sl => {
+    sl.oninput = () => { sl.nextElementSibling.textContent = sl.value; };
+  });
+  $('#morph-dur').oninput = (e) => $('#morph-dur-val').textContent = e.target.value;
+
+  $('#morph-toggle').onclick = () => {
+    if (morphEngine && morphEngine.running) {
+      morphEngine.stop();
+      morphEngine = null;
+      $('#morph-toggle').textContent = '▶ 开始渐变';
+      $('#morph-toggle').classList.remove('running');
+      $('#morph-status').textContent = '已停止';
+      log('VT 渐变: 停止');
+      return;
+    }
+    // 收集勾选的通道
+    const lanes = [];
+    lanesBox.querySelectorAll('[data-v2]').forEach(box => {
+      if (box.querySelector('.morph-on').checked) {
+        lanes.push({
+          v2: +box.dataset.v2,
+          from: +box.querySelector('.morph-from').value,
+          to: +box.querySelector('.morph-to').value,
+        });
+      }
+    });
+    if (!lanes.length) { log('请至少勾选一个渐变通道', 'err'); return; }
+
+    morphEngine = new MorphEngine({
+      lanes,
+      durationMs: +$('#morph-dur').value * 1000,
+      tickMs: 120,
+      easing: $('#morph-ease').value,
+      pingpong: $('#morph-pingpong').value === '1',
+    });
+    morphEngine.nowFn = () => performance.now();
+    morphEngine.onApply = (v2, value) => {
+      send(CA99.buildSysEx(0x10, 0x50, v2, CA99.PART.System, [value]));
+    };
+    morphEngine.onDone = () => {
+      $('#morph-toggle').textContent = '▶ 开始渐变';
+      $('#morph-toggle').classList.remove('running');
+      $('#morph-status').textContent = '✓ 完成';
+      log('VT 渐变: 完成', 'ok');
+      morphEngine = null;
+    };
+    // 状态显示每帧更新（用包一层 onApply 计算进度略复杂，这里简单显示运行中）
+    morphEngine.start(performance.now());
+    $('#morph-toggle').textContent = '⏸ 停止';
+    $('#morph-toggle').classList.add('running');
+    $('#morph-status').textContent = `运行中（${lanes.length} 通道）`;
+    log(`VT 渐变: 启动（${lanes.length} 通道, ${$('#morph-dur').value}s, ${$('#morph-ease').value}）`, 'ok');
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -334,7 +466,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
