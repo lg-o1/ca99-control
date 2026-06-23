@@ -206,6 +206,22 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   animation: fadeIn .3s ease;
 }
 
+/* ---- 节拍器 ---- */
+.metro-beats { display: flex; gap: 14px; justify-content: center; margin: 26px 0; }
+.metro-dot {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--panel2); border: 2px solid var(--line);
+  transition: transform .08s, background .08s, box-shadow .08s;
+}
+.metro-dot.accent { border-color: var(--hi); }
+.metro-dot.active {
+  background: var(--grad); border-color: transparent;
+  transform: scale(1.25); box-shadow: 0 0 22px rgba(102,126,234,.6);
+}
+.metro-dot.accent.active {
+  background: var(--grad-hi); box-shadow: 0 0 26px rgba(233,69,96,.7);
+}
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

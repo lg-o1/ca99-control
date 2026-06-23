@@ -22,6 +22,7 @@ app/
     preset-store.js   ← 演出预设存储（纯逻辑，40 单元测试，可注入存储后端）
     chord-detect.js   ← 和弦/音程识别（纯逻辑，46 单元测试）
     chord-trainer.js  ← 和弦练习挑战逻辑（纯逻辑，32 单元测试）
+    metronome.js      ← 节拍器 + 演奏速度检测（纯逻辑，33 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -45,6 +46,7 @@ app/
 | 🦶 踏板控制 | ✅ | 实时显示三踏板（延音/保持/弱音）深度，可把踏板深度映射到 VT 参数 |
 | ⭐ 演出预设 | ✅ | 把音色+VT 调音组合命名保存，一键调用；localStorage 持久化 + JSON 导入导出 |
 | 🎓 和弦练习 | ✅ | 实时识别弹奏的和弦/音程（含转位），挑战模式按提示弹和弦闯关计分 |
+| 🎵 节拍器 | ✅ | 可视+可听节拍器（强弱拍/拍号），弹奏时实测你的实际速度 BPM |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -64,6 +66,7 @@ app/
 - 演出预设用独立存储 `preset-store.js`（纯逻辑，40 单元测试），存储后端可注入（浏览器=localStorage，测试=内存 Map）；支持保存/调用/删除/重命名/导入导出，损坏 JSON 容错。`capturePreset()` 从 DOM 抓当前音色+VT 控件值，`applyPreset()` 一键发回钢琴
 - 和弦识别用 `chord-detect.js`（纯逻辑，46 单元测试），把同时按下音符归一到音级集合，对每个根音匹配 15 种和弦模板（含 7/maj7/m7/dim/aug/sus 等），两遍扫描优先根位、消除 sus2/sus4 与 C6/Am7 转位二义性
 - 和弦练习挑战用 `chord-trainer.js`（纯逻辑，32 单元测试），`HeldNotes` 追踪当前按下音符，`ChordChallenge` 随机出题+计分/连击（rng 可注入便于测试）。onMidiIn 的 note-on/off 维护 heldNotes 并驱动面板
+- 节拍器用 `metronome.js`（纯逻辑，33 单元测试）：`Metronome` 按 BPM 产生强/弱拍（定时器可注入），UI 用 Web Audio 发 click 声 + 节拍点闪烁；`TempoTracker` 用相邻 note-on 间隔的移动平均实测演奏 BPM（大间隔自动重置乐句）
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -106,6 +109,8 @@ node js/preset-store.test.mjs
 node js/chord-detect.test.mjs
 # 和弦练习挑战单元测试（32 用例）
 node js/chord-trainer.test.mjs
+# 节拍器 + 速度检测单元测试（33 用例）
+node js/metronome.test.mjs
 ```
 
 ## 数据生成（如需重建）

@@ -12,6 +12,7 @@ import { PedalController, PEDAL_CC } from './pedal-control.js';
 import { PresetStore } from './preset-store.js';
 import { describeNotes, detectChord } from './chord-detect.js';
 import { HeldNotes, ChordChallenge } from './chord-trainer.js';
+import { Metronome, TempoTracker } from './metronome.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -23,6 +24,8 @@ let pedalController = null;// 踏板控制扩展（模块10使用，提前声明
 let presetStore = null;    // 演出预设存储（模块11使用，提前声明避免 TDZ）
 const heldNotes = new HeldNotes(); // 当前按下的音符（模块12和弦练习用）
 let chordOnNotesChanged = null;    // 和弦面板的音符变化回调（模块12注册）
+let metronome = null;      // 节拍器（模块13使用，提前声明避免 TDZ）
+let tempoOnNote = null;    // 演奏速度检测的 note-on 回调（模块13注册）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -119,6 +122,8 @@ function onMidiIn(bytes) {
     // 追踪按下音符，驱动和弦练习
     heldNotes.on(m.note);
     if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
+    // 驱动演奏速度检测
+    if (tempoOnNote) tempoOnNote(performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -981,6 +986,102 @@ function renderChord() {
   };
 }
 
+// ========== 模块 13: 节拍器 + 节奏练习 ==========
+let _audioCtx = null;
+function clickSound(isAccent) {
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = isAccent ? 1500 : 900;
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(isAccent ? 0.5 : 0.3, ctx.currentTime + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.05);
+  } catch (e) { /* 静默：无音频上下文时只显示视觉 */ }
+}
+
+function renderMetro() {
+  const root = $('#module-metro');
+  const tempoTracker = new TempoTracker({ window: 6 });
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎵 节拍器 + 节奏练习</h2>
+    <p style="color:var(--muted);margin-bottom:14px">可视+可听节拍器帮你稳定节奏；弹奏时下方实时显示你的<b>实际速度（BPM）</b>，练习时一目了然。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>速度（BPM）</label>
+        <input type="range" id="metro-bpm" min="40" max="208" value="90"><span class="val" id="metro-bpm-val">90</span></div>
+      <div class="param-row"><label>拍号（每小节拍数）</label>
+        <select id="metro-beats">
+          <option value="2">2/4</option>
+          <option value="3">3/4</option>
+          <option value="4" selected>4/4</option>
+          <option value="6">6/8</option>
+        </select></div>
+    </div>
+
+    <div class="metro-beats" id="metro-dots"></div>
+
+    <div class="rotate-bar">
+      <button id="metro-toggle" class="big-btn">▶ 开始</button>
+      <div class="chord-stats">
+        <span>你的速度 <b id="metro-tempo">—</b> BPM</span>
+      </div>
+    </div>`;
+
+  function drawDots() {
+    const n = +$('#metro-beats').value;
+    $('#metro-dots').innerHTML = Array.from({ length: n }, (_, i) =>
+      `<div class="metro-dot ${i === 0 ? 'accent' : ''}" data-beat="${i}"></div>`).join('');
+  }
+  drawDots();
+
+  function flashDot(beat) {
+    const dots = $('#metro-dots').querySelectorAll('.metro-dot');
+    dots.forEach(d => d.classList.remove('active'));
+    const dot = dots[beat];
+    if (dot) {
+      dot.classList.add('active');
+      setTimeout(() => dot.classList.remove('active'), 120);
+    }
+  }
+
+  $('#metro-bpm').oninput = (e) => {
+    $('#metro-bpm-val').textContent = e.target.value;
+    if (metronome) metronome.setBpm(+e.target.value);
+  };
+  $('#metro-beats').onchange = (e) => {
+    drawDots();
+    if (metronome) metronome.setBeatsPerBar(+e.target.value);
+  };
+
+  $('#metro-toggle').onclick = () => {
+    if (metronome && metronome.running) {
+      metronome.stop();
+      metronome = null;
+      $('#metro-toggle').textContent = '▶ 开始';
+      $('#metro-toggle').classList.remove('running');
+      log('节拍器: 停止');
+      return;
+    }
+    metronome = new Metronome({ bpm: +$('#metro-bpm').value, beatsPerBar: +$('#metro-beats').value });
+    metronome.onTick = (info) => { clickSound(info.isAccent); flashDot(info.beat); };
+    metronome.start();
+    $('#metro-toggle').textContent = '⏸ 停止';
+    $('#metro-toggle').classList.add('running');
+    log(`节拍器: 开始（${$('#metro-bpm').value} BPM, ${$('#metro-beats').value} 拍/小节）`, 'ok');
+  };
+
+  // 演奏速度检测：每个 note-on 更新估算 BPM
+  tempoOnNote = (t) => {
+    const bpm = tempoTracker.feed(t);
+    if (bpm) $('#metro-tempo').textContent = bpm;
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -990,7 +1091,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
