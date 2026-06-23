@@ -21,6 +21,7 @@ import { INTERVALS, EarTrainingGame, intervalName } from './ear-training.js';
 import { DYNAMICS, DynamicsGame, velocityToDynamic } from './dynamics-trainer.js';
 import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 import { PracticeStats } from './practice-stats.js';
+import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -39,6 +40,7 @@ let recorderOnChange = null;      // 录制状态变化回调（模块14注册�
 let scaleOnNote = null;    // 音阶练习的 note-on 回调（模块15注册）
 let sightOnNote = null;    // 视奏闪卡的 note-on 回调（模块16注册）
 let dynOnNote = null;      // 力度练习的 note-on 回调（模块18注册）
+let rhythmTapOnNote = null; // 节奏跟拍的 note-on 回调（模块21注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -163,6 +165,8 @@ function onMidiIn(bytes) {
     if (sightOnNote) sightOnNote(m.note);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
+    // 驱动节奏跟拍（任意键当作一次敲击）
+    if (rhythmTapOnNote) rhythmTapOnNote(performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -1797,6 +1801,204 @@ function renderTransposer() {
   paint();
 }
 
+// ---------- 模块21：节奏跟拍训练 ----------
+function renderRhythmTrainer() {
+  const root = $('#module-rhythmtrain');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🥁 节奏跟拍</h2>
+    <p style="color:var(--muted);margin-bottom:14px">屏幕给一段节奏型，先有一小节预备拍（节拍器引导），然后跟着拍点在琴键上敲击（任意键都算一次敲击）。引擎按你的时间误差判 <b>完美 / 良好 / 漏拍 / 多敲</b>。没连琴可用下方"敲击"按钮或空格键。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>节奏型</label>
+        <select id="rt-pattern">${RHYTHM_PATTERNS.map(p => `<option value="${p.id}">${p.name}（${p.desc}）</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>速度 BPM</label>
+        <input id="rt-bpm" type="range" min="50" max="160" value="80" class="trans-slider" style="max-width:240px">
+        <span id="rt-bpm-val" style="color:#667eea;font-weight:700;min-width:48px">80</span>
+      </div>
+      <div class="param-row"><label>循环</label>
+        <select id="rt-loop"><option value="1">是（连续练习）</option><option value="0">否（练一遍停）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="rt-track-wrap">
+        <div id="rt-track" class="rt-track"></div>
+        <div id="rt-playhead" class="rt-playhead"></div>
+      </div>
+      <div id="rt-feedback" class="sight-feedback" style="margin-top:14px">按"开始"，听预备拍后跟着敲</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="rt-perfect" class="sight-stat-num">0</div><div class="sight-stat-lbl">完美</div></div>
+      <div class="sight-stat"><div id="rt-good" class="sight-stat-num">0</div><div class="sight-stat-lbl">良好</div></div>
+      <div class="sight-stat"><div id="rt-miss" class="sight-stat-num">0</div><div class="sight-stat-lbl">漏/多</div></div>
+      <div class="sight-stat"><div id="rt-combo" class="sight-stat-num">0</div><div class="sight-stat-lbl">连击</div></div>
+      <div class="sight-stat"><div id="rt-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">命中率</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="rt-start" class="big-btn">▶ 开始练习</button>
+      <button id="rt-tap" class="big-btn" style="background:#667eea" disabled>👆 敲击（空格）</button>
+      <span id="rt-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let trainer = null, raf = 0, ac = null, playing = false, looping = false;
+  let onsetEls = [], clickTimes = [], clickIdx = 0, barStart = 0, playEnd = 0;
+  const beatsPerBar = 4;
+
+  function ctx() {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    return ac;
+  }
+  function click(strong) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.frequency.value = strong ? 1600 : 1050;
+      o.connect(g); g.connect(c.destination);
+      const t = c.currentTime;
+      g.gain.setValueAtTime(0.28, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      o.start(t); o.stop(t + 0.06);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function patternObj() { return RHYTHM_PATTERNS.find(p => p.id === $('#rt-pattern').value); }
+  function bpm() { return +$('#rt-bpm').value; }
+
+  function drawTrack(pat) {
+    const wrap = $('#rt-track');
+    wrap.innerHTML = '';
+    // 拍线（0..4）
+    for (let b = 0; b <= beatsPerBar; b++) {
+      const ln = document.createElement('div');
+      ln.className = 'rt-beatline' + (b % beatsPerBar === 0 ? ' strong' : '');
+      ln.style.left = (b / beatsPerBar * 100) + '%';
+      wrap.appendChild(ln);
+    }
+    onsetEls = pat.beats.map((b, i) => {
+      const el = document.createElement('div');
+      el.className = 'rt-dot';
+      el.style.left = (b / beatsPerBar * 100) + '%';
+      el.dataset.i = i;
+      wrap.appendChild(el);
+      return el;
+    });
+  }
+
+  function updateStats() {
+    if (!trainer) return;
+    $('#rt-perfect').textContent = trainer.perfect;
+    $('#rt-good').textContent = trainer.good;
+    $('#rt-miss').textContent = (trainer.total - trainer.taps) + trainer.extras;
+    $('#rt-combo').textContent = trainer.combo;
+    $('#rt-acc').textContent = trainer.taps ? Math.round(trainer.accuracy * 100) + '%' : '—';
+  }
+
+  function flash(r) {
+    const fb = $('#rt-feedback');
+    if (r.rating === 'perfect') { fb.textContent = '✨ 完美！'; fb.className = 'sight-feedback ok'; }
+    else if (r.rating === 'good') { fb.textContent = '👍 良好（' + (r.errMs > 0 ? '偏晚' : '偏早') + ' ' + Math.abs(Math.round(r.errMs)) + 'ms）'; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = '✋ 多敲了'; fb.className = 'sight-feedback no'; }
+  }
+
+  function doTap() {
+    if (!playing || !trainer) return;
+    const r = trainer.tap(performance.now());
+    if (r.index >= 0 && onsetEls[r.index]) onsetEls[r.index].classList.add(r.rating);
+    flash(r);
+    updateStats();
+  }
+
+  function startOne() {
+    const pat = patternObj();
+    const bMs = 60000 / bpm();
+    drawTrack(pat);
+    trainer = new RhythmTrainer({ bpm: bpm(), pattern: pat, beatsPerBar });
+    const t0 = performance.now();
+    barStart = t0 + bMs * beatsPerBar;     // 预备拍一小节后正式开始
+    trainer.start(barStart);
+    playEnd = barStart + bMs * beatsPerBar + trainer.tol.good; // 留个尾巴收晚到的敲击
+    // 预备拍 + 正式拍的节拍器引导点
+    clickTimes = [];
+    for (let k = 0; k < beatsPerBar * 2; k++) clickTimes.push({ t: t0 + k * bMs, strong: k % beatsPerBar === 0 });
+    clickIdx = 0;
+    playing = true;
+    $('#rt-tap').disabled = false;
+    loop();
+  }
+
+  function loop() {
+    const now = performance.now();
+    while (clickIdx < clickTimes.length && now >= clickTimes[clickIdx].t) {
+      click(clickTimes[clickIdx].strong); clickIdx++;
+    }
+    // 播放头：预备拍阶段在左侧灰行进，正式拍阶段在轨道上行进
+    const ph = $('#rt-playhead');
+    if (now < barStart) {
+      const f = 1 - (barStart - now) / (60000 / bpm() * beatsPerBar);
+      ph.style.left = '0%'; ph.style.opacity = '0.35';
+      $('#rt-status').textContent = '预备…' + Math.max(1, Math.ceil((barStart - now) / (60000 / bpm())));
+    } else {
+      const f = Math.min(1, (now - barStart) / (60000 / bpm() * beatsPerBar));
+      ph.style.left = (f * 100) + '%'; ph.style.opacity = '1';
+      $('#rt-status').textContent = '跟着敲！';
+    }
+    if (now >= playEnd) { endOne(); return; }
+    raf = requestAnimationFrame(loop);
+  }
+
+  function endOne() {
+    playing = false;
+    cancelAnimationFrame(raf);
+    const s = trainer.finish();
+    updateStats();
+    recordPractice('rhythm', '节奏跟拍', s.total, s.hits, s.best);
+    const fb = $('#rt-feedback');
+    fb.className = 'sight-feedback ok';
+    fb.textContent = `本遍：完美 ${s.perfect} · 良好 ${s.good} · 漏 ${s.misses} · 多 ${s.extras} · 平均误差 ${Math.round(s.avgError)}ms`;
+    if (looping && $('#module-rhythmtrain').classList.contains('active')) {
+      setTimeout(() => { if (looping) startOne(); }, 900);
+    } else {
+      stopAll();
+    }
+  }
+
+  function stopAll() {
+    playing = false; looping = false;
+    cancelAnimationFrame(raf);
+    rhythmTapOnNote = null;
+    $('#rt-start').textContent = '▶ 开始练习';
+    $('#rt-start').classList.remove('running');
+    $('#rt-tap').disabled = true;
+    $('#rt-status').textContent = '已停止';
+    $('#rt-playhead').style.opacity = '0';
+  }
+
+  $('#rt-bpm').oninput = () => { $('#rt-bpm-val').textContent = $('#rt-bpm').value; };
+  $('#rt-pattern').onchange = () => { if (!playing) drawTrack(patternObj()); };
+  $('#rt-tap').onclick = doTap;
+  $('#rt-start').onclick = () => {
+    if (playing || looping) { stopAll(); return; }
+    looping = $('#rt-loop').value === '1';
+    rhythmTapOnNote = () => doTap();
+    $('#rt-start').textContent = '⏸ 停止练习';
+    $('#rt-start').classList.add('running');
+    ['#rt-perfect', '#rt-good', '#rt-miss', '#rt-combo'].forEach(s => $(s).textContent = '0');
+    $('#rt-acc').textContent = '—';
+    startOne();
+  };
+
+  // 空格键敲击（仅当本模块激活时）
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && $('#module-rhythmtrain').classList.contains('active') && playing) {
+      e.preventDefault();
+      if (!e.repeat) doTap();
+    }
+  });
+
+  drawTrack(patternObj());
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -1900,7 +2102,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };

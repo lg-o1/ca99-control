@@ -30,6 +30,7 @@ app/
     dynamics-trainer.js ← 力度练习（弹出目标强弱，纯逻辑，52 单元测试）
     transposer.js     ← 移调器（一键升降调，纯逻辑，74 单元测试）
     practice-stats.js ← 练习成就仪表盘（聚合各模块成绩+成就，纯逻辑，51 单元测试）
+    rhythm-trainer.js ← 节奏跟拍训练（按拍点敲击判时间误差，纯逻辑，119 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -60,7 +61,8 @@ app/
 | 👂 音程听辨 | ✅ | 电脑发声播放两个音，辨认它们的音程并点按钮作答（上行/下行/和声/混合，可选音程范围，连击/正确率） |
 | 💪 力度练习 | ✅ | 屏幕给目标力度（pp~ff），用触键强弱命中它，力度刻度条+指针实时显示你的 velocity（6 档/容差可调/连击/正确率） |
 | 🎹 移调器 | ✅ | 一键把整个键盘升/降调（-12~+12 半音），用熟悉指法弹任意调，发 CA99 移调 SysEx 让钢琴自身也移调（滑块/±按钮/预设/听感调显示） |
-| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
+| 🥁 节奏跟拍 | ✅ | 屏幕给节奏型（四分/八分/切分/附点），先一小节预备拍（节拍器引导），跟着拍点在琴键敲击，按时间误差判完美/良好/漏拍/多敲，播放头+落点高亮，平均误差统计（无琴可空格键敲） |
+| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -88,6 +90,7 @@ app/
 - 力度练习用 `dynamics-trainer.js`（纯逻辑，52 单元测试）：`DYNAMICS` 把 velocity 1..127 无缝划成 6 档（pp/p/mp/mf/f/ff），`velocityToIndex` 定位档位，`DynamicsGame` 出目标力度并按 note-on velocity 校验（容差可调，相邻档可算对），记录得分/连击/最佳/正确率，UI 用刻度色带+指针实时显示你弹的力度落点
 - 移调器用 `transposer.js`（纯逻辑，74 单元测试）：`encodeTransposeByte` 把半音 -12..12 编码成 CA99 TransposeValue 字节（0x40+半音，实测 -12→0x34/+12→0x4C），`Transposer` 跟踪移调量、`targetKeyName` 算听感调、`transposeNote` 软件移调音符；UI 用滑块/±按钮/预设切换，`CA99.buildTranspose` 发 SysEx 让钢琴自身发声也移调
 - 成就仪表盘用 `practice-stats.js`（纯逻辑，51 单元测试）：`PracticeStats` 注入存储+时钟（便于确定性测试），`record` 把每次练习成绩累加进 localStorage，算总练习/正确率/连续天数（`dayStreak` 含昨日宽限）/最佳连击，`allAchievements` 判定 10 枚徽章解锁状态；各训练模块（视奏/听辨/力度停止时、音阶完成时）调 `recordPractice()` 写入，仪表盘聚合展示柱状图/细分表/徽章墙
+- 节奏跟拍用 `rhythm-trainer.js`（纯逻辑，119 单元测试）：`beatsToOnsets` 把拍点位置按 BPM 换算成毫秒落点，`RhythmTrainer.tap(time)` 把每次敲击匹配到最近未命中落点并按时间误差 `rateError` 判完美(±55ms)/良好(±120ms)/多敲，`finish` 统计漏拍与平均误差；UI 有预备拍节拍器引导、播放头动画、落点高亮，note-on 或空格键触发敲击，完成后写入成就仪表盘
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -146,6 +149,8 @@ node js/dynamics-trainer.test.mjs
 node js/transposer.test.mjs
 # 练习成就仪表盘单元测试（51 用例）
 node js/practice-stats.test.mjs
+# 节奏跟拍训练单元测试（119 用例）
+node js/rhythm-trainer.test.mjs
 ```
 
 ## 数据生成（如需重建）

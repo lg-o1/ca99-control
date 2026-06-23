@@ -331,8 +331,29 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .trans-slider { flex: 1; max-width: 280px; accent-color: #667eea; height: 6px; }
 .trans-presets { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
 
-/* ---- 模块20：练习成就仪表盘 ---- */
-.dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+/* ---- 模块21：节奏跟拍 ---- */
+.rt-track-wrap { position: relative; height: 90px; }
+.rt-track {
+  position: relative; height: 70px; margin-top: 10px;
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+}
+.rt-beatline { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.rt-beatline.strong { width: 2px; background: rgba(102,126,234,.5); }
+.rt-dot {
+  position: absolute; top: 50%; width: 22px; height: 22px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: #667eea; opacity: .85;
+  box-shadow: 0 0 0 3px rgba(102,126,234,.18); transition: background .1s, transform .1s, box-shadow .1s;
+}
+.rt-dot.perfect { background: var(--ok); box-shadow: 0 0 12px var(--ok); transform: translate(-50%, -50%) scale(1.25); }
+.rt-dot.good { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; transform: translate(-50%, -50%) scale(1.15); }
+.rt-dot.miss { background: var(--hi2); }
+.rt-playhead {
+  position: absolute; top: 10px; height: 70px; width: 3px; left: 0; opacity: 0;
+  background: linear-gradient(180deg, #fff, #667eea); border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255,255,255,.7); pointer-events: none; transition: opacity .15s;
+}
+
+/* ---- 模块20：练习成就仪表盘 ---- */.dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .dash-card {
   background: var(--panel2); border: 1px solid var(--line); border-radius: 14px;
   padding: 16px 12px; text-align: center; transition: transform .12s, box-shadow .12s;
