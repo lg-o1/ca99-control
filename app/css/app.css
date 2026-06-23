@@ -273,6 +273,29 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sight-stat-num { font-size: 24px; font-weight: 800; color: var(--text); line-height: 1.1; }
 .sight-stat-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
+/* ---- 音程听辨 ---- */
+.ear-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ear-chip {
+  padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  background: var(--panel2); border: 2px solid var(--line); color: var(--muted);
+  cursor: pointer; transition: all .12s;
+}
+.ear-chip.on { background: var(--grad); border-color: transparent; color: #fff; }
+.ear-answers { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 18px 0; }
+.ear-ans {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 84px;
+  padding: 14px 16px; border-radius: 12px; font-size: 15px; font-weight: 700;
+  background: var(--panel2); border: 2px solid var(--line); color: var(--text);
+  cursor: pointer; transition: transform .12s, background .12s, border-color .12s, box-shadow .12s;
+}
+.ear-ans small { font-size: 11px; color: var(--muted); font-weight: 600; }
+.ear-ans:not(:disabled):hover { transform: translateY(-2px); border-color: #667eea; box-shadow: 0 6px 16px rgba(102,126,234,.3); }
+.ear-ans:disabled { cursor: default; opacity: .9; }
+.ear-ans.correct { background: rgba(74,222,128,.18); border-color: var(--ok); color: var(--ok); animation: sightPop .3s; }
+.ear-ans.correct small { color: var(--ok); }
+.ear-ans.wrong { background: rgba(248,113,113,.15); border-color: var(--hi2); color: var(--hi2); animation: sightShake .3s; }
+.ear-ans.wrong small { color: var(--hi2); }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

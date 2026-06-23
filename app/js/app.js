@@ -17,6 +17,7 @@ import { Recorder } from './recorder.js';
 import { SCALE_TYPES, buildScale, buildScaleUpDown, ScaleSession } from './scale-trainer.js';
 import { noteName as chordNoteName } from './chord-detect.js';
 import { SightReadingGame, staffPosition, needsLedger, noteLabel as sightNoteLabel } from './sight-reading.js';
+import { INTERVALS, EarTrainingGame, intervalName } from './ear-training.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -1424,6 +1425,161 @@ function renderSight() {
   };
 }
 
+// ========== 模块 17: 音程听辨 ==========
+function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+function playTone(freq, startOffset, dur, gainPeak = 0.22) {
+  try {
+    _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = _audioCtx;
+    const t0 = ctx.currentTime + startOffset;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(gainPeak, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.02);
+  } catch (e) { /* 无音频上下文时静默 */ }
+}
+function playInterval(notes, harmonic) {
+  if (!notes || notes.length < 2) return;
+  if (harmonic) {
+    playTone(midiToFreq(notes[0]), 0, 1.1);
+    playTone(midiToFreq(notes[1]), 0, 1.1);
+  } else {
+    playTone(midiToFreq(notes[0]), 0, 0.6);
+    playTone(midiToFreq(notes[1]), 0.65, 0.6);
+  }
+}
+
+function renderEar() {
+  const root = $('#module-ear');
+  let game = null;
+  const enabled = new Set([2, 3, 4, 5, 7, 12]); // 默认初学集合
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">👂 音程听辨</h2>
+    <p style="color:var(--muted);margin-bottom:14px">听电脑播放的两个音，辨认它们之间的<b>音程</b>。点对应按钮作答，弹对累计连击。无需连钢琴也能玩（用电脑发声）。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>方向</label>
+        <select id="ear-dir">
+          <option value="up">上行（先低后高）</option>
+          <option value="down">下行（先高后低）</option>
+          <option value="harmonic">和声（同时响）</option>
+          <option value="mixed">混合（随机）</option>
+        </select></div>
+      <div class="param-row" style="align-items:flex-start"><label>音程范围</label>
+        <div class="ear-chips" id="ear-chips"></div></div>
+    </div>
+
+    <div class="sight-stage">
+      <button id="ear-replay" class="big-btn" disabled>🔊 再听一次</button>
+      <div id="ear-feedback" class="sight-feedback">选好范围，按"开始"出题</div>
+    </div>
+
+    <div class="ear-answers" id="ear-answers"></div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="ear-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ear-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ear-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ear-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="ear-start" class="big-btn">▶ 开始练习</button>
+      <span id="ear-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawChips() {
+    $('#ear-chips').innerHTML = INTERVALS.filter(i => i.semis > 0).map(i =>
+      `<button class="ear-chip ${enabled.has(i.semis) ? 'on' : ''}" data-semis="${i.semis}">${i.name}</button>`).join('');
+    $('#ear-chips').querySelectorAll('.ear-chip').forEach(b => {
+      b.onclick = () => {
+        if (game) return;
+        const s = +b.dataset.semis;
+        if (enabled.has(s)) { if (enabled.size > 1) enabled.delete(s); } else enabled.add(s);
+        drawChips();
+      };
+    });
+  }
+  drawChips();
+
+  function drawAnswers() {
+    const list = INTERVALS.filter(i => enabled.has(i.semis)).sort((a, b) => a.semis - b.semis);
+    $('#ear-answers').innerHTML = list.map(i =>
+      `<button class="ear-ans" data-semis="${i.semis}" disabled>${i.name}<small>${i.short}</small></button>`).join('');
+    $('#ear-answers').querySelectorAll('.ear-ans').forEach(b => {
+      b.onclick = () => answer(+b.dataset.semis, b);
+    });
+  }
+  drawAnswers();
+
+  function refreshStats() {
+    $('#ear-score').textContent = game.score;
+    $('#ear-streak').textContent = game.streak;
+    $('#ear-best').textContent = game.best;
+    $('#ear-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  let answering = false;
+  function answer(semis, btn) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctSemis = game.current.semis;
+    const ok = game.check(semis);
+    refreshStats();
+    $('#ear-answers').querySelectorAll('.ear-ans').forEach(b => {
+      const s = +b.dataset.semis;
+      if (s === correctSemis) b.classList.add('correct');
+      else if (s === semis) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    const fb = $('#ear-feedback');
+    if (ok) { fb.textContent = `✅ 对了！是${intervalName(correctSemis)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${intervalName(correctSemis)}`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1100);
+  }
+
+  function nextQuestion() {
+    answering = false;
+    const notes = game.next();
+    $('#ear-answers').querySelectorAll('.ear-ans').forEach(b => { b.disabled = false; b.classList.remove('correct', 'wrong'); });
+    $('#ear-feedback').textContent = '🎧 听一听，选出音程';
+    $('#ear-feedback').className = 'sight-feedback';
+    playInterval(notes, game.isHarmonic());
+  }
+
+  $('#ear-replay').onclick = () => { if (game && game.current) playInterval(game.notes(), game.isHarmonic()); };
+
+  $('#ear-start').onclick = () => {
+    if (game) {
+      game = null; answering = false;
+      $('#ear-start').textContent = '▶ 开始练习';
+      $('#ear-start').classList.remove('running');
+      $('#ear-status').textContent = '已停止';
+      $('#ear-replay').disabled = true;
+      $('#ear-feedback').textContent = '选好范围，按"开始"出题';
+      $('#ear-feedback').className = 'sight-feedback';
+      drawChips(); drawAnswers();
+      log('音程听辨: 停止');
+      return;
+    }
+    game = new EarTrainingGame({ intervals: [...enabled], direction: $('#ear-dir').value });
+    $('#ear-start').textContent = '⏸ 停止练习';
+    $('#ear-start').classList.add('running');
+    $('#ear-status').textContent = '进行中…';
+    $('#ear-replay').disabled = false;
+    drawChips(); drawAnswers();
+    refreshStats();
+    nextQuestion();
+    log('音程听辨: 开始', 'ok');
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -1433,7 +1589,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
