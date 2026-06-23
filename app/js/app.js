@@ -7,15 +7,46 @@ import * as CA99 from './ca99.js';
 import { RotateEngine, diversePool } from './auto-rotate.js';
 import { MorphEngine } from './vt-morph.js';
 import { VelocityRouter, splitZones } from './velocity-switch.js';
+import { VelVtLink } from './vel-vt-link.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
 let rotateEngine = null;   // 自动换音色引擎（模块6使用，提前声明避免 TDZ）
 let morphEngine = null;    // VT 渐变引擎（模块7使用，提前声明避免 TDZ）
 let velocityRouter = null; // 力度换音色路由（模块8使用，提前声明避免 TDZ）
+let velVtLink = null;      // 力度→VT 联动（模块9使用，提前声明避免 TDZ）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
+
+/**
+ * 提取「连续数值型」VT 参数（v1=0x50 且恰好 2 条值 = min/max 范围）。
+ * 例：StringResonance ['Off','127'] / DamperResonance ['Off','10']。
+ * 排除枚举型（Voicing 多条离散模式）和 PerNote 命令（1 条）。
+ * @returns {Array<{name:string, v2:number, min:number, max:number}>}
+ */
+function continuousVtParams() {
+  const parseRange = (v) => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    if (/^off$/i.test(s)) return 0;
+    const n = parseInt(s, 10);
+    return Number.isNaN(n) ? null : n;
+  };
+  const vtEntries = SYSEX.filter(e => CA99.hex(e.v1) === 0x50);
+  const byParam = {};
+  for (const e of vtEntries) (byParam[e.parameter] ||= []).push(e);
+  return Object.entries(byParam)
+    .filter(([, entries]) => entries.length === 2)
+    .map(([pname, entries]) => ({
+      name: pname,
+      v2: CA99.hex(entries[0].v2),
+      min: parseRange(entries[0].value),
+      max: parseRange(entries[1].value),
+    }))
+    .filter(c => c.min !== null && c.max !== null && c.min >= 0 && c.max > c.min);
+}
+
 function log(msg, cls = '') {
   const el = $('#log');
   const line = document.createElement('div');
@@ -75,6 +106,8 @@ function onMidiIn(bytes) {
     if (rotateEngine && rotateEngine.running && rotateEngine.mode === 'beat') rotateEngine.tick();
     // 驱动力度感应换音色
     if (velocityRouter) velocityRouter.feed(m.velocity);
+    // 驱动力度→VT 联动
+    if (velVtLink) velVtLink.feed(m.velocity);
   }
   else if (m.type === 'noteoff') addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
   else if (m.type === 'cc') addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -334,28 +367,7 @@ function renderAutoRotate() {
 // ========== 模块 7: VT 参数渐变器（CA99 独有） ==========
 function renderMorph() {
   const root = $('#module-morph');
-  // 取「连续数值型」VT 参数：v1=0x50 且恰好 2 条（首=最小值标签，次=最大值标签）
-  // 例：StringResonance ['Off','127'] / DamperResonance ['Off','10']。
-  // 排除枚举型（Voicing 7 条等离散模式）和 PerNote 命令（1 条）。
-  const parseRange = (v) => {
-    if (v == null) return null;
-    const s = String(v).trim();
-    if (/^off$/i.test(s)) return 0;
-    const n = parseInt(s, 10);
-    return Number.isNaN(n) ? null : n;
-  };
-  const vtEntries = SYSEX.filter(e => CA99.hex(e.v1) === 0x50);
-  const byParam = {};
-  for (const e of vtEntries) (byParam[e.parameter] ||= []).push(e);
-  const continuous = Object.entries(byParam)
-    .filter(([, entries]) => entries.length === 2)
-    .map(([pname, entries]) => {
-      const min = parseRange(entries[0].value);
-      const max = parseRange(entries[1].value);
-      return { name: pname, v2: CA99.hex(entries[0].v2), min, max };
-    })
-    // 只保留 0..max 的正区间（可直接映射到 0-127 数据字节）
-    .filter(c => c.min !== null && c.max !== null && c.min >= 0 && c.max > c.min);
+  const continuous = continuousVtParams();
 
   // 默认选最具"塑造感"的共鸣/击弦参数
   const prefer = ['StringResonance', 'DamperResonance', 'KeyAttackNoise', 'CabinetResonance', 'DamperNoise'];
@@ -553,6 +565,102 @@ function renderVelocity() {
   render();
 }
 
+// ========== 模块 9: 力度→VT 联动 ==========
+function renderVelVt() {
+  const root = $('#module-velvt');
+  const continuous = continuousVtParams();
+
+  // 默认联动最有"表现力"的参数：StringResonance（越重越强）+ DamperNoise
+  const prefer = ['StringResonance', 'DamperNoise', 'KeyAttackNoise', 'CabinetResonance'];
+  const defaults = new Set();
+  for (const p of prefer) {
+    if (continuous.find(c => c.name === p)) defaults.add(p);
+    if (defaults.size >= 2) break;
+  }
+  if (defaults.size === 0) continuous.slice(0, 2).forEach(c => defaults.add(c.name));
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">💫 力度 → VT 联动</h2>
+    <p style="color:var(--muted);margin-bottom:14px">弹奏力度<b>实时驱动</b> VT 参数：弹得越重，击弦共鸣/噪声越强，音色随手而动。需先选好 <b>MIDI 输入</b>端口。<b>CA99 独有表现力玩法</b> ✨</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>平滑度</label>
+        <input type="range" id="vv-smooth" min="0" max="90" value="50"><span class="val" id="vv-smooth-val">50%</span></div>
+      <p style="color:var(--muted);font-size:12px;margin:0">平滑度越高，参数跟随力度变化越柔和（不抖动）；越低越灵敏。</p>
+    </div>
+
+    <h3 style="margin:16px 0 8px">联动通道（勾选要随力度变化的 VT 参数）</h3>
+    <div id="vv-lanes"></div>
+
+    <div class="rotate-bar">
+      <button id="vv-toggle" class="big-btn">▶ 启用</button>
+      <span id="vv-status" style="color:var(--muted)">未启用</span>
+    </div>`;
+
+  const lanesBox = $('#vv-lanes');
+  lanesBox.innerHTML = continuous.map(c => `
+    <div class="card-panel" style="margin-bottom:8px" data-v2="${c.v2}" data-min="${c.min}" data-max="${c.max}">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" class="vv-on" ${defaults.has(c.name) ? 'checked' : ''}>
+        <b>${c.name}</b> <span style="color:var(--muted);font-size:12px">(${c.min}–${c.max})</span></label>
+      <div class="param-row"><label>映射方向</label>
+        <select class="vv-dir">
+          <option value="0">越重越强（${c.min}→${c.max}）</option>
+          <option value="1">越重越弱（${c.max}→${c.min}）</option>
+        </select></div>
+    </div>`).join('') || '<p style="color:var(--muted)">无可用的连续 VT 参数</p>';
+
+  $('#vv-smooth').oninput = (e) => {
+    $('#vv-smooth-val').textContent = e.target.value + '%';
+    if (velVtLink) velVtLink.smooth = +e.target.value / 100;
+  };
+  lanesBox.querySelectorAll('.vv-on, .vv-dir').forEach(el => {
+    el.onchange = () => { if (velVtLink) startLink(); };
+  });
+
+  function collectLanes() {
+    const lanes = [];
+    lanesBox.querySelectorAll('[data-v2]').forEach(box => {
+      if (box.querySelector('.vv-on').checked) {
+        lanes.push({
+          v2: +box.dataset.v2,
+          outMin: +box.dataset.min,
+          outMax: +box.dataset.max,
+          invert: box.querySelector('.vv-dir').value === '1',
+        });
+      }
+    });
+    return lanes;
+  }
+
+  function startLink() {
+    const lanes = collectLanes();
+    if (!lanes.length) { log('请至少勾选一个联动通道', 'err'); return false; }
+    velVtLink = new VelVtLink({ lanes, smooth: +$('#vv-smooth').value / 100 });
+    velVtLink.onApply = (v2, value) => {
+      send(CA99.buildSysEx(0x10, 0x50, v2, CA99.PART.System, [value]));
+      $('#vv-status').textContent = `运行中（${lanes.length} 通道）`;
+    };
+    return true;
+  }
+
+  $('#vv-toggle').onclick = () => {
+    if (velVtLink) {
+      velVtLink = null;
+      $('#vv-toggle').textContent = '▶ 启用';
+      $('#vv-toggle').classList.remove('running');
+      $('#vv-status').textContent = '已停用';
+      log('力度→VT 联动: 停用');
+    } else {
+      if (!startLink()) return;
+      $('#vv-toggle').textContent = '⏸ 停用';
+      $('#vv-toggle').classList.add('running');
+      $('#vv-status').textContent = '运行中（等待弹奏…）';
+      log(`力度→VT 联动: 启用（${collectLanes().length} 通道）`, 'ok');
+    }
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -562,11 +670,14 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
   $('#input-select').onchange = (e) => { if (e.target.value) midi.selectInput(e.target.value); };
   log('App 已加载。点"连接"开始（需 Chrome/Edge + 已连接 CA99）。');
+  // 调试钩子：无真机时可在控制台 window.__feedMidi(note, velocity) 模拟弹奏，
+  // 用于测试力度感应/联动等依赖 MIDI 输入的模块。
+  window.__feedMidi = (note = 60, velocity = 64) => onMidiIn([0x90, note & 0x7f, velocity & 0x7f]);
 }
 main();
