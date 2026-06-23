@@ -10,6 +10,8 @@ import { VelocityRouter, splitZones } from './velocity-switch.js';
 import { VelVtLink } from './vel-vt-link.js';
 import { PedalController, PEDAL_CC } from './pedal-control.js';
 import { PresetStore } from './preset-store.js';
+import { describeNotes, detectChord } from './chord-detect.js';
+import { HeldNotes, ChordChallenge } from './chord-trainer.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -19,6 +21,8 @@ let velocityRouter = null; // 力度换音色路由（模块8使用，提前声�
 let velVtLink = null;      // 力度→VT 联动（模块9使用，提前声明避免 TDZ）
 let pedalController = null;// 踏板控制扩展（模块10使用，提前声明避免 TDZ）
 let presetStore = null;    // 演出预设存储（模块11使用，提前声明避免 TDZ）
+const heldNotes = new HeldNotes(); // 当前按下的音符（模块12和弦练习用）
+let chordOnNotesChanged = null;    // 和弦面板的音符变化回调（模块12注册）
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -112,8 +116,15 @@ function onMidiIn(bytes) {
     if (velocityRouter) velocityRouter.feed(m.velocity);
     // 驱动力度→VT 联动
     if (velVtLink) velVtLink.feed(m.velocity);
+    // 追踪按下音符，驱动和弦练习
+    heldNotes.on(m.note);
+    if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
   }
-  else if (m.type === 'noteoff') addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
+  else if (m.type === 'noteoff') {
+    addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
+    heldNotes.off(m.note);
+    if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
+  }
   else if (m.type === 'cc') {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
     // 驱动踏板控制扩展
@@ -889,6 +900,87 @@ function renderPresets() {
   drawList();
 }
 
+// ========== 模块 12: 和弦练习 ==========
+function renderChord() {
+  const root = $('#module-chord');
+  let challenge = null;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎓 和弦练习</h2>
+    <p style="color:var(--muted);margin-bottom:14px">在钢琴上弹和弦，下方实时显示和弦名。开启挑战模式，按提示弹出和弦闯关。需先选好 <b>MIDI 输入</b>端口。</p>
+
+    <div class="chord-display card-panel">
+      <div style="color:var(--muted);font-size:13px">当前弹奏</div>
+      <div id="chord-now" class="chord-now">—</div>
+      <div id="chord-detail" style="color:var(--muted);font-size:13px;min-height:18px"></div>
+    </div>
+
+    <h3 style="margin:18px 0 10px">挑战模式</h3>
+    <div class="card-panel">
+      <div class="rotate-bar" style="margin:0">
+        <button id="chord-start" class="big-btn">▶ 开始挑战</button>
+        <div class="chord-stats">
+          <span>得分 <b id="chord-score">0</b></span>
+          <span>连击 <b id="chord-streak">0</b></span>
+          <span>最佳 <b id="chord-best">0</b></span>
+        </div>
+      </div>
+      <div id="chord-quiz" style="display:none;margin-top:16px;text-align:center">
+        <div style="color:var(--muted);font-size:13px">请弹出</div>
+        <div id="chord-target" class="chord-target">—</div>
+        <div id="chord-feedback" style="min-height:24px;font-weight:700"></div>
+      </div>
+    </div>`;
+
+  const nowEl = $('#chord-now'), detailEl = $('#chord-detail');
+
+  // 实时显示当前按下的和弦/音符
+  chordOnNotesChanged = (notes) => {
+    if (!notes.length) { nowEl.textContent = '—'; detailEl.textContent = ''; return; }
+    nowEl.textContent = describeNotes(notes) || '—';
+    const chord = detectChord(notes);
+    detailEl.textContent = chord ? `${chord.name}${chord.inversion ? ' · 转位（低音 ' + chord.bass + '）' : ''}` : `${notes.length} 个音`;
+    // 挑战判定
+    if (challenge && challenge.current) {
+      if (challenge.check(notes)) {
+        flashFeedback(true);
+      }
+    }
+  };
+
+  function flashFeedback(okk) {
+    const fb = $('#chord-feedback');
+    if (okk) { fb.textContent = '✓ 正确！'; fb.style.color = 'var(--ok)'; }
+    setTimeout(() => { if (fb) fb.textContent = ''; }, 700);
+  }
+
+  function paintStats() {
+    $('#chord-score').textContent = challenge.score;
+    $('#chord-streak').textContent = challenge.streak;
+    $('#chord-best').textContent = challenge.best;
+  }
+
+  $('#chord-start').onclick = () => {
+    if (challenge) {
+      challenge = null;
+      $('#chord-start').textContent = '▶ 开始挑战';
+      $('#chord-start').classList.remove('running');
+      $('#chord-quiz').style.display = 'none';
+      log('和弦挑战: 结束');
+      return;
+    }
+    challenge = new ChordChallenge();
+    challenge.onCorrect = () => paintStats();
+    challenge.onNew = (q) => { $('#chord-target').textContent = `${q.root} ${q.label}`; };
+    challenge.next();
+    paintStats();
+    $('#chord-start').textContent = '⏸ 结束挑战';
+    $('#chord-start').classList.add('running');
+    $('#chord-quiz').style.display = 'block';
+    log('和弦挑战: 开始', 'ok');
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -898,7 +990,7 @@ function switchModule(name) {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
@@ -908,5 +1000,6 @@ async function main() {
   // 用于测试力度感应/联动等依赖 MIDI 输入的模块。
   window.__feedMidi = (note = 60, velocity = 64) => onMidiIn([0x90, note & 0x7f, velocity & 0x7f]);
   window.__feedCC = (controller = 64, value = 127) => onMidiIn([0xB0, controller & 0x7f, value & 0x7f]);
+  window.__feedNoteOff = (note = 60) => onMidiIn([0x80, note & 0x7f, 0]);
 }
 main();
