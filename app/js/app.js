@@ -25,6 +25,7 @@ import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
 import { BeatStability } from './beat-stability.js';
+import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -47,6 +48,7 @@ let rhythmTapOnNote = null; // 节奏跟拍的 note-on 回调（模块21注册�
 let melodyOnNote = null;    // 旋律听写的 note-on 回调（模块22注册）
 let chordProgOnNotesChanged = null; // 和弦进行练习的音符变化回调（模块23注册）
 let beatTapOnNote = null;   // 节拍稳定度的 note-on 回调（模块24注册）
+let handsOnNote = null;     // 双手协调的 note-on 回调（模块25注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -179,6 +181,8 @@ function onMidiIn(bytes) {
     if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
     // 驱动节拍稳定度分析
     if (beatTapOnNote) beatTapOnNote(performance.now());
+    // 驱动双手协调练习
+    if (handsOnNote) handsOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -2508,6 +2512,146 @@ function renderBeatStability() {
   };
 }
 
+// ---------- 模块25：双手协调练习 ----------
+function renderHandsSync() {
+  const root = $('#module-hands');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🙌 双手协调练习</h2>
+    <p style="color:var(--muted);margin-bottom:14px">每拍同时弹一个低音区（左手）和一个高音区（右手）的音，引擎按音高分手，测量两手落键的时间差（越接近 0 越整齐），给出协调度评分。适合练双手齐奏的整齐度。没连琴可点下方"左手/右手"按钮模拟。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>左右手分割</label>
+        <select id="hs-split">
+          <option value="60" selected>C4（中央 C）以下为左手</option>
+          <option value="64">E4 以下为左手</option>
+          <option value="55">G3 以下为左手</option>
+        </select>
+      </div>
+      <div class="param-row"><label>目标拍数</label>
+        <select id="hs-beats"><option value="8" selected>8 拍</option><option value="12">12 拍</option><option value="16">16 拍</option><option value="0">不限</option></select>
+      </div>
+      <div class="param-row"><label>整齐严格度</label>
+        <select id="hs-strict"><option value="50">宽松（±50ms 满分）</option><option value="30" selected>标准（±30ms 满分）</option><option value="18">严格（±18ms 满分）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div id="hs-gauge" class="hs-gauge"><div id="hs-gauge-fill" class="hs-gauge-fill"></div><div id="hs-gauge-num" class="hs-gauge-num">—</div></div>
+      <div id="hs-feedback" class="sight-feedback" style="margin-top:12px">按"开始"后，每拍双手各弹一个音</div>
+      <div class="hs-hands">
+        <button id="hs-left" class="hs-hand-btn">👈 左手（低音）</button>
+        <button id="hs-right" class="hs-hand-btn">右手（高音）👉</button>
+      </div>
+      <div id="hs-beatdots" class="hs-beatdots"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="hs-avg" class="sight-stat-num">—</div><div class="sight-stat-lbl">平均协调</div></div>
+      <div class="sight-stat"><div id="hs-good" class="sight-stat-num">0</div><div class="sight-stat-lbl">双手到齐</div></div>
+      <div class="sight-stat"><div id="hs-streak" class="sight-stat-num">0</div><div class="sight-stat-lbl">连击</div></div>
+      <div class="sight-stat"><div id="hs-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="hs-start" class="big-btn">▶ 开始练习</button>
+      <span id="hs-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let hs = null;
+  const beatdots = $('#hs-beatdots');
+
+  function setGauge(score) {
+    const fill = $('#hs-gauge-fill'); const num = $('#hs-gauge-num');
+    if (score == null) { fill.style.height = '0%'; num.textContent = '—'; num.style.color = 'var(--muted)'; return; }
+    fill.style.height = score + '%';
+    fill.style.background = score >= 80 ? 'var(--ok)' : score >= 50 ? '#facc15' : 'var(--hi2)';
+    num.textContent = score;
+    num.style.color = score >= 80 ? 'var(--ok)' : score >= 50 ? '#facc15' : 'var(--hi2)';
+  }
+
+  function addBeatDot(result) {
+    const d = document.createElement('div');
+    d.className = 'hs-bdot ' + (result.bothHands ? (result.score >= 80 ? 'great' : result.score >= 50 ? 'okk' : 'loose') : 'miss');
+    d.title = result.bothHands ? `${result.score} 分 · 时差 ${Math.round(result.spread)}ms` : '缺一只手';
+    beatdots.appendChild(d);
+  }
+
+  function refresh() {
+    if (!hs) return;
+    $('#hs-avg').textContent = hs.attempts ? hs.avgScore : '—';
+    $('#hs-good').textContent = hs.goodBeats;
+    $('#hs-streak').textContent = hs.streak;
+    $('#hs-best').textContent = hs.best;
+  }
+
+  function onBeat(result) {
+    setGauge(result.bothHands ? result.score : 0);
+    const fb = $('#hs-feedback');
+    if (!result.bothHands) {
+      fb.className = 'sight-feedback no';
+      fb.textContent = result.hasLeft ? '❌ 只弹了左手，右手呢？' : '❌ 只弹了右手，左手呢？';
+    } else if (result.score >= 80) {
+      fb.className = 'sight-feedback ok';
+      fb.textContent = `✅ 很整齐！时差仅 ${Math.round(result.spread)}ms`;
+    } else if (result.score >= 50) {
+      fb.className = 'sight-feedback';
+      fb.textContent = `👍 还行，时差 ${Math.round(result.spread)}ms，再齐一点`;
+    } else {
+      fb.className = 'sight-feedback no';
+      fb.textContent = `⚠ 两手差 ${Math.round(result.spread)}ms，努力同步`;
+    }
+    addBeatDot(result);
+    refresh();
+  }
+
+  function feed(note) {
+    if (!hs) return;
+    hs.feed(note, performance.now());
+  }
+
+  function stop() {
+    if (hs) {
+      hs.finish();
+      refresh();
+      if (hs.attempts) recordPractice('hands', '双手协调', hs.attempts, hs.goodBeats, hs.best);
+    }
+    hs = null; handsOnNote = null;
+    $('#hs-start').textContent = '▶ 开始练习';
+    $('#hs-start').classList.remove('running');
+    $('#hs-status').textContent = '已停止';
+  }
+
+  $('#hs-left').onclick = () => feed(+$('#hs-split').value - 12);
+  $('#hs-right').onclick = () => feed(+$('#hs-split').value + 12);
+  $('#hs-start').onclick = () => {
+    if (hs) { stop(); return; }
+    const beats = +$('#hs-beats').value;
+    hs = new HandsSync({
+      split: +$('#hs-split').value,
+      beats,
+      tightMs: +$('#hs-strict').value,
+    });
+    hs.onBeat = onBeat;
+    hs.onComplete = (info) => {
+      $('#hs-feedback').className = 'sight-feedback ok';
+      $('#hs-feedback').textContent = `🎉 完成 ${info.attempts} 拍！平均协调 ${info.avgScore} 分，双手到齐 ${info.goodBeats} 拍`;
+      stop();
+    };
+    handsOnNote = (note) => feed(note);
+    beatdots.innerHTML = '';
+    setGauge(null);
+    $('#hs-start').textContent = '⏸ 停止练习';
+    $('#hs-start').classList.add('running');
+    $('#hs-status').textContent = '练习中：每拍双手各一音';
+    $('#hs-feedback').className = 'sight-feedback';
+    $('#hs-feedback').textContent = '🎧 每拍同时弹低音 + 高音';
+    refresh();
+  };
+
+  setGauge(null);
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -2639,7 +2783,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;

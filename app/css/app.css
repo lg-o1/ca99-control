@@ -459,6 +459,21 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .bs-bars { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 70px; margin-top: 16px; }
 .bs-bar { width: 8px; border-radius: 3px 3px 0 0; transition: height .1s; }
 
+/* 模块25：双手协调 */
+.hs-gauge { position: relative; width: 120px; height: 120px; margin: 4px auto 0; border-radius: 50%; background: var(--panel2); border: 3px solid var(--line); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.hs-gauge-fill { position: absolute; left: 0; bottom: 0; width: 100%; height: 0%; background: var(--ok); transition: height .25s, background .25s; opacity: .28; }
+.hs-gauge-num { position: relative; font-size: 34px; font-weight: 800; }
+.hs-hands { display: flex; gap: 12px; justify-content: center; margin-top: 14px; }
+.hs-hand-btn { flex: 1; max-width: 220px; padding: 16px; font-size: 15px; font-weight: 700; border: 2px solid var(--line); border-radius: 12px; background: var(--panel2); color: var(--text); cursor: pointer; transition: transform .08s, border-color .15s, background .15s; }
+.hs-hand-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.hs-hand-btn:active { transform: scale(.96); background: var(--grad); color: #fff; }
+.hs-beatdots { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 16px; min-height: 16px; }
+.hs-bdot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); transition: transform .12s; }
+.hs-bdot.great { background: var(--ok); }
+.hs-bdot.okk { background: #facc15; }
+.hs-bdot.loose { background: var(--hi2); }
+.hs-bdot.miss { background: var(--line); border: 2px solid var(--hi2); }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 60px; }
