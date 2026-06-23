@@ -23,9 +23,17 @@ reference/                  ← 所有调研与逆向成果（参考资料）
     sound.json (5.3MB)      ← 7613 音色（346 为 CA99）
     vt.json (106KB)         ← VT 参数定义
     rhythm.json             ← 节奏表
+    music.json (1.1MB)      ← 内置曲目元数据
     kawaipiano.js (173KB)   ← 官方 getMidi() 组帧函数
     kawaipiano.dev.js (6.5MB) ← 完整 webpack bundle（含全部逻辑）
+    kawaipianojs-lib/       ← 官方核心控制库 JS（开发 PWA 直接参考）
+      kwm/bluetoothmidi.js  ← 官方蓝牙 MIDI 实现
+      kwm/kwm.js, music.js, rhythm.js ← 核心/曲目/节奏逻辑
+      midi/midimanager.js, webmidi.js ← MIDI 管理 + Web MIDI 封装
+      worker/*.js           ← 后台 worker（录音等）
     其他 JSON 数据表
+  midi/                     ← 1543 个内置 SMF MIDI（解密自 Kawai-default.xxx）
+                              示范曲/Concert Magic/Lesson/音阶和弦琶音练习
   research/                 ← browserctl 社区调研汇总
     app-arch-summary.md     ← 架构选型（PWA+WebMIDI 最优）
     midi-light-summary.md   ← MIDI/音频→灯光项目
