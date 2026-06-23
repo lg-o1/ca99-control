@@ -1,0 +1,40 @@
+
+#parent-concertMagic{
+    top: 0%;
+    height: 100%;
+    width: 100%;
+    background-color: var(--CA-black1);
+    color: var(--CA-black2);
+    margin: 0;
+    padding: 0px 0px;
+    border-color: var(--CA-black2);
+    border-width: 0px;
+    border-radius: 0px;
+}
+
+.cm_indicator{
+    display: inline-block;
+    font-size: 0px;
+    margin: 0px 0px;
+    padding: 0px;
+    position: absolute;
+    left: 0%;
+    bottom: 0%;
+    width: 20%;
+    height: 100%;
+    vertical-align: bottom;
+    z-index: 1;
+}
+
+#cmMask{
+    position: absolute;
+    top: 0%;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0px 0px;
+    border-width: 0px;
+    border-radius: 0px;
+    background: linear-gradient(to bottom,#2d2c2cFF,#00000000,#2d2c2cFF);
+    z-index: 100;
+}

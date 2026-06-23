@@ -1,0 +1,200 @@
+@charset "utf-8";
+
+.sounds__category {
+  position: relative;
+  top: 80px;
+  /* top: calc(80px + constant(safe-area-inset-top));  iOSノッチ対策
+  top: calc(80px + env(safe-area-inset-top)); iOSノッチ対策 */
+  height: 16.75vh;
+  scroll-snap-type: x mandatory;
+  display: flex;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 10;
+}
+
+.sounds__card {
+  position: relative;
+  bottom: 0;
+  width: calc(16.75vh * 456 / 160);
+  max-width: 75vw;
+  height: 16.75vh;
+  margin-left: 2%;
+  margin-right: 2%;
+
+  background-position: center center;
+  background-size: 101%;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  display: inline-block;
+  scroll-snap-align: center;
+  flex: none;
+}
+.sounds__card-0 {
+  background-image: url("../img/Sounds_cards_1_allsounds.png");
+}
+.sounds__card-1 {
+  background-image: url("../img/Sounds_cards_8_user.png");
+}
+.sounds__card-2 {
+  background-image: url("../img/Sounds_cards_2_favorite.png");
+}
+.sounds__card-3 {
+  background-image: url("../img/Sounds_cards_3_recentlyplayed.png");
+}
+.sounds__card-4 {
+  background-image: url("../img/Sounds_cards_4_reommended.png");
+}
+.sounds__card-5 {
+  background-image: url("../img/Sounds_cards_5_classic.png");
+}
+.sounds__card-6 {
+  background-image: url("../img/Sounds_cards_6_jazz.png");
+}
+.sounds__card-7 {
+  background-image: url("../img/Sounds_cards_7_pop.png");
+}
+.sounds__card-8 {
+  background-image: url("../img/Sounds_cards_9_pianostyle.png");
+}
+.sounds__card-9 {
+  background-image: url("../img/Sounds_cards_10_ensemble.png");
+}
+.sounds__card-10 {
+  background-image: url("../img/Sounds_cards_11_historical.png");
+}
+.sounds__card-11 {
+  background-image: url("../img/Sounds_cards_12_relax.png");
+}
+.sounds__card-12 {
+  background-image: url("../img/Sounds_cards_13_holiday.png");
+}
+.sounds__card-13 {
+  background-image: url("../img/Sounds_cards_14_party.png");
+}
+.sounds__card-14 {
+  background-image: url("../img/Sounds_cards_15_chilout.png");
+}
+
+.sounds__card-0--hr {
+  background-image: url("../img/Sounds_cards_1_allsounds_hr.png");
+}
+.sounds__card-1--hr {
+  background-image: url("../img/Sounds_cards_8_user_hr.png");
+}
+.sounds__card-2--hr {
+  background-image: url("../img/Sounds_cards_2_favorite_hr.png");
+}
+.sounds__card-3--hr {
+  background-image: url("../img/Sounds_cards_3_recentlyplayed_hr.png");
+}
+.sounds__card-4--hr {
+  background-image: url("../img/Sounds_cards_4_reommended_hr.png");
+}
+.sounds__card-5--hr {
+  background-image: url("../img/Sounds_cards_5_classic_hr.png");
+}
+.sounds__card-6--hr {
+  background-image: url("../img/Sounds_cards_6_jazz_hr.png");
+}
+.sounds__card-7--hr {
+  background-image: url("../img/Sounds_cards_7_pop_hr.png");
+}
+.sounds__card-8--hr {
+  background-image: url("../img/Sounds_cards_9_pianostyle_hr.png");
+}
+.sounds__card-9--hr {
+  background-image: url("../img/Sounds_cards_10_ensemble_hr.png");
+}
+.sounds__card-10--hr {
+  background-image: url("../img/Sounds_cards_11_historical_hr.png");
+}
+.sounds__card-11--hr {
+  background-image: url("../img/Sounds_cards_12_relax_hr.png");
+}
+.sounds__card-12--hr {
+  background-image: url("../img/Sounds_cards_13_holiday_hr.png");
+}
+.sounds__card-13--hr {
+  background-image: url("../img/Sounds_cards_14_party_hr.png");
+}
+.sounds__card-14--hr {
+  background-image: url("../img/Sounds_cards_15_chilout_hr.png");
+}
+
+.sounds__card-spacer {
+  height: 100%;
+  width: calc( calc( 100vw - calc(16.75vh * 456 / 160) ) / 2 - 2%);
+  /* (画面横幅 - カード横幅) / 2 - カードマージン */
+  background-color: transparent;
+  display: inline-block;
+  flex: none;        
+}
+
+.sounds__selection {
+  position: fixed;
+  left: 0;
+  top: 68px;
+  width: 100%;
+  height: calc(100% - 164px);
+  z-index: 0;
+}
+.sounds__list {
+  position: absolute;
+  right: 0;
+  top: calc(24px + 16.75vh);
+  width: 100%;
+  bottom: 0px;
+  padding-bottom: 100px;
+  background-color: var(--CA-black2);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  transition: width 200ms 0s ease;
+}
+.sounds__list--narrow {
+  width: calc(100% - 60px);
+  transition: width 200ms 0s ease;
+}
+
+.sounds__type-select {
+  position: absolute;
+  left: -60px;
+  top: calc(24px + 16.75vh);
+  width: 60px;
+  bottom: 0px;
+  padding-bottom: 51px;
+  background-color: var(--CA-black3);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  transition: left 200ms 0s ease;
+}
+.sounds__type-select--is-show {
+  left: 0;
+  transition: left 200ms 0s ease;
+}
+.sounds__type-select__btn {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  padding: 0;
+  color: var(--CA-white-dark) !important;
+}
+.sounds__type-select__btn--selected {
+  color: var(--CA-green-light) !important;
+}
+.sounds__type-select__btn-icon {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-content: center;
+  font-size: 24px !important;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+}
+.sounds__type-select__btn-divider {
+  margin: 0;
+  border: 0;
+  border-width: 0;
+  height: 1px;
+  background-color: var(--CA-black4);
+}

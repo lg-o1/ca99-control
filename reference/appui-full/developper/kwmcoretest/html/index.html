@@ -1,0 +1,247 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+  
+  <head>
+    <meta charset="UTF-8" />
+    <title>KWMcore Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="../../../lib/material-icons/material-icons.css">
+    <link rel="stylesheet" href="../../../lib/mdc/material-components-web.min.css">
+    <!-- <link rel="stylesheet" href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css"> -->
+    <link rel="stylesheet" href="../css/app.css">
+  </head>
+  
+  <body>
+    <div id="app">
+      <!--　HEADER　-->
+      <header class="mdc-top-app-bar mdc-top-app-bar--fixed mdc-elevation--z5" id="HEADER">
+        <div class="mdc-top-app-bar__row">
+          <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-start">
+            <span id="header_title">KWMcore Test</span>
+          </section>
+        </div>
+      </header>
+      <!--　CONTENTS　-->
+      <!-- 戻るボタン -->
+      <transition>
+        <button class="mdc-icon-button material-icons" id="BackButton" v-show="UI.BackButton" @click="back">navigate_before</button>
+      </transition>
+
+      <!-- テスト画面トップ -->
+      <transition name="slide-to-left">
+          <div v-show="Window.Top" class="window-common">
+            <ul class="mdc-list mdc-list--two-line" aria-orientation="vertical">
+              <li class="mdc-list-item" data-mdc-auto-init="MDCRipple" @click="open('DeviceTest')">
+                <span class="mdc-list-item__text">
+                  <span class="mdc-list-item__primary-text">デバイス接続確認テスト</span>
+                  <span class="mdc-list-item__secondary-text"></span>
+                </span>
+              </li>
+              <li class="mdc-list-item" data-mdc-auto-init="MDCRipple" @click="open('MidiTest')">
+                <span class="mdc-list-item__text">
+                  <span class="mdc-list-item__primary-text">MIDI送受信テスト</span>
+                  <span class="mdc-list-item__secondary-text"></span>
+                </span>
+              </li>
+              <li class="mdc-list-item" data-mdc-auto-init="MDCRipple" @click="open('JsonTest')">
+                <span class="mdc-list-item__text">
+                  <span class="mdc-list-item__primary-text">Jsonセーブ/ロードテスト</span>
+                  <span class="mdc-list-item__secondary-text"></span>
+                </span>
+              </li>
+              <li class="mdc-list-item" data-mdc-auto-init="MDCRipple" @click="open('UiUpdateTest')">
+                  <span class="mdc-list-item__text">
+                    <span class="mdc-list-item__primary-text">UIアップデート</span>
+                    <span class="mdc-list-item__secondary-text"></span>
+                  </span>
+              </li>
+              <li class="mdc-list-item" data-mdc-auto-init="MDCRipple" @click="open('BtUpdateTest')">
+                <span class="mdc-list-item__text">
+                  <span class="mdc-list-item__primary-text">BluetoothMIDIアップデート</span>
+                  <span class="mdc-list-item__secondary-text"></span>
+                </span>
+              </li>
+              <li class="mdc-list-item" data-mdc-auto-init="MDCRipple" @click="open('EmbededdModeTest')">
+                <span class="mdc-list-item__text">
+                  <span class="mdc-list-item__primary-text">組込Androidモードチェック</span>
+                  <span class="mdc-list-item__secondary-text"></span>
+                </span>
+              </li>
+            </ul>
+           </div>
+        </transition>
+
+
+
+      <!-- デバイス接続確認テスト -->
+      <transition name="slide-from-right">
+        <div v-show="Window.DeviceTest" class="window-common">
+          <p>MIDI API : {{MIDI.API.type}}</p>
+          <p>KWM.isActive : {{KWM.isActive}}</p>
+          <p>KWM.devices : {{KWM.devices}}</p>
+          <p>KWM.isBleMidiWindowShown : {{KWM.isBleMidiWindowShown}}</p>
+          <h3>MIDIデバイス選択</h3>
+          <select v-model="selectedDeviceId">
+            <option value="null">Connect all</option>
+            <option v-for="(item, index) in MIDI.DEVICE.list" v-bind:value="item.id">
+              {{item.name}}
+            </option>
+          </select>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest1">
+            <span class="mdc-button__label">KWM.openBleMidiWindow</span>
+          </button>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest2">
+            <span class="mdc-button__label">KWM.closeBleMidiWindow</span>
+          </button>   
+        </div>
+      </transition>
+
+      <!-- MIDI送受信テスト -->
+      <transition name="slide-from-right">
+        <div v-show="Window.MidiTest" class="window-common">
+          <h3>MIDIデバイス選択</h3>
+          <select v-model="selectedDeviceId">
+            <option value="null">Connect all</option>
+            <option v-for="(item, index) in MIDI.DEVICE.list" v-bind:value="item.id">
+              {{item.name}}
+            </option>
+          </select>  
+          <input v-model="time1" placeholder="note on time1">
+          <input v-model="time2" placeholder="note on time2">
+          <input v-model="time3" placeholder="note on time3">
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest4">
+            <span class="mdc-button__label">KWM.sendMidiMessage</span>
+          </button> 
+          <p>MIDIモニター: {{MIDI.LOG}}</p>
+        </div>
+      </transition>
+
+      <!-- Jsonセーブ/ロードテスト -->
+      <transition name="slide-from-right">
+        <div v-show="Window.JsonTest" class="window-common">
+          <input v-model="jsonName" placeholder="NAME">
+          <input v-model="jsonValue1" placeholder="1">
+          <input v-model="jsonValue2" placeholder="2">
+          <input v-model="jsonValue3" placeholder="3">
+          <h4>保存したJsonデータ</h4>
+          <span>{{savedJson}}</span>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest6">
+            <span class="mdc-button__label">KWM.saveJson</span>
+          </button> 
+          <input v-model="jsonloadName" placeholder="loading">
+          <h4>ロードしたJsonデータ</h4>
+          <span>{{loadedJson}}</span>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest7">
+            <span class="mdc-button__label">KWM.loadJson</span>
+          </button>
+        </div>
+      </transition>
+
+      <!-- UIアップデート -->
+      <transition name="slide-from-right">
+        <div v-show="Window.UiUpdateTest" class="window-common">
+          <p>KWM.latestUiVersion : {{KWM.latestUiVersion}}</p>
+          <p>KWM.localUiVersion : {{KWM.localUiVersion}}</p>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest8">
+            <span class="mdc-button__label">KWM.downloadUiData</span>
+          </button> 
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest9">
+            <span class="mdc-button__label">KWM.updateUiData</span>
+          </button> 
+        </div>
+      </transition>
+
+      <!-- BluetoothMIDIアップデート -->
+      <transition name="slide-from-right">
+        <div v-show="Window.BtUpdateTest" class="window-common">
+          <h3>MIDIデバイス選択</h3>
+          <select v-model="selectedDeviceId">
+            <option value="null">Connect all</option>
+            <option v-for="(item, index) in MIDI.DEVICE.list" v-bind:value="item.id">
+              {{item.name}}
+            </option>
+          </select>    
+          <p>KWM.latestBleMidiVersion : {{KWM.latestBleMidiVersion}}</p>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest10">
+            <span class="mdc-button__label">KWM.downloadBleMidiFirmware</span>
+          </button> 
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest11">
+            <span class="mdc-button__label">KWM.getDeviceBleMidiVersion</span>
+          </button> 
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest12">
+            <span class="mdc-button__label">KWM.updateBleMidiFirmware</span>
+          </button>
+          <p>BluetoothMidiUpdateProgress : {{updateProgress}}</p>
+          <p>↑アップデート状況に応じて値が表示されない。Vue.js関係の実装ミスが原因っぽいためとりあえず放置。↑</p>
+        </div>
+      </transition>
+
+      <!-- 組込Androidモード -->
+      <transition name="slide-from-right">
+        <div v-show="Window.EmbededdModeTest" class="window-common">
+          <p>組込Androidモード : {{EmbededdMode.status}}</p>
+          <p>JNIバージョン : {{EmbededdMode.jniVer}}</p>
+          <p>LCD解像度 : {{EmbededdMode.lcd}}</p>
+          <p>LCDバックライト : {{EmbededdMode.brightness}}</p>
+          <p>USBメモリー : {{EmbededdMode.usbConnect}} | {{EmbededdMode.usbPath}}</p>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest13">
+            <span class="mdc-button__label">GET EmbeddedModeInfo</span>
+          </button> 
+          <hr class="mdc-list-divider">
+
+          <input type="checkbox" v-model="EmbededdMode.statusValue">
+          <label for="checkbox">{{EmbededdMode.statusValue}}</label>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest14(EmbededdMode.statusValue)">
+            <span class="mdc-button__label">KWM.setEmbeddedMode</span>
+          </button>
+          <hr class="mdc-list-divider">
+
+          <div class="mdc-slider mdc-slider--discrete" tabindex="0" role="slider" aria-label="Select Value">
+            <div class="mdc-slider__track-container">
+              <div class="mdc-slider__track"></div>
+            </div>
+            <div class="mdc-slider__thumb-container">
+              <div class="mdc-slider__pin">
+                <span class="mdc-slider__pin-value-marker"></span>
+              </div>
+              <svg class="mdc-slider__thumb" width="21" height="21">
+                <circle cx="10.5" cy="10.5" r="7.875"></circle>
+              </svg>
+              <div class="mdc-slider__focus-ring"></div>
+            </div>
+          </div>
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest15">
+            <span class="mdc-button__label">KWM.setLcdBacklight</span>
+          </button>
+          <hr class="mdc-list-divider">
+
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest16">
+            <span class="mdc-button__label">KWM.launchAndroidSettingsApp</span>
+          </button>  
+          <hr class="mdc-list-divider">
+
+          <input v-model="EmbededdMode.appName" placeholder="アプリ名を入力します。">
+          <button class="mdc-button mdc-button--raised button" @click="KWMtest17(EmbededdMode.appName)">
+            <span class="mdc-button__label">KWM.updateApk</span>
+          </button>  
+          <hr class="mdc-list-divider">
+        </div>
+      </transition>
+      
+
+    </div>
+    
+    <script src="../../../lib/vue/vue.js"></script>
+    <script src="../../../lib/axios.min.js"></script>
+    <script src="../../../lib/mdc/material-components-web.min.js"></script>
+    <!-- <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script> -->
+    <script defer src="../../../lib/kawaipianojs/kawaipiano.dev.js"></script>
+    <script src="../../../lib/kawaipianojs/kawaipiano.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/kwm.js"></script>
+    <script src="../../../lib/kawaipianojs/worker/recWorker.js"></script>
+    <script src="../js/app.js"></script>
+  </body>  
+</html>

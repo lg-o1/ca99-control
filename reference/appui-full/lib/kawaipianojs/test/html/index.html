@@ -1,0 +1,147 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>kawaipiano.js demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://unpkg.com/material-components-web@latest/dist/material-components-web.min.js"></script>
+  </head>
+  <body>
+    <container id="main">
+
+      <h2>kawaipiano.js Invoke</h2>
+
+      <h5>Mode</h5>
+
+      <div class="mdc-form-field" v-for="item in mode.enum">
+        <div class="mdc-radio">
+          <input class="mdc-radio__native-control" type="radio" id="kpjsmode" name="kpjsmode" :value="item" v-model="mode.selected">
+          <div class="mdc-radio__background">
+            <div class="mdc-radio__outer-circle"></div>
+            <div class="mdc-radio__inner-circle"></div>
+          </div>
+          <div class="mdc-radio__ripple"></div>
+        </div>
+        <label for="kpjsmode">{{item}}</label>
+      </div>
+
+      <h5>Update</h5>
+      <mdc-checkbox id="uiupdate" v-model="update.ui" @checked="e => update.ui = e.target.checked"></mdc-checkbox>
+      <label for="uiupdate">UI</label><br>
+
+      <mdc-checkbox id="bleupdate" v-model="update.ble" @checked="e => update.ble = e.target.checked"></mdc-checkbox>
+      <label>BLE</label><br>
+
+      <br><br><br>
+
+      <button class="mdc-button mdc-button--outlined" @click="invokeKpjs">
+        <div class="mdc-button__ripple"></div>
+        <i class="material-icons mdc-button__icon" aria-hidden="true">flight</i>
+        <span class="mdc-button__label">Start</span>
+      </button>
+
+      <br><br><br><hr><br>
+
+      <h2>Log</h2>
+      <mdc-checkbox id="piano-obj" v-model="log.pianoObj" @checked="onLogOptionChange"></mdc-checkbox>
+      <label>Piano Object</label><br>
+
+      <mdc-checkbox id="midi-out" v-model="log.midiOut" @checked="onLogOptionChange"></mdc-checkbox>
+      <label>MIDI OUT</label><br>
+
+      <mdc-checkbox id="midi-in" v-model="log.midiIn" @checked="onLogOptionChange"></mdc-checkbox>
+      <label>MIDI IN</label><br>
+
+      <mdc-checkbox id="handshake" v-model="log.handshake" @checked="onLogOptionChange"></mdc-checkbox>
+      <label>Handshake Error</label><br>
+
+      <mdc-checkbox id="verify-param" v-model="log.verifyParam" @checked="onLogOptionChange"></mdc-checkbox>
+      <label>Verify Parameters</label><br>
+
+
+
+      <br><br><br><hr><br>
+
+      <div v-if="bluetooth.isAvailable">
+        <h2>BluetoothMIDI</h2>
+
+        <h5>Connection</h5>
+        <button class="mdc-button mdc-button--outlined" @click="onBleConnectButton" >
+          <div class="mdc-button__ripple"></div>
+          <div v-show="!bluetooth.window">
+            <i class="material-icons mdc-button__icon" aria-hidden="true">bluetooth</i>
+            <span class="mdc-button__label">Open</span>
+          </div>
+          <div v-show="bluetooth.window">
+            <i class="material-icons mdc-button__icon" aria-hidden="true">bluetooth</i>
+            <span class="mdc-button__label">Close</span>
+            </div>
+        </button>
+
+        <br><br>
+
+        <h5>Paring</h5>
+        <button class="mdc-button mdc-button--outlined" @click="onParingButton">
+          <div class="mdc-button__ripple"></div>
+          <div v-show="!bluetooth.pairing">
+            <i class="material-icons mdc-button__icon" aria-hidden="true">bluetooth_searching</i>
+            <span class="mdc-button__label">Pair</span>
+          </div>
+          <div v-show="bluetooth.pairing">
+            <i class="material-icons mdc-button__icon" aria-hidden="true">bluetooth_disabled</i>
+            <span class="mdc-button__label">Unpair</span>
+          </div>
+        </button>
+
+        <br><br>
+
+        <h5>Time Offset</h5>
+        <input type="range" min="0" max="127" step="1" v-model="bluetooth.offset" @change="setTimestampOffset">
+        <span >{{bluetooth.offset}}</span>
+
+        <br><br>
+
+        <h5>Device Name Set</h5>
+        <input v-model="bluetooth.name"/>
+        <button class="mdc-button mdc-button--outlined" @click="setBleDeviceName">
+          <div class="mdc-button__ripple"></div>
+          <span class="mdc-button__label">Set Device Name</span>
+        </button>
+
+        <br><br>
+
+        <h5>Misc.</h5>
+        <button class="mdc-button mdc-button--outlined" @click="gotoBleDfuMode">
+          <div class="mdc-button__ripple"></div>
+          <i class="material-icons mdc-button__icon" aria-hidden="true">update</i>
+          <span class="mdc-button__label">DFU</span>
+        </button>
+        <button class="mdc-button mdc-button--outlined" @click="gotoBleReset">
+          <div class="mdc-button__ripple"></div>
+          <i class="material-icons mdc-button__icon" aria-hidden="true">restart_alt</i>
+          <span class="mdc-button__label">Reset</span>
+        </button>
+      </div>
+
+    </container>
+    <script src="https://unpkg.com/vue@next"></script>
+    <!-- kawaipiano.jsが利用する一般のライブラリ -->
+    <script src="../lib/axios.min.js"></script>
+    <script src="../lib/encoding.min.js"></script>
+    <!-- kawaipiano.jsのソース -->
+    <script src="../../kawaipiano.js"></script>
+    <script src="../../kwm/music.js"></script>
+    <script src="../../kwm/bluetoothmidi.js"></script>
+    <script src="../../kwm/kwm.js"></script>
+    <script src="../../midi/webmidi.js"></script>
+    <script src="../../midi/midimanager.js"></script>
+    <script src="../../worker/recWorker.js"></script>
+    <!-- このdemoアプリのjs -->
+    <script src="../js/app.js"></script>
+  </body>
+</html>

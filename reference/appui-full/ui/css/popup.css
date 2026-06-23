@@ -1,0 +1,304 @@
+@charset "utf-8";
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.popup--hidden {
+  z-index: 0;
+}
+
+.popup__info {
+  position: absolute;
+  left: 10%;
+  top: 25%;
+  z-index: 10;
+  width: 80%;
+  height: 50%;
+}
+.popup__confirm {
+  position: absolute;
+  left: 10%;
+  top: 25%;
+  z-index: 10;
+  width: 80%;
+  height: 50%;
+}
+.popup__input {
+  position: absolute;
+  left: 10%;
+  bottom: 50%;
+  z-index: 10;
+  width: 80%;
+  height: 208px;
+}
+.popup__list {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.popup__in-progress {
+  left: 10%;
+  top: 25%;
+  z-index: 10;
+  width: 80%;
+  height: 50%;
+}
+.popup__divider {
+  position: absolute;
+  left: 0;
+  bottom: 48px;
+  z-index: 10;
+  width: 100%;
+  height: 0;
+  margin: 0;
+  border: none;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  color: var(--CA-black3);
+}
+
+.popup__card {
+  position: absolute;
+  background-color: var(--CA-black1);
+  overflow: hidden;
+}
+.popup__bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--CA-gray-dark);
+  opacity: 0.8;
+}
+
+.popup__title {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 60px;
+  text-align: center;
+  line-height: 60px;
+  color: var(--CA-white-dark);
+}
+.popup__msg-area {
+  position: absolute;
+  box-sizing: border-box;
+  left: 0;
+  top: 60px;
+  width: 100%;
+  padding: 5%;
+  height: calc(100% - 108px);
+  overflow: scroll;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--CA-black2);
+}
+.popup__msg {
+  position: relative;
+  box-sizing: border-box;
+  color: var(--CA-white);
+  white-space: pre-line;
+}
+.popup__text-field {
+  position: absolute;
+  left: 10%;
+  top: 60px;
+  width: 80%;
+  height: 48px;
+  text-align: center;
+  border-style: hidden hidden solid hidden;
+  border-width: 1px;
+  border-radius: 0%;
+  border-color: var(--CA-white-dark);
+
+  color: var(--CA-white-dark);
+  background-color: var(--CA-black1);
+}
+.popup__erorr-msg  {
+  position: absolute;
+  left: 10%;
+  top: 120px;
+  width: 80%;
+  height: 28px;
+  text-align: center;
+  line-height: 28px;
+
+  color: var(--CA-red);
+}
+.popup__btn {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 48px;
+}
+.popup__btn-true {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 50%;
+  height: 48px;
+}
+.popup__btn-false {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 50%;
+  height: 48px;
+}
+
+
+.popup__overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 8999;
+  width: 100%;
+  height: 100%;
+}
+.popup__overlay-text {
+  position: absolute;
+  left: 10%;
+  top: 70%;
+  z-index: 10;
+  width: 80%;
+  height: 30%;
+  color: var(--CA-white-dark);
+  text-align: center;
+  line-height: 120%;
+  white-space: pre-line;
+}
+.popup__overlay-text--no-img {
+  top: 50%;
+}
+.popup__overlay-img {
+  position: relative;
+  top: 0;
+  width: 100%;
+  height: 70%;
+  z-index: 1;
+  background-repeat: no-repeat;
+  background-position-y: 70%;
+  background-position-x: center;
+  background-size: 60%;
+  opacity: 1
+}
+.popup__overlay-bg {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;  background-color: var(--CA-black4);
+  opacity: 0.9;
+}
+
+
+.popup__qr {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 8999;
+  width: 100%;
+  height: 100%;
+}
+.popup__qr-guide {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 35%;
+  z-index: 1;
+  background-image: url(../img/QR-guide.png);
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 45%;
+}
+.popup__qr-code {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  height: 35%;
+  z-index: 3;
+  background-image: url(../img/QR-code.svg);
+  background-repeat: no-repeat;
+  background-position: center 80%;
+  background-size: 35%;
+}
+.popup__qr-img {
+  position: absolute;
+  top: 37.5%;
+  width: 100%;
+  height: 40%;
+  z-index: 1;
+  background-image: url(../img/QR-scan.png);
+  background-repeat: no-repeat;
+  background-position: center 50%;
+  background-size: 55%;
+  opacity: 1
+}
+.popup__qr-text {
+  position: absolute;
+  left: 10%;
+  top: 80%;
+  z-index: 10;
+  width: 80%;
+  height: 25%;
+  color: var(--CA-white-dark);
+  text-align: center;
+  line-height: 120%;
+  white-space: pre-line;
+}
+
+.popup__busy__touch-preventer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9000;
+  width: 100%;
+  height: 100%;
+}
+.popup__busy {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 8999;
+  width: 100%;
+  height: 100%;
+  background-color: var(--CA-black4);
+  opacity: 0.9;
+}
+.popup__busy-text {
+  position: absolute;
+  left: 10%;
+  top: 40%;
+  z-index: 10;
+  width: 80%;
+  height: 30%;
+  font-size: 24px;
+  color: var(--CA-white-dark);
+  text-align: center;
+  line-height: 120%;
+  white-space: pre-line;
+}
+
+#update-checker {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10001;
+  width: 100%;
+  height: 25%;
+  /* opacity: 0; */
+  opacity: 1;
+  background-color: transparent;
+}

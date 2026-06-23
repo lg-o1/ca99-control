@@ -1,0 +1,108 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+  
+  <head>
+    <meta charset="UTF-8" />
+    <title>RecTester</title>
+    <meta name="viewport" content="width=360, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="../../lib/mdc/material-components-web.min.css">
+    <link rel="stylesheet" href="../../lib/kawai-icons/kawai-icons.css">
+    <link rel="stylesheet" href="../../lib/kuic/kawai-ui-components.css">     
+    <style type="text/css">
+      #rectest {
+        position: fixed;
+        box-sizing: border-box;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .sequence {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 96px;
+        background-color: #222222;
+        color: lightgray;
+        z-index: 10;
+      }
+      .list {
+        width: 100%;
+        padding-top: 96px;
+        padding-bottom: 96px;
+        background-color: #eeeeee;
+      }
+      .start {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        width: 70%;
+        height: 96px;
+        font-size: 48px;
+        text-align: center;
+        line-height: 96px;
+        background-color: #444444;
+        color: white;
+        z-index: 10;
+      }
+      .clear {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 30%;
+        height: 96px;
+        font-size: 18px;
+        text-align: center;
+        line-height: 96px;
+        background-color: #999999;
+        color: white;
+        z-index: 10;
+      }
+      .worker {
+        position: fixed;
+        right: 10px;
+        bottom: 120px;
+        width: 144px;
+        height: 48px;
+        font-size: 12px;
+        text-align: center;
+        line-height: 48px;
+        border-radius: 24px;
+        background-color: #999999;
+      }
+      .worker--on {
+        color: white;
+        background-color:mediumblue;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <div id="rectest">
+      <div class="sequence">シーケンス内容：{{sequence}}</div>
+      <div>
+        <kuic-lists class="list" :data="sendItem" @click="addTestItem"/>
+      </div>
+      <div class="start" @click="start">テスト開始</div>
+      <div class="clear" @click="clear">リセット</div>
+    </div>
+
+    <script src="../../lib/mdc/material-components-web.min.js"></script>
+    <script src="../../lib/vue/vue.js"></script>
+    <script src="../../lib/kuic/kawai-ui-components.js"></script>
+    <script src="../../lib/axios.min.js"></script>
+    <script defer src="../../lib/kawaipianojs/kawaipiano.dev.js"></script>
+    <script src="../../lib/kawaipianojs/kawaipiano.js"></script>
+    <script src="../../lib/kawaipianojs/kwm/kwm.js"></script>
+    <script src="../../lib/kawaipianojs/worker/recWorker.js"></script>
+    <script src="../js/recTest.js"></script>
+    <script src="../../lib/encoding.min.js"></script>
+  </body>
+
+</html>

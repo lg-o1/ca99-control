@@ -1,0 +1,746 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+  
+  <head>
+    <meta charset="UTF-8" />
+    <title>FactoryCheck</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="../../../lib/material-icons/material-icons.css">
+    <link rel="stylesheet" href="../../../lib/mdc/material-components-web.min.css">
+    <link rel="stylesheet" href="../css/switch.css">
+    <link rel="stylesheet" href="../css/app.css">
+    <link rel="stylesheet" href="../css/style.css">
+  </head>
+  
+  <body>
+    <div id="app">
+      <!--　HEADER　-->
+      <header class="mdc-toolbar mdc-toolbar--fixed">
+        <div class="mdc-toolbar__row">
+          <section v-show="UI.page > -1" class="mdc-toolbar__section mdc-toolbar__section--align-start">
+            <a href="#" class="mdc-toolbar__menu-icon"
+              @click="selectPage(-1)"><i class="material-icons">arrow_back</i></a>
+            <span class="mdc-toolbar__title catalog-title"
+              @click="selectPage(-1)">Menu</span>
+          </section>
+          <section class="mdc-toolbar__section">
+            <span v-if="UI.page > -1" class="mdc-toolbar__title">Mode {{UI.page}}</span>
+            <span v-else class="mdc-toolbar__title">Check Mode</span>
+          </section>
+          <section v-show="UI.page > -1" class="mdc-toolbar__section mdc-toolbar__section--align-end">
+            <span class="mdc-toolbar__title catalog-title"
+                 @click="nextPage">Next</span>
+            <a href="#" class="mdc-toolbar__menu-icon"
+              @click="nextPage"><i class="material-icons">arrow_forward</i></a>
+          </section>
+        </div>
+      </header>
+    
+      <!--　CONTENTS　-->
+      <!--  
+        * Index
+        * @page no. -1
+      -->
+      <transition>
+        <div v-show="UI.page === -1">
+          <div v-show="isLoading"
+            class="loading">
+            Loading...
+          </div>
+          <div v-show="isAvailable">
+            <ul class="menu mdc-list mdc-list--two-line" role="group" aria-label="List with checkbox items">
+              <li v-for="(mode, index) in UI.modes" @click="selectPage(index)" class="mdc-list-item" role="checkbox" aria-checked="false">
+                <!-- <a :href="mode.url" class="mdc-list-item"> -->
+                  <span class="mdc-list-item__graphic">
+                    <div class="mdc-checkbox">
+                      <input type="checkbox"
+                              class="mdc-checkbox__native-control"
+                              id="demo-list-checkbox-item-1"
+                              v-model="mode.completed"  />
+                      <div class="mdc-checkbox__background">
+                        <svg class="mdc-checkbox__checkmark"
+                              viewBox="0 0 24 24">
+                          <path class="mdc-checkbox__checkmark-path"
+                                fill="none"
+                                d="M1.73,12.91 8.1,19.28 22.79,4.59"/>
+                        </svg>
+                        <div class="mdc-checkbox__mixedmark"></div>
+                      </div>
+                    </div>
+                  </span>
+                  <span class="mdc-list-item__text">
+                    <span class="mdc-list-item__primary-text">{{mode.title}}</span>
+                    <span class="mdc-list-item__secondary-text">Mode {{index}}</span>
+                  </span>
+                <!-- </a> -->
+              </li>
+            </ul>
+          </div>
+          <div class="dp-info mdc-elevation--z20">
+            <span>Model : {{model}}</span><br><br>
+            <span>Version : {{version}}</span><br><br>
+            <span>Destination : {{destination}}</span>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * LCD
+        * @page no. 0
+      -->
+      <transition>
+        <div v-show="UI.page === 0">
+          <div id="main" class="container">
+            <h1>LCD</h1>
+            <div class="box square">
+              <button class="mdc-button square left" 
+                      v-bind:class="[UI.lcd.isTapped[0] ? 'mdc-button--raised' :'mdc-button--outlined']"
+                      @click="tapLCDButton(0)">
+                      1</button>
+              <button class="mdc-button square right" 
+                      v-bind:class="[UI.lcd.isTapped[1] ? 'mdc-button--raised' :'mdc-button--outlined']"
+                      @click="tapLCDButton(1)">
+                      2</button>
+            </div>
+            <div class="box deadpixel">
+              <button class="mdc-button deadpixel mdc-button--outlined"
+                      @click="showDeadPixel">
+                      5 (to Black)</button>
+            </div>
+          </div>
+      
+          <div id="sub" class="container">
+            <div class="box square bottom">
+              <div class="bottomwrapper">
+                <button class="mdc-button square left" 
+                        v-bind:class="[UI.lcd.isTapped[2] ? 'mdc-button--raised' :'mdc-button--outlined']"
+                        @click="tapLCDButton(2)">
+                        3</button>
+                <button class="mdc-button square right" 
+                        v-bind:class="[UI.lcd.isTapped[3] ? 'mdc-button--raised' :'mdc-button--outlined']"
+                        @click="tapLCDButton(3)">
+                        4</button>
+              </div>
+            </div>
+          </div>
+      
+          <div v-show="UI.lcd.isDeadPixelOverlayShown">
+            <div id="modal-overlay"></div>
+            <div id="modal-content">
+              <div class="box deadpixel">
+                <button class="mdc-button deadpixel mdc-button--outlined"
+                @click="hideDeadPixel">
+                5 (to White)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * Pedal, Volume, Keyboard
+        * @page no. 1
+      -->
+      <transition>
+        <div v-show="UI.page === 1">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- Pedal -->
+            <h1>Pedal</h1>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>Soft<br>Pedal</h2>
+                <p class="value">{{UI.pedal.soft}}</p>
+              </div>
+              <div class="box">
+                <h2>Sostenute<br>Pedal</h2>
+                <p class="value">{{UI.pedal.sostenute}}</p>
+              </div>
+              <div class="box">
+                <h2>Damper<br>Pedal</h2>
+                <p class="value">{{UI.pedal.damper}}</p>
+              </div>
+            </div>
+            <hr>
+      
+            <!-- Volume -->
+            <h1>Volume</h1>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>Main Volume</h2>
+                <p class="value">{{UI.volume.main}}</p>
+              </div>
+              <div class="box">
+                <h2>LINEIN Volume</h2>
+                <p class="value">{{UI.volume.linein}}</p>
+              </div>
+            </div>
+            <hr>
+      
+            <!-- Keyboard -->
+            <div class="boxContainer">
+              <div class="box left r13">
+                  <h1>Keyboard</h1>
+              </div>
+              <div class="box right r23">
+                <p class="value sub">{{UI.key.port}}</p>
+              </div>
+            </div>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>Key</h2>
+                <p class="value">{{UI.key.no}}</p>
+              </div>
+              <div class="box">
+                <h2>Velocity</h2>
+                <p class="value">{{UI.key.velocity}}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * Effect, Reverb
+        * @page no. 2
+      -->
+      <transition>
+        <div v-show="UI.page === 2">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- Effect -->
+            <h1>Effect</h1>
+            <button class="mdc-button full mdc-button--raised"
+                    @click="checkEffect">
+                    Check</button>
+            <div class="spacer h13"></div>
+            <hr>
+      
+            <!-- Reverb -->
+            <h1>Reverb</h1>
+            <button class="mdc-button full mdc-button--raised"
+                    @click="checkReverb">
+                    Check</button>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * TG All Channel
+        * @page no. 3
+      -->
+      <transition>
+        <div v-show="UI.page === 3">
+          <!-- main -->
+          <div id="main" class="container">
+            
+            <!-- TG All Channel -->
+            <h1>TG All Channel</h1>
+            <!-- <h2>{{PIANO.Sound.name}}</h2> -->
+            <button class="mdc-button full mdc-button--raised"
+                    @click="checkTGAllChannel">{{UI.tgAllChannell.btntxt}}</button>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * L/R
+        * @page no. 4
+      -->
+      <transition>
+        <div v-show="UI.page === 4">
+          <!-- main -->
+          <div id="main" class="container">
+            <div class="boxContainer">
+              
+              <!-- L -->
+              <div class="box half">
+                <h1>L</h1>
+                <button class="mdc-button full mdc-button--raised" @click="checkL">{{UI.checkLR.Lbtntxt}}</button>
+              </div>
+      
+              <!-- R -->
+              <div class="box half">
+                <h1>R</h1>
+                <button class="mdc-button full mdc-button--raised" @click="checkR">{{UI.checkLR.Rbtntxt}}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * EQ Level
+        * @page no. 5
+      -->
+      <transition>
+        <div v-show="UI.page === 5">
+          <!-- main -->
+          <div id="main" class="container">
+            
+            <!-- EQ Level -->
+            <h1>EQ Level</h1>
+            <!-- Speaker EQ -->
+            <div class="boxContainer box switch">
+              <div class="box left r23">
+                <h2>Speaker EQ</h2>
+              </div>
+              <div class="box right r13">
+                <div class="mdc-switch">
+                  <input type="checkbox" 
+                         class="mdc-switch__native-control" 
+                         role="switch"
+                         v-model="UI.eqLevel.isSpeakerEQ"
+                         @click="turnSpeakerEQ">
+                  <div class="mdc-switch__background">
+                    <div class="mdc-switch__knob"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+      
+            <!-- Mute -->
+            <div class="boxContainer box switch">
+              <div class="box left r23">
+                <h2>Mute</h2>
+              </div>
+              <div class="box right r13">
+                <div class="mdc-switch">
+                  <input type="checkbox" 
+                         class="mdc-switch__native-control" 
+                         role="switch"
+                         v-model="UI.eqLevel.isMute"
+                         @click="turnMute">
+                  <div class="mdc-switch__background">
+                    <div class="mdc-switch__knob"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+      
+            <!-- Check -->
+            <h2>Check</h2>
+            <button class="mdc-button full mdc-button--raised" @click="check1Hz">{{UI.eqLevel.hz1}}Hz  |  {{UI.eqLevel.btn1txt}}</button>
+            <button class="mdc-button full mdc-button--raised" @click="check2Hz">{{UI.eqLevel.hz2}}Hz  |  {{UI.eqLevel.btn2txt}}</button>
+            <button class="mdc-button full mdc-button--raised" @click="check3Hz">{{UI.eqLevel.hz3}}Hz  |  {{UI.eqLevel.btn3txt}}</button>
+            <button class="mdc-button full mdc-button--raised" @click="check4Hz">{{UI.eqLevel.hz4}}Hz  |  {{UI.eqLevel.btn4txt}}</button>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * USB device, Bluetooth Audio
+        * @page no. 6
+      -->
+      <transition>
+        <div v-show="UI.page === 6">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- USB device -->
+            <p class="instruction">Connect USB memory to "USB TO DEVICE".</p>
+            <h1>USB device</h1>
+            <div class="boxContainer">
+              <div class="box left r23">
+                <p class="value withButton">{{UI.usbDevice.type}}</p>
+              </div>
+              <div class="box right r13">
+                <button class="mdc-button full mdc-button--raised"
+                        @click="checkUSBDevice">
+                        Check</button>
+              </div>
+            </div>
+            <hr>
+            
+            <!-- Bluetooth Audio -->
+            <h1>Bluetooth Audio</h1>
+      
+            <!-- Bluetooth Audio Check -->
+            <h2>Bluetooth Audio Check</h2>
+            <div class="boxContainer">
+              <div class="box left r23">
+                <p class="value withButton">{{UI.bluetoothAudio.type}}</p>
+              </div>
+              <div class="box right r13">
+                <button class="mdc-button full mdc-button--raised"
+                        @click="checkBluetoothAudio">
+                        Check</button>
+              </div>
+            </div>
+      
+            <!-- Set -->
+            <h2>Set</h2>
+            <button class="mdc-button full mdc-button--raised"
+                    @click="setBluetoothProduct">
+                    Set Product</button>
+            <button class="mdc-button full mdc-button--raised"
+                    @click="setBluetoothFactA">
+                    Set factA</button>
+            <button class="mdc-button full mdc-button--raised"
+                    @click="setBluetoothFactB">
+                    Set factB</button>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * Max Touch
+        * @page no. 7
+      -->
+      <transition>
+        <div v-show="UI.page === 7">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- Max Touch -->
+            <h1>Max Touch</h1>
+            <p class="tone">{{UI.selectedTimbreCategory}}<br><br>{{UI.selectedTimbreName}}</p>
+            <div class="boxContainer">
+              <div class="box square tone">
+                <button class="mdc-button square left mdc-button--outlined"
+                        @click="prevTone">
+                        <</button>
+                <button class="mdc-button square right mdc-button--outlined"
+                        @click="nextTone">
+                        ></button>
+              </div>
+            </div>
+            <div class="spacer h34"></div>
+            <button class="mdc-button full mdc-button--outlined"
+                    @click="selectPiano">
+                    Piano</button>
+            <button class="mdc-button full mdc-button--outlined"
+                    @click="selectChurchOrgan">
+                    Church Organ</button>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * Tone Check
+        * @page no. 8
+      -->
+      <transition>
+        <div v-show="UI.page === 8">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- Tone Check -->
+            <h1>Tone Check</h1>
+            <p class="tone">{{UI.selectedTimbreCategory}}<br><br>{{UI.selectedTimbreName}}</p>
+            <div class="boxContainer">
+              <div class="box square">
+                <button class="mdc-button skip left mdc-button--outlined"
+                        @click="skipBackTone">
+                        <<</button>
+                <!-- <p class="square">-1</p> -->
+              </div>
+              <div class="box square">
+                <button class="mdc-button skip right mdc-button--outlined"
+                        @click="skipTone">
+                        >></button>
+                <!-- <p class="square">+1</p> -->
+              </div>
+            </div>
+            <div class="boxContainer">
+              <div class="box square tone">
+                <button class="mdc-button square left mdc-button--outlined"
+                        @click="prevTone">
+                        <</button>
+                <button class="mdc-button square right mdc-button--outlined"
+                        @click="nextTone">
+                        ></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * Keyboard S1, S2, S3, A/D Raw Value
+        * @page no. 9
+      -->
+      <transition>
+        <div v-show="UI.page === 9">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- Key Number -->
+            <h1>Key Number  |  {{UI.keyNumber.Num}}</h1>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>S1</h2>
+                <p class="value">{{UI.keyNumber.S1}}</p>
+              </div>
+              <div class="box">
+                <h2>S2</h2>
+                <p class="value">{{UI.keyNumber.S2}}</p>
+              </div>
+              <div class="box">
+                <h2>S3</h2>
+                <p class="value">{{UI.keyNumber.S3}}</p>
+              </div>
+            </div>
+            <hr>
+      
+            <!-- Pedal -->
+            <h1>Pedal</h1>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>Damper<br>Pedal</h2>
+                <p class="value">{{UI.pedal.damper}}</p>
+              </div>
+              <div class="box">
+                <h2>Sostenute<br>Pedal</h2>
+                <p class="value">{{UI.pedal.sostenute}}</p>
+              </div>
+              <div class="box">
+                <h2>Soft<br>Pedal</h2>
+                <p class="value">{{UI.pedal.soft}}</p>
+              </div>
+            </div>
+            <hr>
+            
+            <!-- Volume -->
+            <h1>Volume</h1>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>Main Volume</h2>
+                <p class="value">{{UI.volume.main}}</p>
+              </div>
+              <div class="box">
+                <h2>LINEIN Volume</h2>
+                <p class="value">{{UI.volume.linein}}</p>
+              </div>
+            </div>
+            <hr>
+
+            <!-- Pedal Calibration -->
+            <h1 v-show="model === 'NV6'">Pedal Calibration</h1>
+            <div v-show="model === 'NV6'"
+              class="boxContainer">
+              <div class="pedal-cal">
+                <button class="pedal-cal__btn mdc-button mdc-button--raised" @click="clkCalcAndSaveTable()">Calc. and Save table</button>
+                <button class="pedal-cal__btn mdc-button mdc-button--raised" @click="clkResetSample()">Reset sample</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * WAVE CheckSum
+        * @page no. 10
+      -->
+      <transition>
+        <div v-show="UI.page === 10">
+          <!-- main -->
+          <div id="main" class="container">
+            <!-- WaveROM CheckSum -->
+            <h1>WAVE CheckSum</h1>
+            <div class="wave-checksum">
+              <div class="wave-checksum__rom"
+                v-for="rom in checkSum.waveRom">
+                <div class="wave-checksum__info">
+                  <div class="wave-checksum__name">{{rom.name}}</div>
+                  <div class="wave-checksum__add">{{rom.add}}</div>
+                </div>
+                <div class="wave-checksum__checksum">{{rom.checkSum}}</div>
+              </div>
+            </div>
+          </div>
+      
+          <!-- sub -->
+          <div id="cancel" class="container">
+            <div class="box square bottom">
+              <div class="bottomwrapper">
+                <button class="mdc-button bottom mdc-button--outlined"
+                        @click="cancelCalcCheckSum">
+                        Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * All Key On
+        * @page no. 11
+      -->
+      <transition>
+        <div v-show="UI.page === 11">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- All Key On -->
+            <h1>All Key On</h1>
+            <h2>Press all keys then CHECK</h2>
+            <div class="boxContainer">
+              <div class="box left r23">
+                <div class="spacer h8"></div>
+                <p class="value">{{UI.allKeyOn.result}}</p>
+              </div>
+              <div class="box right r13">
+                <button class="mdc-button full mdc-button--raised"
+                        @click="checkAllKeyOn">
+                        Check</button>
+              </div>
+            </div>
+            <div class="spacer h13"></div>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>Key 1</h2>
+                <p class="value">{{UI.allKeyOn.key1}}</p>
+              </div>
+              <div class="box">
+                <h2>Key 2</h2>
+                <p class="value">{{UI.allKeyOn.key2}}</p>
+              </div>
+              <div class="box">
+                <h2>Key 3</h2>
+                <p class="value">{{UI.allKeyOn.key3}}</p>
+              </div>
+              <div class="box">
+                <h2>Key 4</h2>
+                <p class="value">{{UI.allKeyOn.key4}}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * Key Adjust
+        * @page no. 12
+      -->
+      <transition>
+        <div v-show="UI.page === 12">
+          <!-- main -->
+          <div id="main" class="container">
+      
+            <!-- Key Adjust -->
+            <h1>Key Adjust</h1>
+            <div class="boxContainer">
+              <div class="box">
+                <h2>Key Number</h2>
+                <p class="value">{{UI.keyAdjust.keyNo}}</p>
+              </div>
+              <div class="box">
+                <h2>Value</h2>
+                <p class="value">{{UI.keyAdjust.value}}</p>
+              </div>
+            </div>
+          </div>
+      
+          <!-- sub -->
+          <div id="sub" class="container">
+            <div class="box square bottom">
+              <div class="bottomwrapper">
+                <button class="mdc-button bottom mdc-button--raised"
+                        @click="saveKeyAdjust">
+                        Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!--  
+        * Touch Select
+        * @page no. 13
+      -->
+      <transition>
+        <div v-show="UI.page === 13">
+          <!-- main -->
+          <div id="main" class="container">
+            <!-- Touch Select -->
+            <h1>Touch Select</h1>
+            <div class="touchselect__lists">
+              <ul class="menu mdc-list">
+                <div v-for="(item) in UI.touchCurveData" v-if="item.type === UI.modelType">
+                  <li class="mdc-list-item" :class = "{'touchselect__list-selected': item.model === UI.selectedTouchCurve}" @click="selectTouchCurve(item)" >
+                    <span class="mdc-list-item__text">{{item.model}}</span>
+                  </li>
+                  <hr class="mdc-list-divider">
+                </div>
+              </ul>
+            </div>
+          </div>
+      
+          <!-- sub -->
+          <div id="sub" class="container">
+            <div class="touchselect__footer mdc-elevation--z24">
+              <div class="box square bottom">
+                <div class="bottomwrapper">
+                  <button class="mdc-button bottom mdc-button--raised" v-if="UI.touchCurveSaveButton"
+                          @click="saveTouchCurve">Save</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!-- 
+        * Touch Calibration
+        * @page no. 14
+      -->
+      <transition>
+        <div v-show="UI.page === 14">
+          <!-- main -->
+          <div id="main" class="container">
+            <h1>Touch Calibration</h1>
+            <div class="touch-cal">
+              <div class="touch-cal__calc-coef">
+                <button class="touch-cal__btn mdc-button mdc-button--raised" @click="clkCalcCOEFAVG()">Calc. COEF. AVG.</button>
+                <button class="touch-cal__btn mdc-button mdc-button--raised" @click="clkCalcCOEFLSQ()">Calc. COEF. LSQ.</button>
+              </div>
+              <div class="touch-cal__reset-coef">
+                <button class="touch-cal__btn mdc-button mdc-button--raised" @click="clkResetCOEF()">Reset COEF.</button>
+              </div>
+              <div class="touch-cal__save-coef">
+                <button class="touch-cal__btn mdc-button mdc-button--raised" @click="clkSendCOEF()">Send COEF.</button>
+                <button class="touch-cal__btn mdc-button mdc-button--raised" @click="clkSaveCOEF()">Save COEF.</button>
+              </div>
+              <div class="touch-cal__reset-touch">
+                <button class="touch-cal__btn mdc-button mdc-button--raised" @click="clkResetTOUCH()">Reset TOUCH</button>
+                <button class="touch-cal__btn mdc-button mdc-button--raised" @click="clkSendTOUCH()">Send TOUCH</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+      <!-- 
+        * ProgramROM checksum
+        * @page no. 14
+      -->
+      <transition>
+        <div v-show="UI.page === 15">
+          <!-- main -->
+          <div id="main" class="container">
+            <!-- ProgramROM CheckSum -->
+            <h1>ProgramROM CheckSum</h1>
+            <div class="prg-checksum">
+              <div class="prg-checksum__rom"
+                v-for="rom in checkSum.progRom">
+                <div class="prg-checksum__name">{{rom.name}}</div>
+                <div class="prg-checksum__checksum">{{rom.checkSum}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </transition>
+    
+      <!-- FOOTER -->
+      <footer>
+        <div v-show="UI.page > -1" id="tete" @click="tapComplete">
+          <button class="mdc-fab" id="CloseButton"><i class="material-icons">check</i></button>
+        </div>
+      </footer>
+    </div>
+    <script src="../../../lib/vue/vue.js"></script>
+    <script src="../../../lib/axios.min.js"></script>
+    <script src="../../../lib/mdc/material-components-web.min.js"></script>
+    <script defer src="../../../lib/kawaipianojs/kawaipiano.dev.js"></script>
+    <script src="../../../lib/kawaipianojs/kawaipiano.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/music.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/rhythm.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/bluetoothmidi.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/kwm.js"></script>
+    <script src="../../../lib/kawaipianojs/midi/webmidi.js"></script>
+    <script src="../../../lib/kawaipianojs/midi/midimanager.js"></script>
+    <script src="../../../lib/kawaipianojs/worker/recWorker.js"></script>
+    <script src="../js/app.js"></script>
+  </body>
+  
+</html>

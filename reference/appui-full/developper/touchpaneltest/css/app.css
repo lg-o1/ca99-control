@@ -1,0 +1,132 @@
+@charset "UTF-8";
+
+html, body, #app {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	-webkit-touch-callout:none; /*リンク長押しのポップアップを無効化*/
+	user-select: none;
+	-webkit-user-select:none; /*テキスト長押しの選択ボックスを無効化*/
+	-webkit-tap-highlight-color: rgba(0, 0, 0, 0);/*iOSのリンクタップ時のグレーカラーを透明化*/
+}
+
+table {
+	background-color: white;
+	box-align: center;
+	text-align: center;
+	border-collapse: collapse;
+	width: 100%;
+	height: 100%;
+	left: 0;
+	top: 0;
+}
+
+td {
+	border: solid 1px black;
+	padding: 0;
+	width: calc(100% / 6);
+}
+
+.donestyle {
+	background-color: blue;
+}
+
+.ngstyle {
+	background-color: red;
+}
+
+.crossline {
+	background-color: transparent;
+}
+
+.crossline1 {
+	border-style: dashed;
+	border-color: gray;
+	border-width: 0px 3px 0px 0px;
+	width: 25%;
+	height: 25%;
+}
+
+.crossline2 {
+	border-style: dashed;
+	border-color: gray;
+	border-width: 0px 0px 3px 0px;
+	width: 25%;
+	height: 25%;
+}
+
+.crossline3 {
+	border-style: dashed;
+	border-color: gray;
+	border-width: 3px 0px 0px 0px;
+	width: 25%;
+	height: 25%;
+}
+
+.crossline4 {
+	border-style: dashed;
+	border-color: gray;
+	border-width: 0px 0px 0px 3px;
+	width: 25%;
+	height: 25%;
+}
+
+.oklinestyle {
+	border-color: blue;
+}
+
+.nglinestyle {
+	border-color: red;
+}
+
+/* COMMON */
+#tab1, #tab2, #tab3, #setting-window {
+  position: fixed;
+  box-sizing: border-box;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: #FFFFFF;
+}
+
+/* SETTING WINDOW */
+#setting-window {
+	z-index: 120;
+	background-color: #333333;
+}
+
+#card-area {
+	position: fixed;
+	bottom: 10px;
+	bottom: calc(10px + onstant(safe-area-inset-bottom)); /* iOSノッチ対策 */
+	bottom: calc(10px + env(safe-area-inset-bottom)); /* iOSノッチ対策 */
+	left: 3%;
+	z-index: 140;
+	height: 30%;
+	width: 94%;
+	background-color: #FFFFFF;
+}
+
+.button_wrapper {
+	text-align: center;
+}
+
+button {
+display: inline-block;
+	padding: 0.5em 1em;
+	text-decoration: none;
+	background: #668ad8;/*ボタン色*/
+	color: #FFF;
+	border-bottom: solid 4px #627295;
+	border-radius: 3px;
+	width: 50%;
+}
+
+button:active {
+	-webkit-transform: translateY(4px);
+	transform: translateY(4px);/*下に動く*/
+	border-bottom: none;/*線を消す*/
+}

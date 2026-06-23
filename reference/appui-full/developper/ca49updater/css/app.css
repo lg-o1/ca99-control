@@ -1,0 +1,236 @@
+@charset "utf-8";
+
+html, body {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+/* 長押しメニュー無効 */
+body {
+  -webkit-touch-callout:none; /*リンク長押しのポップアップを無効化*/
+  user-select: none;
+  -webkit-user-select:none; /*テキスト長押しの選択ボックスを無効化*/
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);/*iOSのリンクタップ時のグレーカラーを透明化*/
+  -webkit-text-size-adjust: none; /*iOSで縦横回転時に拡大される問題の対策 */
+  background-color: var(--CA-white);
+  position: relative;
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+}
+body.modal-open {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+}
+/* ドラッグ禁止 */
+img, a {
+  -webkit-user-drag:none;   
+}
+
+/* ボタン等要素をクリックした時の枠線を消去 */
+*:focus {
+  outline: none;
+}
+
+/* 純正スクロールバー非表示 */
+::-webkit-scrollbar {
+  display: none;
+  color: transparent;
+  width: 0px;
+}
+
+/*Vue.jsトランジション*/
+.v-enter-active, .v-leave-active {
+  transition: opacity 200ms;
+}
+.v-enter, .v-leave-to {
+  opacity: 0;
+}
+[v-cloak] {
+  display: none;
+}
+
+/* color */
+:root {
+  --CA-white:       #ffffff;
+  --CA-white-dark:  #c7c6c6;
+
+  --CA-gray-light:  #a2a2a2;
+  --CA-gray:        #6e6e6e;
+  --CA-gray-dark:   #474647;
+  
+  --CA-black1:      #2d2c2c;
+  --CA-black2:      #1f1f1f;
+  --CA-black3:      #191919;
+  --CA-black4:      #111111;
+
+  --CA-green-light: #10818e;
+  --CA-green:       #106266;
+  --CA-green-dark:  #1d3f43;
+
+  --CA-red:         #f62c39;
+  --CA-red-dark:    #bc1b2a;
+  /* --mdc-theme-primary: #00000000;  */
+  --mdc-theme-primary: #106266;
+}
+
+.typography--headline {
+  font-family: Roboto, sans-serif;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.3125rem; /* 21px */
+  line-height: 2rem; /* 32px */
+  font-weight: 700;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+}
+.typography--body {
+  font-family: Roboto, sans-serif;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 0.84375rem; /* 13.5px */
+  line-height: 1.25rem; /* 20px */
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: scroll;
+  -webkit-overflow-scrolling: touch;
+}
+.typography--button {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: Roboto, sans-serif;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.3125rem; /* 21px */
+  line-height: 2rem; /* 32px */
+  font-weight: 500;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.hero-img {
+  position: fixed;
+  width: 100%;
+  height: 30%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
+  object-fit: cover;
+
+}
+.title {
+  position: fixed;
+  width: 100%;
+  height: 96px;
+  top: 30%;
+
+  box-sizing: border-box;
+  padding-top: 12px;
+  line-height: 36px;
+  text-align: center;
+  white-space: pre-line;
+}
+
+.body {
+  position: fixed;
+  width: 100%;
+  left: 0;
+  top: calc(30% + 96px);
+  bottom: 48px;
+
+  overflow: scroll;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--CA-white); 
+}
+.description {
+  position: relative;
+  display: block;
+
+  width: 100%;
+  left: 0;
+
+  box-sizing: border-box;
+  padding: 5%;
+  white-space: pre-line;
+}
+.warning {
+  position: relative;
+  display: block;
+  width: 100%;
+  left: 0;
+
+  box-sizing: border-box;
+  padding: 5%;
+  white-space: pre-line;
+  color: var(--CA-red);
+  font-weight: 700;
+}
+.tips {
+  position: relative;
+  display: block;
+  width: 100%;
+  left: 0;
+
+  box-sizing: border-box;
+  padding: 5%;
+  white-space: pre-line;
+  color: var(--CA-gray-dark);
+  background-color: var(--CA-white-dark);
+}
+
+.btn {
+  position: fixed;
+  width: 100%;
+  height: 48px;
+  left: 0;
+  bottom: 0;
+  text-align: center;
+  line-height: 48px;
+  color: var(--CA-green-light);
+  background-color: var(--CA-white);
+}
+
+.player__progress-line {
+  position: absolute;
+  bottom: 48px;
+  margin: 0;
+  border: 0;
+  border-width: 0;
+  height: 3px;
+  background-color: var(--CA-white-dark);
+  width: 100%;
+  z-index: 1;
+}
+.player__progress-line--active {
+  position: absolute;
+  bottom: 48px;
+  margin: 0;
+  border: 0;
+  border-width: 0;
+  height: 3px;
+  background-color: var(--CA-green-light);
+  /* width: 50%; */
+  z-index: 10;
+  transition: width 300ms 0s linear;
+}
+
+.overlay {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  z-index: 10;
+  background-color: var(--CA-black2);
+  opacity: 0.9;
+}

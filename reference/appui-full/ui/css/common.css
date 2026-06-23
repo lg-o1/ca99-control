@@ -1,0 +1,301 @@
+@charset "utf-8";
+
+/* HEADER */
+.header {
+  position: fixed;
+  left: 0;
+  top: 20px;
+  /* top: calc(20px + constant(safe-area-inset-top)); iOSノッチ対策 
+  top: calc(20px + env(safe-area-inset-top)); iOSノッチ対策  */
+  z-index: 100;
+
+  width: 100%;
+  height: 48px;
+
+  background-color: var(--CA-black3);
+  opacity: 0.9;
+}
+.header__title {
+  position: absolute;
+  left: 50%;
+  top:50%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  z-index: 1;
+
+  /* font-family: Roboto,sans-serif;
+  font-size: 1.5rem;
+  line-height: 3rem;
+  font-weight: 500;
+  letter-spacing: .0125em;
+  text-decoration: inherit;
+  text-transform: inherit;
+  text-overflow: ellipsis; */
+
+  color: var(--CA-white-dark);
+
+  white-space: nowrap;
+}
+.header__back-button {
+  position: absolute;
+  left: 5px;
+  top: 0px;
+  z-index: 1;
+  color: var(--CA-white-dark);
+}
+.header__menu-button {
+  position: absolute;
+  right: 5px;
+  top: 0px;
+  z-index: 1;
+  color: var(--CA-white-dark);
+}
+#status-bar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  /* top: constant(safe-area-inset-top); iOSノッチ対策 
+  top: env(safe-area-inset-top); iOSノッチ対策  */
+  z-index: 100;
+
+  width: 100%;
+  height: 20px;
+
+  background-color: var(--CA-black3);
+  opacity: 0.9;
+}
+.status-icons {
+  position: relative;
+  top: 0px;
+  left: 10%;
+  z-index: 1;
+  margin-right: 5px;
+  color: var(--CA-white-dark);
+}
+
+/* TAB BAR */
+.tabbar {
+  position: fixed;
+  left: 0;
+  bottom: 0px;
+  /* bottom: constant(safe-area-inset-bottom);  iOSノッチ対策
+  bottom:  env(safe-area-inset-bottom);      iOSノッチ対策 */
+  z-index: 300;
+  
+  width: 100%;
+  /* height: 11vh; */
+  height: 48px;
+  background-color: var(--CA-black1);
+}
+.tab-button {
+  position: absolute;
+  display: flex;
+  flex: 1 0 auto;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0 24px;
+  border: none;
+  outline: none;
+  background: none;
+
+  width: calc(100% / 3);
+  height: 100%;
+
+  background-color: #00000000;
+  color: var(--CA-white-dark);
+
+  font-weight: 400;
+  text-align: center;
+  white-space: nowrap;
+
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+.tab-button-icon {
+  position: relative;
+  font-size: 20px;
+  line-height: 48px;
+}
+.tabbar__label {
+  position: relative;
+  display: inline-block;
+
+  padding-left: 8px;
+  padding-right: 0;
+
+  font-size: 1rem;
+  line-height: 48px;
+}
+.tabbar__label--Ja {
+  position: relative;
+  display: inline-block;
+
+  padding-left: 6px;
+  padding-right: 0;
+
+  font-size: 0.7rem;
+  line-height: 48px;
+}
+.tab-button--selected {
+  font-weight: 700;
+  color: var(--CA-white);
+}
+.tab-button-0 {
+  left: 0;
+}
+.tab-button-1 {
+  left: calc(100% / 3);
+}
+.tab-button-2 {
+  left: calc(100% / 3 * 2);
+}
+.tab-ripple {
+  position: absolute;
+  bottom: 0;
+
+  width: 100%;
+  height: 100%;
+
+  background-color: #00000000;
+  z-index: 1;
+}
+.tabbar__divider {
+  position: fix;
+  top: -1px;
+  margin: 0;
+  border: 0;
+  border-width: 0;
+  height: 1px;
+  background-color: var(--CA-black3);
+  width: 100%;
+  z-index: 1;
+  /* border-bottom-color: red; */
+
+}
+.tabbar__bg {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  /* height: constant(safe-area-inset-bottom); iOSノッチ対策
+  height:  env(safe-area-inset-bottom); iOSノッチ対策 */
+  z-index: 100;
+  background-color: var(--CA-black1);
+}
+
+/* COMMON */
+.scrollable-full-window {
+  position: fixed;
+  box-sizing: border-box;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden auto;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--CA-black3);
+}
+.full-window {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* overflow: hidden; */ /* overflowが有効だとiOSのスクロールスナップが途中で止まる */
+}
+/* LIST WINDOW */
+.list-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding-top: 60px;
+  /* padding-top: calc(60px + constant(safe-area-inset-top));  iOSノッチ対策
+  padding-top: calc(60px + env(safe-area-inset-top)); iOSノッチ対策 */
+  padding-bottom: 168px;
+  /* padding-bottom: calc(168px + constant(safe-area-inset-bottom));  iOSノッチ対策
+  padding-bottom: calc(168px + env(safe-area-inset-bottom)); iOSノッチ対策
+  padding-left: constant(safe-area-inset-left); iOSノッチ対策
+  padding-left: env(safe-area-inset-left); iOSノッチ対策
+  padding-right: constant(safe-area-inset-right); iOSノッチ対策
+  padding-right: env(safe-area-inset-right); iOSノッチ対策   */
+  width: 100%;
+}
+.mdc-list {
+  color: var(--CA-white-dark);
+  font-weight: 400;
+}
+.mdc-list-divider {
+  border-bottom-color: var(--CA-black4);
+}
+.list-window > div > ul > div > li > .material-icons {
+  color: var(--CA-white-dark);
+  font-weight: 100;
+}
+.list-forground {
+  transition: opacity 0.5s, transform 0.4s;
+  opacity: 1;
+}
+.list-background {
+  transition: opacity 0.5s, transform 0.4s;
+  opacity: 0;
+  transform: translateX(-100%);
+}
+.lists-component-icon {
+  color: var(--CA-white-dark);
+}
+
+.lists__no-device {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+}
+.llists__no-device-text {
+  position: absolute;
+  left: 10%;
+  top: 60%;
+  z-index: 10;
+  width: 80%;
+  height: 40%;
+  color: var(--CA-white-dark);
+  text-align: center;
+  line-height: 120%;
+  white-space: pre-line;
+}
+.lists__no-device-img {
+  position: relative;
+  top: 0;
+  width: 100%;
+  height: 60%;
+  background-image: url(../img/USBConnect.png);
+  background-repeat: no-repeat;
+  background-position-y: 70%;
+  background-position-x: center;
+  background-size: 60%;
+  opacity: 1
+}
+
+.card-bg {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  z-index: 200;
+
+  /* transition: background-color 200ms ease-out,z-index 200ms ease-in; */
+  transition: background-color 200ms ease-out;
+}
+.card-bg-isShown {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 900;
+  width: 100%;
+  height: 100%;
+  background-color: var(--CA-gray);
+  opacity: 0.7;
+}

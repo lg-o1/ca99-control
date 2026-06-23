@@ -1,0 +1,100 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+  
+  <head>
+    <meta charset="UTF-8" />
+    <title>DP Update Mode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="../../../lib/material-icons/material-icons.css">
+    <link rel="stylesheet" href="../../../lib/mdc/material-components-web.min.css">
+    <link rel="stylesheet" href="../css/app.css">
+  </head>
+  
+  <body>
+    <div id="app">
+      <div v-show="isLoading"
+        class="loading">
+        Loading...
+      </div>
+      <div v-show="isAvailable">
+        <div v-if="UI.page === 'Destination'">
+          <div class="dp-info">
+            <br><br>
+            <span>Model : {{PIANO.Model}}</span>
+            <br><br>
+            <span>Destination : {{PIANO.Destination.name}} {{PIANO.Destination.bluetooth ? '' : ' (Bluetooth Disabled)'}}</span>
+            <br><br>
+            <span>ROM Name : {{PIANO.Parameters.System.RomName}}</span>
+            <br><br>
+            <span>Version : {{PIANO.Version}}</span>
+            <br><br>
+            <span>CheckSum : {{PIANO.Parameters.System.Checksum}}</span>
+          </div>
+        </div>
+  
+        <!-- HostUpdate -->
+        <div class="fwUpdate" 
+          v-if="UI.page === 'HostUpdate'">
+          <!-- header -->
+          <div class="fwUpdate__header 
+            mdc-top-app-bar">
+            <div class="mdc-top-app-bar__row">
+              <section class="mdc-top-app-bar__section">
+                <span class="fwUpdate__header__title 
+                  mdc-top-app-bar__title">Firmware Update</span>
+              </section>
+            </div>
+          </div>
+  
+          <!-- content -->
+          <div class="fwUpdate__content">
+            <h1 class="fwUpdate__content__title">Flash Programming</h1>
+            <h2 class="fwUpdate__content__status">{{fwUpdateStatusMsg}}</h2>
+            <div class="fwUpdate__content__info"
+              v-for="i in UI.fwUpdate.infos.length">
+              <div class="fwUpdate__info__name">{{fwUpdateInfo(i-1).name}}</div>
+              <div class="fwUpdate__info__address">{{fwUpdateInfo(i-1).address}}</div>
+              <div class="fwUpdate__info__result">{{fwUpdateResultMsg(i-1)}}</div>
+            </div>
+            <div class="fwUpdate__content__msg"
+              v-if="hasFWUpdated">{{UI.fwUpdate.msg}}</div>
+          </div>
+  
+          <!-- <div class="fwUpdate__test">
+            <h1>WAVE CheckSum</h1>
+            <p class="checksum">{{UI.fwUpdate.waveCheckSum.value}}</p>
+            <p class="calc">{{UI.fwUpdate.waveCheckSum.address}}</p>
+        
+            <div id="cancel" class="container">
+              <div class="box square bottom">
+                <div class="bottomwrapper">
+                  <button class="mdc-button bottom mdc-button--outlined"
+                          @click="cancelCalcCheckSum">
+                          Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div> -->
+        </div>
+      </div>
+    </div>
+    <script src="../../../lib/vue/vue.js"></script>
+    <script src="../../../lib/axios.min.js"></script>
+    <script src="../../../lib/mdc/material-components-web.min.js"></script>
+    <script defer src="../../../lib/kawaipianojs/kawaipiano.dev.js"></script>
+    <script src="../../../lib/kawaipianojs/kawaipiano.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/music.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/rhythm.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/bluetoothmidi.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/kwm.js"></script>
+    <script src="../../../lib/kawaipianojs/midi/webmidi.js"></script>
+    <script src="../../../lib/kawaipianojs/midi/midimanager.js"></script>
+    <script src="../../../lib/kawaipianojs/worker/recWorker.js"></script>
+    <script src="../js/app.js"></script>
+    <script src="../../../lib/encoding.min.js"></script>
+  </body>
+  
+</html>

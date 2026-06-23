@@ -1,0 +1,60 @@
+<!DOCTYPE HTML>
+<html lang="ja">
+  
+  <head>
+    <meta charset="UTF-8" />
+    <title>CA49 Updater</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="../../../lib/material-icons/material-icons.css">
+    <link rel="stylesheet" href="../../../lib/mdc/material-components-web.min.css">
+    <link rel="stylesheet" href="../../../lib/kawai-icons/kawai-icons.css">
+    <link rel="stylesheet" href="../../../lib/kuic/kawai-ui-components.css">
+    <link rel="stylesheet" href="../css/app.css">
+  </head>
+  
+  <body>
+    <div id="main">
+
+      <img class="hero-img" :src="img" v-show="img"/>
+
+      <span class="title typography--headline mdc-elevation--z24" v-show="title" v-cloak>{{title}}</span>
+
+      <div class="body" >
+        <span class="description typography--body" v-show="description" v-cloak>{{description}}</span>
+        <span class="warning typography--body" v-show="warning" v-cloak>{{warning}}</span>
+        <span class="tips typography--body" v-show="tips" v-cloak>{{tips}}</span>
+      </div>
+
+      <span class="btn typography--button mdc-elevation--z24" v-show="btn" @click="onClick" v-cloak>{{btn}}</span>
+
+      <div class="progress" v-show="page === 'updating'">
+        <hr class="player__progress-line">
+        <hr class="player__progress-line--active" :style="{ width: progress + '%' }">
+      </div>
+
+      <div class="overlay" v-show="connectWindow"></div>
+    </div>
+    <!-- <script src="../../../lib/vue/vue.min.js"></script> -->
+    <script src="../../../lib/vue/vue.js"></script>
+    <script src="../../../lib/axios.min.js"></script>
+    <script src="../../../lib/encoding.min.js"></script>
+
+    <script defer src="../../../lib/kawaipianojs/kawaipiano.dev.js"></script>
+    <script src="../../../lib/kawaipianojs/kawaipiano.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/music.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/rhythm.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/bluetoothmidi.js"></script>
+    <script src="../../../lib/kawaipianojs/kwm/kwm.js"></script>
+    <script src="../../../lib/kawaipianojs/midi/webmidi.js"></script>
+    <script src="../../../lib/kawaipianojs/midi/midimanager.js"></script>
+    <script src="../../../lib/kawaipianojs/worker/recWorker.js"></script>
+
+    <script src="../../../lib/mdc/material-components-web.min.js"></script>
+    <script src="../../../lib/kuic/kawai-ui-components.js"></script>
+    <script src="../js/app.js"></script>
+  </body>
+  
+</html>

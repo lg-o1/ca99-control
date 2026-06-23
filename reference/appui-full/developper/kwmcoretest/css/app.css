@@ -1,0 +1,135 @@
+@charset "utf-8";
+
+/*長押しメニュー無効*/
+body {
+  -webkit-touch-callout:none; /*リンク長押しのポップアップを無効化*/
+  user-select: none;
+  -webkit-user-select:none; /*テキスト長押しの選択ボックスを無効化*/
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);/*iOSのリンクタップ時のグレーカラーを透明化*/
+  background-color: rgb(240,240,240);
+}
+/*ドラッグ禁止*/
+img, a {
+  -webkit-user-drag:none;   
+}
+/*Vue.js Transition*/
+.v-enter-active, .v-leave-active {
+  transition: opacity 0.2s;
+}
+.v-enter, .v-leave-to {
+  opacity: 0;
+}
+.slide-from-right-enter-active, .slide-from-right-leave-active {
+  /* transition: opacity 0.5s; */
+  transition: transform 0.4s;
+}
+.slide-from-right-enter, .slide-from-right-leave-to {
+  /* opacity: 0; */
+  transform: translateX(100%);
+}
+.slide-to-left-enter-active, .slide-to-left-leave-active {
+  /* transition: opacity 0.5s; */
+  transition: transform 0.4s;
+}
+.slide-to-left-enter, .slide-to-left-leave-to {
+  /* opacity: 0; */
+  transform: translateX(-100%);
+}
+/*MDCテーマカラー*/
+:root {
+  --mdc-theme-primary: #193446;
+  --mdc-theme--secondary: #193446;
+  --mdc-theme-background:#FF0000;
+  --mdc-theme-surface: #000000;
+  --mdc-theme-on-primary: #FFFFFF;
+  --mdc-theme-on-secondary: #193446;
+  --mdc-theme-on-surface: #AAAAAA;
+}
+#HEADER {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0.9;
+}
+#header_title {
+  font-family: Roboto,sans-serif;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 2rem;
+  line-height: 3rem;
+  font-weight: 500;
+  letter-spacing: .0125em;
+  text-decoration: inherit;
+  text-transform: inherit;
+  padding-left: 0px;
+  padding-right: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  position: absolute;
+  left: 50%;
+  top:50%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  z-index: 1;
+}
+body {
+  padding-top: 50px;
+  padding-bottom: 100px;
+  background-color:  #FFFFFF;
+}
+h6 {
+  color: #193446;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+i {
+  line-height: 2rem !important;
+  vertical-align: bottom;
+}
+
+.demo-width-class {
+  width: 30%;
+}
+
+#SELECT {
+  left: 5%;
+}
+
+/* Test画面 */
+.window-common {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0%;
+  z-index: 0;
+  padding-top: 70px;
+  padding-bottom: 150px;
+  overflow: auto;
+}
+#BackButton {
+  color: #FFFFFF;
+  position: fixed;
+  top: 5px;
+  left: 5px;
+  z-index: 200;
+}
+.button {
+  background-color: #AAAAAA !important;
+  width: 250px;
+  position: relative;
+  display: block;
+  margin: 10px;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, 0, 0);
+  transform: translate3d(-50%, 0, 0);
+}
+.mdc-button {
+  text-transform: none;
+}
+.mdc-slider {
+  width: 80%;
+  left: 10%;
+}

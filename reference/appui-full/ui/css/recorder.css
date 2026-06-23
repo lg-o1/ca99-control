@@ -1,0 +1,508 @@
+@charset "utf-8";
+
+.rec-btn-mini {
+  position: fixed;
+  right: 12%;
+  bottom: 55px;
+  z-index: 300;
+  -webkit-transform: translate3d(50%, 0, 0);
+  transform: translate3d(50%, 0, 0);
+
+  height: 24px;
+  width: 48px;
+  min-width: 0px; /* MDC CSS リセット*/
+  border-radius: 24px;
+
+  color: var(--CA-white-dark) !important;
+  border-color: var(--CA-white-dark) !important;
+  background-color: #00000000 !important;
+  transition-duration: 200ms;
+  pointer-events: none;
+}
+.rec-btn-mini--standby {
+  color: var(--CA-red) !important;
+  border-color: var(--CA-red) !important;
+  background-color: #00000000 !important;
+  transition-duration: 300ms;
+}
+.rec-btn-mini--recording {
+  color: var(--CA-black4) !important;
+  border-color: var(--CA-red) !important;
+  background-color: var(--CA-red) !important;
+  transition-duration: 300ms;
+}
+.rec-btn-mini--secondary {
+  bottom: 66px;
+  transition: height 200ms 0 ease-out;
+}
+/* !importantを使わないとmdcのcssを上書きできない。mdcをやめるのもあり。 */
+.rec-btn-mini--on-chord {
+  right: 46px;
+  bottom: 78px;
+  -webkit-transform: translate3d(50%, 0, 0);
+  transform: translate3d(50%, 0, 0);
+  z-index: 2010;
+  pointer-events: auto;
+}
+.rec-window--on-chord {
+  z-index: 2200 !important;
+}
+.rec-bg--on-chord {
+  z-index: 2020 !important;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 900;
+  width: 100%;
+  height: 100%;
+  background-color: var(--CA-gray);
+  opacity: 0.7;
+}
+
+.rec-params {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+.rec__time {
+  position: fixed;
+  left: 0;
+  top: 36px;
+  z-index: 20;
+  width: 100%;
+  height: 144px;
+}
+.rec__time-mini {
+  position: absolute;
+  display: block;
+  right: 25%;
+  bottom: 0;
+  width: 25%;
+  height: 40px;
+
+  margin: 0px;
+  margin-right: 6px;
+  font-weight: 700;
+  letter-spacing: 2px !important;
+  text-align: right;
+  line-height: 40px;
+
+  color: var(--CA-white-dark);
+}
+.rec__time-value {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 96px;
+  text-align: center;
+  line-height: 96px;
+  /* letter-spacing: 3px !important; */
+  margin: 0;
+  color: white !important;
+  font-family: monospace;
+  font-weight: 100;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+}
+.rec__status-label {
+  position: absolute;
+  left: 0;
+  top: 90px;
+  width: 100%;
+  height: 48px;
+  font-weight: 400;
+  line-height: 48px;
+  text-align: center;
+  margin: 0;
+  color: var(--CA-white) !important;
+}
+
+.rec-btn {
+  position: absolute;
+  top: 70%;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  z-index: 10;
+  width: 96px;
+  height: 96px;
+  border-style: none;
+  background-color: var(--CA-gray);
+  transition: all 200ms 0s ease;
+}
+.rec-btn--recording {
+  top: 62%;
+  background-color: var(--CA-red);
+  transition: all 300ms 0s ease;
+}
+.rec-btn-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--CA-green);
+  transition: background-color 200ms 0s ease;
+}
+.rec-btn-icon--standby {
+  background-color: var(--CA-red);
+  transition: background-color 200ms 0s ease;
+
+}
+.rec-btn-icon--recording {
+  border-radius: 5px;
+  background-color: var(--CA-white);
+  transition: all 200ms 0s ease;
+}
+
+.rec-motion {
+  position: absolute;
+  top: calc(62% - 48px);
+  left: calc(50% - 48px);
+  width: 96px;
+  height: 96px;
+  /* top: 62%;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0); */
+  border-radius: 50%;
+  background-color: var(--CA-red);
+  animation-duration: 1000ms;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+  animation-play-state: paused;
+}
+.rec-motion--run {
+  animation-play-state: running;
+}
+.rec-motion__el1 {
+  z-index: 2;
+  animation-name: rec-motion-1;
+}
+.rec-motion__el2 {
+  z-index: 1;
+  animation-name: rec-motion-2;
+}
+.rec-motion__el3 {
+  z-index: 0;
+  animation-name: rec-motion-3;
+}
+@keyframes rec-motion-1 {
+  0% {
+    /* width: 96px;
+    height: 96px; */
+    transform: scale(1);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.2;
+  }
+  100% {
+    /* width: 130px;
+    height: 130px; */
+    transform: scale(calc(130 / 96));
+    opacity: 0.2;
+  }
+}
+@keyframes rec-motion-2 {
+  0% {
+    /* width: 96px;
+    height: 96px; */
+    transform: scale(1);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.1;
+  }
+  100% {
+    /* width: 160px;
+    height: 160px; */
+    transform: scale(calc(160 / 96));
+    opacity: 0.1;
+  }
+}
+@keyframes rec-motion-3 {
+  0% {
+    /* width: 96px;
+    height: 96px; */
+    transform: scale(1);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.1;
+  }
+  100% {
+    /* width: 180px;
+    height: 180px; */
+    transform: scale(calc(180 / 96));
+    opacity: 0.1;
+  }
+}
+
+.rec__action {
+  position: absolute;
+  top: 70%;
+  left: 50%;
+  z-index: -1;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  width: 96px;
+  height: 96px;
+  opacity: 0;
+  transition: all 200ms 0s ease-out;
+  user-select: none;
+}
+/* オーバーダビングボタン見送りにより３ボタンレイアウト */
+.play-btn {
+  top: 55%;
+  left: 72%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 1;
+  transition: all 200ms 0s ease-out;
+}
+.play-btn--center {
+  left: 50%;
+}
+.overdub-btn {
+  top: 55%;
+  left: 28%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 1;
+  transition: all 200ms 0s ease-out;
+}
+.save-btn {
+  top: 80%;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 1;
+  transition: all 200ms 0s ease-out;
+}
+.save-btn--embedded {
+  top: 80%;
+  left: 72%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 1;
+  transition: all 200ms 0s ease-out;
+}
+.delete-btn {
+  top: 80%;
+  left: 18%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 1;
+  transition: all 200ms 0s ease-out;
+}
+.delete-btn--embedded {
+  top: 80%;
+  left: 28%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 1;
+  transition: all 200ms 0s ease-out;
+}
+.share-btn {
+  top: 80%;
+  left: 82%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+  transform: translate3d(-50%, -50%, 0);
+  opacity: 1;
+  transition: all 200ms 0s ease-out;
+}
+
+.rec__action-btn {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, 0, 0);
+  transform: translate3d(-50%, 0, 0);
+  width: 60px;
+  height: 60px;
+  border-style: none;
+  opacity: 1;
+  background-color: var(--CA-gray);
+  transition: background-color 200ms 0s ease-out;
+}
+.rec__action-btn--active {
+  background-color: var(--CA-green);
+  transition: background-color 200ms 0s ease-out;
+}
+.rec__action-btn-icon {
+  font-size: 24px;
+  color: var(--CA-white);
+}
+.rec__action-btn-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, 0, 0);
+  transform: translate3d(-50%, 0, 0);
+  width: 150%;
+  height: 24px;
+  text-align: center;
+  line-height: 24px;
+  text-transform: uppercase;
+  color: var(--CA-white-dark);
+}
+
+.rec__cancel-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+          transform: translate3d(-50%, -50%, 0);
+  width: 144px;
+  height: 38px;
+  z-index: 1;
+  border-color: var(--CA-white-dark) !important;
+  color: var(--CA-white-dark) !important;
+}
+
+.overdub {
+  position: fixed;
+  left: 0;
+  top: calc(100% / 3);
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  background-color: var(--CA-gray-dark);
+  opacity: 1;
+  transition: height 200ms 0s ease;
+  transition: opacity 200ms 0s ease;
+  transition: background-color 200ms 0s ease-out;
+}
+.overdub--fixed {
+  height: 60px;
+  transition: height 200ms 0s ease;
+}
+.overdub--hidden {
+  opacity: 0;
+  transition: opacity 200ms 0s ease;
+}
+.overdub--active {
+  background-color: var(--CA-green-dark);
+  transition: background-color 200ms 0s ease-out;
+}
+.overdub__title {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 100%;
+  height: 12px;
+  font-weight: 400;
+  line-height: 12px;
+  text-align: center;
+  font-weight: 700;
+  margin: 0;
+  color: var(--CA-white-dark) !important;
+}
+.overdub__song-name {
+  position: absolute;
+  left: 48px;
+  top: 18px;
+  width: calc(100% - 96px);
+  height: 48px;
+  font-weight: 400;
+  line-height: 48px;
+  text-align: center;
+  margin: 0;
+  color: var(--CA-white) !important;
+}
+.overdub__select-bar {
+  position: absolute;
+  top: 0px;
+  right: 0;
+  width: 100%;
+  height: 60px;
+  z-index: 1;
+}
+.overdub__select-btn {
+  position: absolute;
+  top: 6px;
+  right: 0;
+  width: 48px;
+  height: 48px;
+  border-style: none;
+  opacity: 1;
+}
+.overdub__playback-btn {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, 0, 0);
+  transform: translate3d(-50%, 0, 0);
+  width: 48px;
+  height: 48px;
+  /* border-style: none; */
+  opacity: 1;
+  /* background-color: var(--CA-gray-light); */
+  /* transition: background-color 200ms 0s ease-out; */
+}
+.rec__menu {
+  position: fixed;
+  right: 30px;
+  bottom: 36px;
+  z-index: 502;
+  width: calc(100% - 60px);
+  height: 204px;
+  overflow: hidden;
+  opacity: 1;
+  background-color: var(--CA-black1);
+  transition: all 200ms 0s ease;
+}
+.rec__gain-slider {
+  position: absolute;
+  left: 10%;
+  top: 36px;
+  width: 80%;
+}
+
+.rec__touch-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9000;
+  width: 100%;
+  height: 100%;
+}
+
+.file-select {
+  z-index: 2000;
+  padding-top: 66px;
+  padding-bottom: 60px;
+  background-color: var(--CA-black2);
+}
+.file-select__header {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  width: 100%;
+  height: 60px;
+  color: var(--CA-white-dark);
+  text-align: center;
+  line-height: 60px;
+  background-color: var(--CA-black1);
+}
+.file-select__footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 60px;
+  z-index: 100;
+  background-color: var(--CA-black1);
+}
+.file-select__footer__label {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  color: var(--CA-white-dark);
+  text-align: center;
+  line-height: 60px;
+}

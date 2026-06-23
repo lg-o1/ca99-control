@@ -1,0 +1,33 @@
+/* Safariでbuttonの角丸直径がheightになる不具合対策 */
+input[type="button"],input[type="submit"] {
+  -webkit-appearance: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#text_keyboard {
+    position: absolute;
+    left: 0%;
+    top: 60%;
+    height: 40%;
+    width: 100%;
+    background-color: var(--CA-black3);
+    z-index: 2;
+}
+
+.text_key {
+    display: inline-block;
+    position: absolute;
+    color: var(--CA-white);
+    margin: 0px, 0px;
+    padding: 0px 0px;
+    border-width: 0px;
+    font-family: Roboto;
+    font-weight:800;
+    outline-width: 0;
+
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+
+    z-index: 3;
+}

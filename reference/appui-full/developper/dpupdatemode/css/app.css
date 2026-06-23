@@ -1,0 +1,227 @@
+@charset "utf-8";
+
+/*長押しメニュー無効*/
+body {
+  -webkit-touch-callout:none; /*リンク長押しのポップアップを無効化*/
+  user-select: none;
+  -webkit-user-select:none; /*テキスト長押しの選択ボックスを無効化*/
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);/*iOSのリンクタップ時のグレーカラーを透明化*/
+  background-color: rgb(240,240,240);
+}
+/*ドラッグ禁止*/
+img, a {
+  -webkit-user-drag:none;   
+}
+/*Vue.js Transition*/
+.v-enter-active, .v-leave-active {
+  transition: opacity 0.2s;
+}
+.v-enter, .v-leave-to {
+  opacity: 0;
+}
+/*MDCテーマカラー*/
+:root {
+  --mdc-theme-primary: #193446;
+  --mdc-theme--secondary: #193446;
+  --mdc-theme-background:#FF0000;
+  --mdc-theme-surface: #000000;
+  --mdc-theme-on-primary: #FFFFFF;
+  --mdc-theme-on-secondary: #193446;
+  --mdc-theme-on-surface: #AAAAAA;
+}
+
+/* ------------------------------------------------------------ */
+/* common */
+
+* {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	vertical-align: baseline;
+	line-height: 1.5;
+}
+
+img {
+	vertical-align: bottom;
+}
+
+ul {
+	list-style: none;
+}
+
+html, body, #app {
+  padding: 0;
+  margin: 0;
+  height: 100%;
+}
+
+/*
+ * Loading
+ */
+.loading {
+  width: 100vw; height: 80vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background-color: #EEE;
+}
+
+/* ------------------------------------------------------------ */
+/* dp-info */
+
+.dp-info {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  color: white;
+  font-size: 20px;
+  text-align: center;
+  background-color: #444444;
+  opacity: 0.9;
+}
+
+/* main */
+#main {
+  /* margin-top: 56px; */
+  padding: 13px 21px;
+  overflow: hidden;
+  position: relative;
+  /* background-color: aliceblue; */
+}
+
+/* ------------------------------------------------------------ */
+/* wave checksum */
+
+/* * font */
+h1 {
+  font-size: 17px;
+}
+
+p.skip, p.square {
+  font-size: 13px;
+}
+
+p.checksum {
+  font-size: 60px;
+}
+
+p.calc, p.value, p.tone {
+  font-size: 34px;
+}
+
+/* * color */
+h2, p.instruction, p.calc, p.tone, p.touch {
+  color: gray;
+}
+
+p.value, p.value.sub, p.skip, p.square, p.checksum {
+  color: blue;
+}
+
+p.skip, p.square {
+  width: 58px;
+  text-align: center;
+  /* background-color: burlywood; */
+}
+
+p.square {
+  width: 34px;
+  /* background-color: chartreuse; */
+}
+
+p.checksum {
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  /* background-color: chocolate; */
+}
+
+p.calc {
+  width: 100%;
+  margin: 8px 0;
+  text-align: center;
+  /* background-color: coral; */
+}
+
+h1, p.value.sub {
+  margin: 0 .67em 8px 0;
+  /* background-color: aqua; */
+}
+
+/* TODO */
+.bottomwrapper {
+  padding: 0 21px;
+}
+
+.box {
+  width: 100%;
+  /* background-color: cornflowerblue; */
+}
+
+.box.square {
+  height: 44px;
+  /* background-color: crimson; */
+}
+
+/* TODO */
+.box.square.bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 131px;
+  text-align: center;
+  /* background-color: darkcyan; */
+}
+
+/* ------------------------------------------------------------ */
+/* fwUpdate */
+
+.fwUpdate {}
+  .fwUpdate__header {
+    position: fixed;
+  }
+  .fwUpdate__content {
+    position: relative;
+    height: 400px;
+    top: 76px;
+  }
+  .fwUpdate__test {
+    position: relative;
+    height: 100px;
+    padding: 0 20px 20px 20px;
+  }
+
+/* __header */
+.fwUpdate__header__title {}
+
+/* __content */
+.fwUpdate__content__title {
+  padding: 0 20px 20px 20px;
+}
+.fwUpdate__content__status {
+  padding: 0 20px 40px 20px;
+}
+.fwUpdate__content__info {
+  padding: 0 20px 20px 20px;
+}
+  .fwUpdate__info__name {
+  }
+  .fwUpdate__info__address {
+    float: left;
+  }
+  .fwUpdate__info__result {
+    text-align: right;
+  }
+.fwUpdate__content__msg {
+  position: fixed;
+  padding: 0 20px 20px 20px;
+  bottom: 32px;
+
+  line-height: 20px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}

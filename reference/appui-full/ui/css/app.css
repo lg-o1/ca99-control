@@ -1,0 +1,298 @@
+@charset "utf-8";
+
+html, body {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: none;
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+/* 長押しメニュー無効 */
+body {
+  -webkit-touch-callout:none; /*リンク長押しのポップアップを無効化*/
+  user-select: none;
+  -webkit-user-select:none; /*テキスト長押しの選択ボックスを無効化*/
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);/*iOSのリンクタップ時のグレーカラーを透明化*/
+  -webkit-text-size-adjust: none; /*iOSで縦横回転時に拡大される問題の対策 */
+  background-color: var(--CA-black3);
+  position: relative;
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+}
+body.modal-open {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+}
+/* ドラッグ禁止 */
+img, a {
+  -webkit-user-drag:none;   
+}
+
+/* ボタン等要素をクリックした時の枠線を消去 */
+*:focus {
+  outline: none;
+}
+
+/* 純正スクロールバー非表示 */
+::-webkit-scrollbar {
+  display: none;
+  color: transparent;
+  width: 0px;
+}
+
+/*Vue.jsトランジション*/
+.v-enter-active, .v-leave-active {
+  transition: opacity 200ms;
+}
+.v-enter, .v-leave-to {
+  opacity: 0;
+}
+.slide-in-right-enter-active, .slide-in-right-leave-active {
+  transition: opacity 0.5s, transform 0.4s;
+}
+.slide-in-right-enter, .slide-in-right-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
+}
+[v-cloak] {
+  display: none;
+}
+
+/* color */
+:root {
+  --CA-white:       #ffffff;
+  --CA-white-dark:  #c7c6c6;
+
+  --CA-gray-light:  #a2a2a2;
+  --CA-gray:        #6e6e6e;
+  --CA-gray-dark:   #474647;
+
+  --CA-black1:      #2d2c2c;
+  --CA-black2:      #1f1f1f;
+  --CA-black3:      #191919;
+  --CA-black4:      #111111;
+
+  --CA-green-light: #10818e;
+  --CA-green:       #106266;
+  --CA-green-dark:  #1d3f43;
+
+  --CA-red:         #f62c39;
+  --CA-red-dark:    #bc1b2a;
+  /* --mdc-theme-primary: #00000000;  */
+  --mdc-theme-primary: #106266;
+
+  --CA-font-family: Roboto, 'Noto Sans JP', sans-serif;
+}
+
+/* fonts */
+
+/*
+ * 未使用
+ */
+.CA-typography--headline1 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.6875rem; /* 27px */
+  line-height: 2.5rem; /* 40px */
+  font-weight: 700;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+}
+/*
+ * ミュージック画面 カード内曲数
+ */
+.CA-typography--headline2 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.6875rem; /* 27px */
+  line-height: 2.5rem; /* 40px */
+  font-weight: 400;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+}
+/*
+ * ヘッダー見出し
+ * ミュージック画面 選択中コンテンツバー アーティスト名
+ */
+.CA-typography--headline3 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.3125rem; /* 21px */
+  line-height: 2rem; /* 32px */
+  font-weight: 700;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*
+ * 選択中コンテンツバー見出し
+ */
+.CA-typography--headline4 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.3125rem; /* 21px */
+  line-height: 2rem; /* 32px */
+  font-weight: 400;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*
+ * ミュージック画面 カード内見出し
+ */
+.CA-typography--headline5 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.75rem; /* 28px */
+  font-weight: 700;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*
+ * 未使用
+ */
+.CA-typography--headline6 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.125rem; /* 18px */
+  line-height: 1.75rem; /* 28px */
+  font-weight: 400;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*
+ * カードUI内 小項目見出し (MENU画面、VTで登場)
+ */
+.CA-typography--subtitle1 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 700;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+}
+/*
+ * 未使用
+ */
+.CA-typography--subtitle2 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1rem; /* 16px */
+  line-height: 1.5rem; /* 24px */
+  font-weight: 400;
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+}
+/*
+ * リスト
+ */
+.CA-typography--body1 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 1.3125rem; /* 21px */
+  line-height: 2rem; /* 32px */
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*
+ * ミュージック画面 選択中コンテンツバー アーティスト名 Bold
+ * ミュージック画面 カード内「曲」= S2 Regular
+ */
+.CA-typography--body2 {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 0.84375rem; /* 13.5px */
+  line-height: 1.25rem; /* 20px */
+  letter-spacing: normal;
+  text-decoration: inherit;
+  text-transform: inherit;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/*
+ * タブバーボタンラベル
+ */
+.CA-typography--button {
+  /* font-family: Roboto, 'Noto Sans JP', sans-serif; */
+  font-family: var(--CA-font-family);
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-size: 0.84375rem; /* 13.5px */
+  line-height: 1.25rem; /* 20px */
+  letter-spacing: .08em;
+  text-decoration: inherit;
+  text-transform: inherit;
+}
+
+
+/*
+ * ボリュームアイコンがセンターポジションにいないように見える。
+ * その補正をここでしています。
+ * ここでは48×48pxで指定していますが、優先度のセレクターでサイズ指定が可能です。
+ */
+.KIF-volume-mute {
+  width: 42px;
+  height: 48px;
+  font-size: 24px;
+  text-align: center;
+  padding-left: 6px;
+  line-height: 48px;
+}
+.KIF-volume-up {
+  width: 36px;
+  height: 48px;
+  font-size: 24px;
+  text-align: center;
+  padding-left: 12px;
+  line-height: 48px;
+}

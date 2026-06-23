@@ -1,0 +1,66 @@
+
+#playbar{
+    top: 0%;
+    height: 100%;
+    width: 100%;
+    background-color: var(--CA-black1);
+    color: var(--CA-black2);
+    margin: 0;
+    padding: 0px 0px;
+    border-color: var(--CA-black2);
+    border-width: 0px;
+    border-radius: 0px;
+}
+
+#keyMask{
+    position: absolute;
+    top: 50%;
+    height: 40%;
+    width: 100%;
+    margin: 0;
+    padding: 0px 0px;
+    border-width: 0px;
+    border-radius: 0px;
+    background: radial-gradient(ellipse farthest-side at top, #404040FF, #00000000);
+    z-index: 100;
+}
+
+.keybar{
+    display: inline-block;
+    font-size: 0px;
+    width: 20px;
+    height: 0%;
+    margin: 0px 0px;
+    padding: 0px;
+    position: absolute;
+    left: 0px;
+    /*background: linear-gradient(#330867,#30cfd0);*/
+    background: linear-gradient(#00000000,#166E7BFF,#00000000);
+    vertical-align: center;
+    z-index: 100;
+}
+
+.player-card{
+    /* background-color: #000000;
+    border-color: #000000; */
+    border-width: 0px;
+    border-radius: 0px;
+    margin: 0px 0px;
+    padding: 0px 0px;
+    /* height: 100%;
+    width: 100%; */
+    /* overflow: hidden; */
+}
+
+/* スライダートラック（経過部分） */
+/* .mdc-slider__track{
+    --mdc-theme-secondary: #f64f59;
+} */
+/* スライダーツマミ、ピン */
+/* .mdc-slider__thumb, .mdc-slider__pin{
+    --mdc-theme-secondary: #c471ed;
+} */
+/* スライダートラック（未経過部分） */
+/* .mdc-slider__track-container{
+    background-color: #12c2e9 !important;
+} */

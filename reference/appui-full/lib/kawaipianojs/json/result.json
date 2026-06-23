@@ -1,0 +1,298 @@
+[
+  {
+    "no": 1,
+    "title": "Success",
+    "desicriptionJp": "正常終了（繰り返し範囲の終端まで読み終えた）",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x7E"
+  },
+  {
+    "no": 2,
+    "title": "Success",
+    "desicriptionJp": "正常終了（続きのデータが存在）",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x7F"
+  },
+  {
+    "no": 3,
+    "title": "Success",
+    "desicriptionJp": "正常終了",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x00"
+  },
+  {
+    "no": 4,
+    "title": "Error",
+    "desicriptionJp": "初期化処理中にエラー",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x01"
+  },
+  {
+    "no": 5,
+    "title": "NoData",
+    "desicriptionJp": "メディアが存在しない",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x21"
+  },
+  {
+    "no": 6,
+    "title": "Error",
+    "desicriptionJp": "マウントの失敗",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x22"
+  },
+  {
+    "no": 7,
+    "title": "Error",
+    "desicriptionJp": "ディスクアクセスエラー",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x31"
+  },
+  {
+    "no": 8,
+    "title": "Error",
+    "desicriptionJp": "ディスクフル",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x32"
+  },
+  {
+    "no": 9,
+    "title": "Error",
+    "desicriptionJp": "アクセス拒否",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x33"
+  },
+  {
+    "no": 10,
+    "title": "Error",
+    "desicriptionJp": "ディスクのフォーマット異常",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x34"
+  },
+  {
+    "no": 11,
+    "title": "Error",
+    "desicriptionJp": "ライトプロテクトメディアに書き込みをした",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x35"
+  },
+  {
+    "no": 12,
+    "title": "Error",
+    "desicriptionJp": "上書き禁止ファイルに書き込みした",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x36"
+  },
+  {
+    "no": 13,
+    "title": "Error",
+    "desicriptionJp": "パラメータエラー",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x41"
+  },
+  {
+    "no": 14,
+    "title": "Error",
+    "desicriptionJp": "パス指定異常",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x42"
+  },
+  {
+    "no": 15,
+    "title": "Error",
+    "desicriptionJp": "ドライブレター割り当て可能範囲オーバー",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x43"
+  },
+  {
+    "no": 16,
+    "title": "Error",
+    "desicriptionJp": "ファイルサイズを超えたシーク",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x51"
+  },
+  {
+    "no": 17,
+    "title": "Error",
+    "desicriptionJp": "削除ディレクトリはファイルが存在する",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x52"
+  },
+  {
+    "no": 18,
+    "title": "Error",
+    "desicriptionJp": "ルートディレクトリを削除しようとした",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x53"
+  },
+  {
+    "no": 19,
+    "title": "Error",
+    "desicriptionJp": "カレントディレクトリを削除しようとした",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x54"
+  },
+  {
+    "no": 20,
+    "title": "Error",
+    "desicriptionJp": "パス／ファイルが既に存在する",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x55"
+  },
+  {
+    "no": 21,
+    "title": "NoData",
+    "desicriptionJp": "パス／ファイルが存在しない",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x56"
+  },
+  {
+    "no": 22,
+    "title": "Error",
+    "desicriptionJp": "不当な継続コマンドを受信",
+    "v2": "0x00",
+    "v3": "0x00",
+    "v4": "0x61"
+  },
+  {
+    "no": 23,
+    "title": "Error",
+    "desicriptionJp": "ファイルサイズオーバーエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x68"
+  },
+  {
+    "no": 24,
+    "title": "Error",
+    "desicriptionJp": "SMFフォーマットエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x69"
+  },
+  {
+    "no": 25,
+    "title": "Error",
+    "desicriptionJp": "メモリオーバーエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x6A"
+  },
+  {
+    "no": 26,
+    "title": "Error",
+    "desicriptionJp": "ベリファイエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x6B"
+  },
+  {
+    "no": 27,
+    "title": "NoData",
+    "desicriptionJp": "データが存在しない",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x6C"
+  },
+  {
+    "no": 28,
+    "title": "Error",
+    "desicriptionJp": "モードエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x6D"
+  },
+  {
+    "no": 29,
+    "title": "Error",
+    "desicriptionJp": "FDD禁止",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x6E"
+  },
+  {
+    "no": 30,
+    "title": "Error",
+    "desicriptionJp": "ファイルリストオーバーエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x6F"
+  },
+  {
+    "no": 31,
+    "title": "Error",
+    "desicriptionJp": "その他のエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x70"
+  },
+  {
+    "no": 32,
+    "title": "Error",
+    "desicriptionJp": "同一ファイル名がある",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x78"
+  },
+  {
+    "no": 33,
+    "title": "Error",
+    "desicriptionJp": "ファイルフォーマットエラー(MP3,wav等のﾌｧｲﾙﾁｪｯｸ)",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x79"
+  },
+  {
+    "no": 34,
+    "title": "Error",
+    "desicriptionJp": "MODEL IDエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x7A"
+  },
+  {
+    "no": 35,
+    "title": "Error",
+    "desicriptionJp": "書込みエラー",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x7B"
+  },
+  {
+    "no": 36,
+    "title": "Success",
+    "desicriptionJp": "アップデート終了（BootEnd表示）",
+    "v2": "0x00",
+    "v3": "0x01",
+    "v4": "0x7D"
+  },
+  {
+    "no": 37,
+    "title": "Busy",
+    "desicriptionJp": "Busy",
+    "v2": "0x01",
+    "v3": "0x00",
+    "v4": "0x00"
+  }
+]

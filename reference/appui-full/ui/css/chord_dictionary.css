@@ -1,0 +1,179 @@
+/* Safariでbuttonの角丸直径がheightになる不具合対策 */
+input[type="button"],input[type="submit"] {
+  -webkit-appearance: none;
+  -webkit-text-size-adjust: 100%;
+}
+
+#chord_dictionary_root {
+    left: 0%;
+    top: 0%;
+    height: 16%;
+    width: 100%;
+    letter-spacing: -1px;
+}
+
+#chord_dictionary_type {
+    left: 0%;
+    top: 18%;
+    height: 24%;
+    width: 100%;
+    letter-spacing: -1px;
+    overflow: scroll;
+}
+
+#chord_dictionary_play {
+    position: absolute;
+    display: table-cell;
+    background-color: #404040;
+    color: #000000;
+    margin: 0px;
+    padding: 0px 0px;
+    border-color: #000000;
+    border-width: 0px;
+    border-radius: 0px;
+    left: 0%;
+    top: 44%;
+    height: 22%;
+    width: 100%;
+    overflow: scroll;
+}
+
+#chord_dictionari_voicing {
+    position: absolute;
+    text-align: center;
+
+    background-color: #222222;
+    color: #000000;
+    margin: 0px;
+    padding: 0px 0px;
+    border-color: #000000;
+    border-width: 0px;
+    border-radius: 0px;
+    left: 0%;
+    top: 67%;
+    height: 13%;
+    width: 75%;
+}
+
+.voicing{
+    display: inline-block;
+    vertical-align: middle;
+    visibility: hidden;
+    outline: 0;　/*　No Select outline */
+}
+
+#voicing_mode{
+    display: inline-block;
+    vertical-align: middle;
+    text-align: center;
+    visibility: hidden;
+    outline: 0;　/*　No Select outline */
+
+    position: absolute;
+    background-color: #222222;
+    color: #C6C6C6;
+    margin: 0px;
+    padding: 0px 0px;
+
+    font-family: Roboto;
+    font-size: 24px;
+    font-weight:800;
+    border-color: #222222;
+    border-width: 0px;
+    border-height: 0px;
+    width: 100%;
+}
+
+
+
+.chord_dictionary_base {
+    position: absolute;
+    display: table-cell;
+    background-color: #222222;
+    color: #000000;
+    margin: 0px;
+    padding: 0px 0px;
+    border-color: #000000;
+    border-width: 0px;
+    border-radius: 4px;
+}
+
+.el_root{
+    display: inline-block;
+
+    position: absolute;
+    background-color: #222222;
+    color: #C6C6C6;
+    margin: 0px;
+
+    font-family: Roboto;
+    outline: 0;
+    border-bottom: solid 4px #10818E;
+    border-color: #222222;
+    border-width: 0px;
+    border-height: 0px;
+}
+
+.el_type{
+    display: inline-block;
+    position: absolute;
+    background-color: #4E4E4E;
+    color: #C6C6C6;
+    margin: 8px, 8px;
+    padding: 4px 4px;
+    border-color: #000000;
+    border-width: 0px;
+    font-family: Roboto;
+    font-weight:800;
+    outline: 0;
+}
+
+.el_play{
+    display: inline-block;
+    position: absolute;
+    background-color: #C0C0C0;
+    color: #000000;
+    margin: 0px;
+    padding: 0px 0px;
+    border-color: #000000;
+    border-width: 1px;
+    border-radius: 4px;
+}
+
+.el_key{
+    display: inline-block;
+    position: absolute;
+    background-color: #FFFFFF;
+    color: #FFFFFF;
+    margin: 0px;
+    padding: 0px 0px;
+    border-color: #222222;
+    border-width: 1.5px;
+    border-height: 3px;
+    border-radius: 0px;
+    outline: 0;
+}
+
+
+#button_return{
+    position: absolute;
+    left: 0%;
+    top: 90%;
+    width: 100%;
+    height: 10%;
+    border-width: 0px;
+    font-family: Roboto;
+    color: #C6C6C6;
+    background-color: #2D2B2C;
+    font-size: 30px;
+
+    display: table-cell;
+    vertical-align: middle;
+
+    margin: 0px;
+    padding: 0px 0px;
+
+    text-align: center;
+    outline: 0;　/*　No Select outline */
+}
+

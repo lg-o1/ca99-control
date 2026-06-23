@@ -1,0 +1,362 @@
+/*!
+ * kawai-icons.css
+ * @copyright 2021 Kawai Musical Instruments Manufacturing Co.,
+ */
+@font-face {
+  font-family: 'KawaiIcons';
+  src:
+    url('KawaiIcons.ttf') format('truetype'),
+    url('KawaiIcons.woff') format('woff'),
+    url('KawaiIcons.svg#KawaiIcons') format('svg');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+i {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'KawaiIcons' !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* ili adding (refer to material icons) =========== */
+
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  word-wrap: normal;
+  -moz-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
+
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.KIF-piano:before {
+  content: "\e90a";
+}
+.KIF-electric-piano:before {
+  content: "\e919";
+}
+.KIF-organ:before {
+  content: "\e91a";
+}
+.KIF-church-organ:before {
+  content: "\e91b";
+}
+.KIF-harpsichord:before {
+  content: "\e91c";
+}
+.KIF-mallets:before {
+  content: "\e91d";
+}
+.KIF-strings:before {
+  content: "\e91e";
+}
+.KIF-choir:before {
+  content: "\e91f";
+}
+.KIF-pad:before {
+  content: "\e920";
+}
+.KIF-bass:before {
+  content: "\e921";
+}
+.KIF-guitar:before {
+  content: "\e922";
+}
+.KIF-colorful:before {
+  content: "\e954";
+}
+.KIF-touch-curve:before {
+  content: "\e923";
+}
+.KIF-voicing:before {
+  content: "\e924";
+}
+.KIF-damper-resonance:before {
+  content: "\e925";
+}
+.KIF-damper-noise:before {
+  content: "\e926";
+}
+.KIF-strings-resonance:before {
+  content: "\e927";
+}
+.KIF-undamped-string-resonance:before {
+  content: "\e928";
+}
+.KIF-cabinet-resonance:before {
+  content: "\e929";
+}
+.KIF-keyoff-effect:before {
+  content: "\e92a";
+}
+.KIF-fallback-noise:before {
+  content: "\e92b";
+}
+.KIF-hammer-noise:before {
+  content: "\e92c";
+}
+.KIF-hammer-delay:before {
+  content: "\e92d";
+}
+.KIF-topboard:before {
+  content: "\e92e";
+}
+.KIF-adsr:before {
+  content: "\e92f";
+}
+.KIF-stretch-tuning:before {
+  content: "\e93a";
+}
+.KIF-temperament:before {
+  content: "\e93b";
+}
+.KIF-key-volume:before {
+  content: "\e93c";
+}
+.KIF-pedal:before {
+  content: "\e93d";
+}
+.KIF-reverb:before {
+  content: "\e93e";
+}
+.KIF-effect:before {
+  content: "\e93f";
+}
+.KIF-piano--off:before {
+  content: "\e934";
+}
+.KIF-piano--on:before {
+  content: "\e935";
+}
+.KIF-sounds--off:before {
+  content: "\e936";
+}
+.KIF-sounds--on:before {
+  content: "\e937";
+}
+.KIF-music--off:before {
+  content: "\e938";
+}
+.KIF-music--on:before {
+  content: "\e939";
+}
+.KIF-metronome--off:before {
+  content: "\e940";
+}
+.KIF-metronome--on:before {
+  content: "\e941";
+}
+.KIF-rhythm--off:before {
+  content: "\e942";
+}
+.KIF-rhythm--on:before {
+  content: "\e943";
+}
+.KIF-menu:before {
+  content: "\e930";
+}
+.KIF-headphones:before {
+  content: "\e932";
+}
+.KIF-usb:before {
+  content: "\e931";
+}
+.KIF-bluetooth:before {
+  content: "\e933";
+}
+.KIF-midi:before {
+  content: "\e944";
+}
+.KIF-slider:before {
+  content: "\e945";
+}
+.KIF-settings:before {
+  content: "\e946";
+}
+.KIF-duet:before {
+  content: "\e947";
+}
+.KIF-left-hand:before {
+  content: "\e948";
+}
+.KIF-right-hand:before {
+  content: "\e949";
+}
+.KIF-delete:before {
+  content: "\e94a";
+}
+.KIF-save:before {
+  content: "\e94b";
+}
+.KIF-overdub:before {
+  content: "\e94c";
+}
+.KIF-brightness-up:before {
+  content: "\e94d";
+}
+.KIF-brightness-down:before {
+  content: "\e94e";
+}
+.KIF-home:before {
+  content: "\e900";
+}
+.KIF-music:before {
+  content: "\e901";
+}
+.KIF-quarter-note:before {
+  content: "\e953";
+}
+.KIF-settings--bold:before {
+  content: "\e902";
+}
+.KIF-keys--bold:before {
+  content: "\e903";
+}
+.KIF-keys:before {
+  content: "\e955";
+}
+.KIF-play:before {
+  content: "\e904";
+}
+.KIF-pause:before {
+  content: "\e905";
+}
+.KIF-skip-next:before {
+  content: "\e906";
+}
+.KIF-skip-previous:before {
+  content: "\e907";
+}
+.KIF-repeat:before {
+  content: "\e908";
+}
+.KIF-repeat-single:before {
+  content: "\e963";
+}
+.KIF-shuffle:before {
+  content: "\e909";
+}
+.KIF-plus:before {
+  content: "\e90b";
+}
+.KIF-minus:before {
+  content: "\e90c";
+}
+.KIF-close:before {
+  content: "\e90d";
+}
+.KIF-favorite:before {
+  content: "\e90e";
+}
+.KIF-navigate-before:before {
+  content: "\e90f";
+}
+.KIF-navigate-next:before {
+  content: "\e910";
+}
+.KIF-volume-mute:before {
+  content: "\e911";
+}
+.KIF-volume-down:before {
+  content: "\e912";
+}
+.KIF-volume-up:before {
+  content: "\e913";
+}
+.KIF-star:before {
+  content: "\e914";
+}
+.KIF-history:before {
+  content: "\e915";
+}
+.KIF-composer:before {
+  content: "\e916";
+}
+.KIF-scorebook:before {
+  content: "\e917";
+}
+.KIF-list:before {
+  content: "\e918";
+}
+.KIF-user:before {
+  content: "\e94f";
+}
+.KIF-plus--square:before {
+  content: "\e950";
+}
+.KIF-minus--square:before {
+  content: "\e951";
+}
+.KIF-close--square:before {
+  content: "\e952";
+}
+.KIF-composer-person:before {
+  content: "\e956";
+}
+.KIF-genre:before {
+  content: "\e957";
+}
+.KIF-hymn:before {
+  content: "\e958";
+}
+.KIF-lesson-book:before {
+  content: "\e959";
+}
+.KIF-recently-played:before {
+  content: "\e95a";
+}
+.KIF-relax:before {
+  content: "\e95b";
+}
+.KIF-usb-music:before {
+  content: "\e95c";
+}
+.KIF-music-favorite:before {
+  content: "\e95d";
+}
+.KIF-music-sound:before {
+  content: "\e95e";
+}
+.KIF-music-recplayback:before {
+  content: "\e95f";
+}
+.KIF-option:before {
+  content: "\e960";
+}
+.KIF-edit:before {
+  content: "\e961";
+}
+.KIF-share:before {
+  content: "\e962";
+}
+.KIF-recorder:before {
+  content: "\e964";
+}
+.KIF-dark-mode:before {
+  content: "\e965";
+}
+.KIF-light-mode:before {
+  content: "\e969";
+}
+.KIF-eighth-note:before {
+  content: "\e966";
+}
+.KIF-help:before {
+  content: "\e967";
+}
+.KIF-kms-logo:before {
+  content: "\e968";
+}
+.KIF-vpa:before {
+  content: "\e96a";
+}

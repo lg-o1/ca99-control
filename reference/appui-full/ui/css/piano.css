@@ -1,0 +1,75 @@
+@charset "utf-8";
+
+.piano__name {
+  position: relative;
+  top: 68px;
+  /* top: calc(68px + constant(safe-area-inset-top));  iOSノッチ対策
+  top: calc(68px + env(safe-area-inset-top)); iOSノッチ対策 */
+
+  width: 100%;
+  height: 30px;
+  margin: 0;
+
+  /* font-size: 26px; */
+  font-size: 7.3vw;
+  font-weight: 500;
+  text-align: center;
+  color: var(--CA-white-dark);
+}
+.piano__selection {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  will-change: transform;
+}
+.piano__selection--hidden {
+  opacity: 0.5;
+  transition: opacity 300ms 0s ease;
+}
+.piano__model {
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
+}
+.piano__model--landscape {
+  background-size: auto 100%;
+}
+
+.piano__shadow {
+  position: fixed;
+  top: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  background-image: url(../img/piano_shadow.png);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100%;
+  opacity: 1;
+  transition: opacity 1000ms 0s ease;
+}
+.piano__shadow--landscape {
+  top: 68px;
+  background-image: url(../img/piano_shadow_landscape.png);
+  background-size: auto 100%;
+}
+.piano__shadow--hidden {
+  opacity: 0;
+  transition: opacity 300ms 0s ease;
+}
+.piano__scroll-indicator {
+  position: absolute;
+  left: 50%;
+  bottom: 128px;
+  -webkit-transform: translate3d(-50%, 50%, 0);
+  transform: translate3d(-50%, 50%, 0);
+  transition: bottom 200ms 0s ease;
+}
+.piano__scroll-indicator--secondary {
+  bottom: 149px;
+  transition: bottom 200ms 0ms ease-in;
+}

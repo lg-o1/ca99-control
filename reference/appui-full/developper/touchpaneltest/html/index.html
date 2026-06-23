@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>TouchPanelTest</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+		<link rel="stylesheet" href="../../../lib/material-icons/material-icons.css">
+		<link rel="stylesheet" href="../../../lib/mdc/material-components-web.min.css">
+		<link rel="stylesheet" href="../css/app.css">
+	</head>
+
+	<body>
+		<div id="app">
+			<div id="tab1" v-show="Tab === 0">
+				<!-- タップテスト -->
+				<table>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[0]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[1]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[2]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[3]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[4]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[5]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[6]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[7]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+					<tr>
+						<td class="mdc-ripple-surface" v-for="(item, key, index) in lattice[8]" v-on:touchstart="touchStart" v-on:touchend="touchEnd(item)" v-bind:class="{donestyle:item.ok, ngstyle:item.ng}" data-mdc-auto-init="MDCRipple">{{item.display}}</td>
+					</tr>
+				</table>
+			</div>
+			<div id="tab2" v-show="Tab === 1">
+				<!-- スワイプテスト -->
+				<table>
+					<tr>
+						<td v-for="(item, key, index) in lattice[0]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[1]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[2]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[3]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[4]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[5]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[6]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[7]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td v-for="(item, key, index) in lattice[8]" v-on:touchstart="swipeStart(item)" v-on:touchmove="swipeMove" v-on:touchend="swipeEnd(item)">
+							<table class="crossline">
+								<tr class="crossline">
+									<td class="crossline1" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+									<td class="crossline2" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+								</tr>
+								<tr class="crossline">
+									<td class="crossline3" v-bind:class="{oklinestyle: item.horizonok, nglinestyle: item.horizonng}"></td>
+									<td class="crossline4" v-bind:class="{oklinestyle: item.verticalok, nglinestyle: item.verticalng}"></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+
+
+			<div id="setting-window" v-show="SettingWindow">
+				<!-- メニュー画面の中身はここに書きます。 -->
+				<div class="mdc-card mdc-elevation--z24" id="card-area">
+					<!-- カード画面の中身はここに書きます -->
+						<div class="button_wrapper">
+							<br>
+							<button v-on:click="tabChange(0)">Touch Test</button>
+							<br><br>
+							<button v-on:click="tabChange(1)">Swipe Test</button>
+							<br><br>
+							<button v-on:click="backButton">Back</button>
+							<br>
+						</div>
+				</div>
+			</div>
+
+
+
+		</div>
+		<script src="../../../lib/vue/vue.js"></script>
+		<script src="../../../lib/mdc/material-components-web.min.js"></script>
+		<script src="../js/app.js"></script>
+		<script type="text/javascript">
+			window.mdc.autoInit()
+		</script>
+	</body>
+</html>

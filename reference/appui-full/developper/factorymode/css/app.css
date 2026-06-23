@@ -1,0 +1,150 @@
+@charset "utf-8";
+
+/*長押しメニュー無効*/
+body {
+  -webkit-touch-callout:none; /*リンク長押しのポップアップを無効化*/
+  user-select: none;
+  -webkit-user-select:none; /*テキスト長押しの選択ボックスを無効化*/
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);/*iOSのリンクタップ時のグレーカラーを透明化*/
+  background-color: rgb(240,240,240);
+}
+/*ドラッグ禁止*/
+img, a {
+  -webkit-user-drag:none;   
+}
+/*Vue.js Transition*/
+.v-enter-active, .v-leave-active {
+  transition: opacity 0.2s;
+}
+.v-enter, .v-leave-to {
+  opacity: 0;
+}
+/*MDCテーマカラー*/
+:root {
+  --mdc-theme-primary: #193446;
+  --mdc-theme--secondary: #193446;
+  --mdc-theme-background:#FF0000;
+  --mdc-theme-surface: #000000;
+  --mdc-theme-on-primary: #FFFFFF;
+  --mdc-theme-on-secondary: #193446;
+  --mdc-theme-on-surface: #AAAAAA;
+}
+#HEADER {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0.9;
+}
+#TABBAR {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  background-color: #DDDDDD;
+}
+.tab-button {
+  width: 25%;
+}
+body {
+  padding-top: 50px;
+  padding-bottom: 100px;
+  background-color:  #FFFFFF;
+}
+h6 {
+  color: #193446;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+i {
+  line-height: 2rem !important;
+  vertical-align: bottom;
+}
+
+.demo-width-class {
+  width: 30%;
+}
+
+#SELECT {
+  left: 5%;
+}
+
+#selectedSound {
+  width: 100%;
+  height: 100px;
+  position: fixed;
+  bottom: 120px;
+  left: 0;
+  -webkit-transform: translate3d(0, 100%, 0);
+          transform: translate3d(0, 100%, 0);
+  background-color: #4C586F;
+  opacity: 0.9;
+  z-index: 30;
+}
+#soundtext {
+  padding: 0;
+  margin: 10px;
+  text-align: center;
+  color: #EEEEEE;
+}
+
+#selectedMusic {
+  width: 100%;
+  height: 100px;
+  position: fixed;
+  bottom: 120px;
+  left: 0;
+  -webkit-transform: translate3d(0, 100%, 0);
+          transform: translate3d(0, 100%, 0);
+  background-color: #4C586F;
+  opacity: 0.9;
+  z-index: 30;
+}
+#musictext {
+  padding: 0;
+  margin: 10px;
+  text-align: center;
+  color: #EEEEEE;
+}
+
+#selectedModel {
+  width: 100%;
+  height: 100px;
+  position: fixed;
+  bottom: 120px;
+  left: 0;
+  -webkit-transform: translate3d(0, 100%, 0);
+          transform: translate3d(0, 100%, 0);
+  z-index: 30;
+  background-color: #424242;
+  opacity: 0.8;
+}
+#modeltext {
+  padding: 0;
+  margin: 10px;
+  text-align: center;
+  color: #FFFFFF;
+}
+#CloseButton {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  -webkit-transform: translate3d(-50%, -50%, 0);
+          transform: translate3d(-50%, -50%, 0);
+  z-index: 200;
+  background-color: #4C586F;
+  color: white;
+}
+#BleMidiConnectWindowBG {
+  position: absolute;
+  top:0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  background: rgba(10,10,10,.7);
+  transition: opacity 0.5s, visibility 0.5s;
+  opacity: 1;
+  visibility: visible;
+  z-index: 190;
+}
