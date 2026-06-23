@@ -146,7 +146,27 @@ python ../scripts/build_ca99_data.py   # 从 reference/ 提取 CA99 专属数据
 
 ## ⚠️ 待真机验证
 
-协议库已通过单元测试（组帧字节正确），但**逆向的 SysEx 字节尚未在真 CA99 上验证**。建议：
+协议库已通过单元测试（组帧字节正确），但**逆向的 SysEx 字节尚未在真 CA99 上验证**。
+
+### 快速验证：Python USB 脚本
+
+`scripts/validate_ca99_usb.py` 基于 `app/data/sounds.json` + `sysex.json`，向真机发"切到
+Concert Grand"的标准 Bank Select + Program Change（可选再发一条 CA99 SysEx 开启
+Rendering），用来确认逆向数据在真机上有效：
+
+```bash
+pip install mido python-rtmidi          # 安装 MIDI 后端
+python scripts/validate_ca99_usb.py --list          # 1) 看有哪些 MIDI 输出口
+python scripts/validate_ca99_usb.py                 # 2) 自动找 CA99 口，切到 Concert Grand
+python scripts/validate_ca99_usb.py --sysex         # 3) 切音色 + 发 SysEx 开启 Rendering
+python scripts/validate_ca99_usb.py --dry-run --sysex   # 只打印字节不发送（无需硬件/依赖）
+```
+
+USB 线把 CA99 的 "USB to Host" 接电脑、开机后运行。若钢琴面板音色变成 Concert Grand、
+声音对，即说明逆向的 `msb/lsb/pc` 与 SysEx 帧格式在真机上验证通过。
+
+### 其他验证途径
 1. USB 连真 CA99 → 打开 app → 音色浏览器点一个音色 → 看琴是否真换音色
 2. 若不换，对照 `reference/appui-full/lib/kawaipianojs/kawaipiano.js` 的 getMidi() 核对组帧
 3. 或用 MIDI 监视器：在钢琴面板手动改设置，看回传的 SysEx，反推正确字节
+

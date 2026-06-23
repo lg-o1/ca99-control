@@ -1,0 +1,4 @@
+# Kawai CA99 真机验证脚本依赖（validate_ca99_usb.py）
+# 安装：pip install -r requirements-validate.txt
+mido>=1.3
+python-rtmidi>=1.5
