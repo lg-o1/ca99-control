@@ -26,6 +26,7 @@ import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
+import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -49,6 +50,7 @@ let melodyOnNote = null;    // 旋律听写的 note-on 回调（模块22注册�
 let chordProgOnNotesChanged = null; // 和弦进行练习的音符变化回调（模块23注册）
 let beatTapOnNote = null;   // 节拍稳定度的 note-on 回调（模块24注册）
 let handsOnNote = null;     // 双手协调的 note-on 回调（模块25注册）
+let arpOnNote = null;       // 琶音跑动的 note-on 回调（模块26注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -183,6 +185,8 @@ function onMidiIn(bytes) {
     if (beatTapOnNote) beatTapOnNote(performance.now());
     // 驱动双手协调练习
     if (handsOnNote) handsOnNote(m.note, performance.now());
+    // 驱动琶音跑动测试
+    if (arpOnNote) arpOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -2652,6 +2656,123 @@ function renderHandsSync() {
   setGauge(null);
 }
 
+// ---------- 模块26：琶音跑动速度测试 ----------
+function renderArpeggio() {
+  const root = $('#module-arp');
+  if (!root) return;
+  const QOPTS = Object.keys(QUALITY_LABELS).map(q => `<option value="${q}">${QUALITY_LABELS[q]}（${q}）</option>`).join('');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎶 琶音跑动速度测试</h2>
+    <p style="color:var(--muted);margin-bottom:14px">选好根音、和弦性质、八度与方向，引擎给出目标琶音音序。按顺序弹出每个音，引擎测你的<b>速度</b>（每秒音数）和<b>均匀度</b>（音与音间隔是否一致），综合给分。没连琴可点目标音序里的音键模拟。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>根音</label>
+        <select id="arp-root"></select>
+      </div>
+      <div class="param-row"><label>和弦性质</label>
+        <select id="arp-quality">${QOPTS}</select>
+      </div>
+      <div class="param-row"><label>八度数</label>
+        <select id="arp-oct"><option value="1">1 个八度</option><option value="2" selected>2 个八度</option><option value="3">3 个八度</option></select>
+      </div>
+      <div class="param-row"><label>方向</label>
+        <select id="arp-dir"><option value="up" selected>上行 ↑</option><option value="down">下行 ↓</option><option value="updown">上行+下行 ↑↓</option></select>
+      </div>
+      <div class="param-row"><label>目标速度</label>
+        <select id="arp-nps"><option value="4">慢（4 音/秒）</option><option value="6" selected>中（6 音/秒）</option><option value="8">快（8 音/秒）</option><option value="10">极快（10 音/秒）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="color:var(--muted);font-size:13px">目标音序（按顺序弹）</span>
+        <span id="arp-progtxt" style="color:var(--muted);font-size:13px">0 / 0</span>
+      </div>
+      <div id="arp-seq" class="arp-seq"></div>
+      <div class="arp-progbar"><div id="arp-progfill" class="arp-progfill"></div></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="arp-speed" class="sight-stat-num">—</div><div class="sight-stat-lbl">速度(音/秒)</div></div>
+      <div class="sight-stat"><div id="arp-even" class="sight-stat-num">—</div><div class="sight-stat-lbl">均匀度</div></div>
+      <div class="sight-stat"><div id="arp-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="arp-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳分</div></div>
+    </div>
+
+    <div id="arp-feedback" class="sight-feedback">点"开始"生成目标琶音</div>
+
+    <div class="rotate-bar">
+      <button id="arp-start" class="big-btn">▶ 开始 / 下一条</button>
+      <span id="arp-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  // 根音下拉：C3..C5
+  const rootSel = $('#arp-root');
+  for (let n = 48; n <= 72; n++) {
+    const o = document.createElement('option');
+    o.value = String(n); o.textContent = midiName(n);
+    if (n === 60) o.selected = true;
+    rootSel.appendChild(o);
+  }
+
+  let arp = null;
+  const seqBox = $('#arp-seq');
+
+  function renderSeq() {
+    seqBox.innerHTML = '';
+    if (!arp) return;
+    arp.target.forEach((n, i) => {
+      const el = document.createElement('button');
+      el.className = 'arp-note' + (i < arp.idx ? ' done' : i === arp.idx ? ' cur' : '');
+      el.textContent = midiName(n);
+      el.onclick = () => { if (arp && !arp.done) feed(n); };
+      seqBox.appendChild(el);
+    });
+    const total = arp.target.length;
+    $('#arp-progtxt').textContent = `${arp.idx} / ${total}`;
+    $('#arp-progfill').style.width = (total ? (arp.idx / total * 100) : 0) + '%';
+  }
+
+  function showResult(r) {
+    $('#arp-speed').textContent = r.speed.toFixed(1);
+    $('#arp-even').textContent = r.evenness;
+    $('#arp-score').textContent = r.score;
+    $('#arp-best').textContent = arp.best;
+    const fb = $('#arp-feedback');
+    if (r.score >= 85) { fb.className = 'sight-feedback ok'; fb.textContent = `🎉 ${r.score} 分！速度 ${r.speed.toFixed(1)} 音/秒，均匀度 ${r.evenness}${r.errors ? `，弹错 ${r.errors} 次` : '，零失误'}`; }
+    else if (r.score >= 60) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${r.score} 分。速度 ${r.speed.toFixed(1)} 音/秒，均匀度 ${r.evenness}，再稳一点更好`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分。速度 ${r.speed.toFixed(1)} 音/秒，均匀度 ${r.evenness}${r.errors ? `，弹错 ${r.errors} 次` : ''}，慢练求匀`; }
+    recordPractice('arp', '琶音跑动', r.notes, Math.round(r.score / 100 * r.notes), arp.best);
+    arpOnNote = null;
+    $('#arp-status').textContent = '完成 · 可点"下一条"再来';
+  }
+
+  function feed(note) {
+    if (!arp || arp.done) return;
+    arp.feed(note, performance.now());
+    renderSeq();
+  }
+
+  function start() {
+    arp = new ArpeggioRuns({
+      rootMidi: +rootSel.value,
+      quality: $('#arp-quality').value,
+      octaves: +$('#arp-oct').value,
+      direction: $('#arp-dir').value,
+      targetNps: +$('#arp-nps').value,
+    });
+    arp.onComplete = (r) => showResult(r);
+    arpOnNote = (note) => feed(note);
+    $('#arp-speed').textContent = '—'; $('#arp-even').textContent = '—'; $('#arp-score').textContent = '—';
+    $('#arp-best').textContent = arp.best;
+    const fb = $('#arp-feedback'); fb.className = 'sight-feedback'; fb.textContent = '🎯 按顺序弹出目标音序，越匀越快分越高';
+    $('#arp-status').textContent = '进行中…';
+    renderSeq();
+  }
+
+  $('#arp-start').onclick = start;
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -2783,7 +2904,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;
