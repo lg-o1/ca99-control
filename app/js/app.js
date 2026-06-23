@@ -27,6 +27,7 @@ import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.j
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
+import { ArticulationTrainer } from './articulation.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -51,6 +52,8 @@ let chordProgOnNotesChanged = null; // 和弦进行练习的音符变化回调�
 let beatTapOnNote = null;   // 节拍稳定度的 note-on 回调（模块24注册）
 let handsOnNote = null;     // 双手协调的 note-on 回调（模块25注册）
 let arpOnNote = null;       // 琶音跑动的 note-on 回调（模块26注册）
+let articOnNoteOn = null;   // 连奏/断奏的 note-on 回调（模块27注册）
+let articOnNoteOff = null;  // 连奏/断奏的 note-off 回调（模块27注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -187,12 +190,16 @@ function onMidiIn(bytes) {
     if (handsOnNote) handsOnNote(m.note, performance.now());
     // 驱动琶音跑动测试
     if (arpOnNote) arpOnNote(m.note, performance.now());
+    // 驱动连奏/断奏控制（按键）
+    if (articOnNoteOn) articOnNoteOn(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
     heldNotes.off(m.note);
     if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
     if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
+    // 驱动连奏/断奏控制（松键）
+    if (articOnNoteOff) articOnNoteOff(m.note, performance.now());
   }
   else if (m.type === 'cc') {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -2773,6 +2780,131 @@ function renderArpeggio() {
   $('#arp-start').onclick = start;
 }
 
+// ---------- 模块27：连奏/断奏控制 ----------
+function renderArticulation() {
+  const root = $('#module-artic');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎻 连奏 / 断奏控制</h2>
+    <p style="color:var(--muted);margin-bottom:14px">选好目标演奏法，连续弹一串音。引擎用每个音的<b>按住时长</b>与<b>到下一个音的间隔</b>之比来判断你弹得是连奏（legato，音连绵）还是断奏（staccato，音短促），逐音打分。没连琴可点"模拟连奏/断奏一个音"按钮体验。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>目标演奏法</label>
+        <select id="ar-target">
+          <option value="legato" selected>连奏 Legato（音与音连绵不断）</option>
+          <option value="staccato">断奏 Staccato（音短促、有间隙）</option>
+        </select>
+      </div>
+      <div class="param-row"><label>评估音数</label>
+        <select id="ar-notes"><option value="6">6 个音</option><option value="8" selected>8 个音</option><option value="12">12 个音</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div id="ar-target-hint" class="ar-hint"></div>
+      <div id="ar-dots" class="ar-dots"></div>
+      <div id="ar-feedback" class="sight-feedback" style="margin-top:12px">点"开始"，然后连续弹音</div>
+      <div class="ar-sim">
+        <button id="ar-sim-leg" class="ar-sim-btn">🎵 模拟连奏一个音</button>
+        <button id="ar-sim-stac" class="ar-sim-btn">• 模拟断奏一个音</button>
+      </div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="ar-avg" class="sight-stat-num">—</div><div class="sight-stat-lbl">平均分</div></div>
+      <div class="sight-stat"><div id="ar-cnt" class="sight-stat-num">0</div><div class="sight-stat-lbl">已评估</div></div>
+      <div class="sight-stat"><div id="ar-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="ar-start" class="big-btn">▶ 开始 / 重来</button>
+      <span id="ar-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let at = null;
+  const dotsBox = $('#ar-dots');
+  let simNote = 60;   // 模拟时轮换音高
+  let simT = 0;       // 模拟时间轴（ms）
+
+  function targetHint() {
+    const t = $('#ar-target').value;
+    $('#ar-target-hint').innerHTML = t === 'legato'
+      ? '🎯 目标 <b style="color:var(--ok)">连奏</b>：手指像"交棒"——下一个音按下时上一个音才松，听起来连成一条线'
+      : '🎯 目标 <b style="color:#facc15">断奏</b>：每个音弹得短而轻快，音与音之间留出清晰的间隙';
+  }
+
+  function addDot(r) {
+    const d = document.createElement('div');
+    const good = r.score >= 80, mid = r.score >= 50;
+    d.className = 'ar-dot ' + (good ? 'great' : mid ? 'okk' : 'bad');
+    d.textContent = r.score;
+    d.title = `${midiName(r.note)} · ${r.articulation} · 触键比 ${r.ratio.toFixed(2)}`;
+    dotsBox.appendChild(d);
+  }
+
+  function refresh() {
+    if (!at) return;
+    $('#ar-avg').textContent = at.count ? at.avgScore : '—';
+    $('#ar-cnt').textContent = at.count;
+    $('#ar-best').textContent = at.best;
+  }
+
+  function onNote(r) {
+    addDot(r);
+    refresh();
+    const fb = $('#ar-feedback');
+    if (r.score >= 80) { fb.className = 'sight-feedback ok'; fb.textContent = `✅ ${midiName(r.note)} 很${at.target === 'legato' ? '连贯' : '干净'}！触键比 ${r.ratio.toFixed(2)}`; }
+    else if (r.score >= 50) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${midiName(r.note)} 还行，触键比 ${r.ratio.toFixed(2)}`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = at.target === 'legato' ? `⚠ ${midiName(r.note)} 断了，音之间要更连` : `⚠ ${midiName(r.note)} 太长，要更短促`; }
+  }
+
+  function stop() {
+    if (at) {
+      at.finish();
+      refresh();
+      if (at.count) recordPractice('artic', '连奏断奏', at.count, Math.round(at.avgScore / 100 * at.count), at.best);
+    }
+    articOnNoteOn = null; articOnNoteOff = null;
+  }
+
+  $('#ar-target').onchange = targetHint;
+
+  $('#ar-start').onclick = () => {
+    if (at && !at.done) stop();
+    at = new ArticulationTrainer({ target: $('#ar-target').value, notes: +$('#ar-notes').value });
+    at.onNote = onNote;
+    at.onComplete = (info) => {
+      const fb = $('#ar-feedback');
+      fb.className = info.avgScore >= 70 ? 'sight-feedback ok' : 'sight-feedback';
+      fb.textContent = `🎉 完成 ${info.count} 个音！平均 ${info.avgScore} 分（目标：${info.target === 'legato' ? '连奏' : '断奏'}）`;
+      stop();
+      $('#ar-status').textContent = '完成 · 可重来';
+    };
+    articOnNoteOn = (note, t) => at && at.noteOn(note, t);
+    articOnNoteOff = (note, t) => at && at.noteOff(note, t);
+    dotsBox.innerHTML = '';
+    $('#ar-feedback').className = 'sight-feedback';
+    $('#ar-feedback').textContent = '🎧 连续弹音，引擎逐音判定';
+    $('#ar-status').textContent = '进行中…';
+    refresh();
+  };
+
+  // 模拟：legato = 时值≈间隔(0.95)，staccato = 时值短(0.2)，间隔固定 200ms
+  function simulate(kind) {
+    if (!at || at.done) return;
+    const ioi = 200;
+    const dur = kind === 'legato' ? 190 : 40;
+    at.noteOn(simNote, simT);
+    at.noteOff(simNote, simT + dur);
+    simT += ioi;
+    simNote = simNote >= 71 ? 60 : simNote + 2;
+  }
+  $('#ar-sim-leg').onclick = () => { if (!at || at.done) { simT = 0; simNote = 60; $('#ar-start').click(); } simulate('legato'); };
+  $('#ar-sim-stac').onclick = () => { if (!at || at.done) { simT = 0; simNote = 60; $('#ar-start').click(); } simulate('staccato'); };
+
+  targetHint();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -2904,7 +3036,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;

@@ -36,6 +36,7 @@ app/
     beat-stability.js ← 节拍稳定度分析（采集击键间隔算稳定度/估BPM/赶拍拖拍，纯逻辑，58 单元测试）
     hands-sync.js     ← 双手协调练习（按音高分左右手，测每拍双手落键时间差算协调度，纯逻辑，58 单元测试）
     arpeggio-runs.js  ← 琶音跑动速度测试（根音+性质+八度+方向生成目标琶音，按序弹测速度/均匀度评分，纯逻辑，90 单元测试）
+    articulation.js   ← 连奏/断奏控制（用按住时长÷起音间隔的触键比判连奏/断奏并逐音打分，纯逻辑，60 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -74,7 +75,8 @@ app/
 | 📈 节拍稳定度 | ✅ | 持续均匀弹奏（或空格键敲击），采集击键间隔算出稳定度评分（基于变异系数 CV）、估算 BPM、判断赶拍/拖拍/稳定；可开跟拍模式对照固定 BPM 测准度（带节拍器试听），实时间隔条形图（绿/黄/红显示偏差），成绩入仪表盘 |
 | 🙌 双手协调 | ✅ | 每拍同时弹一个低音区（左手）和一个高音区（右手）音，按音高分手，测两手落键时间差（onset spread）算协调度评分，圆形仪表+逐拍色点显示，统计平均协调/双手到齐率/连击/最佳，成绩入仪表盘 |
 | 🎶 琶音跑动 | ✅ | 选根音+和弦性质（大/小/属七/大七…）+八度+方向（上/下/上下行）生成目标琶音音序，按序弹出，引擎测速度（音/秒）与均匀度（IOI 变异系数）综合评分，目标音序高亮推进，成绩入仪表盘 |
-| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
+| 🎻 连奏断奏 | ✅ | 选目标演奏法（连奏 legato / 断奏 staccato），连续弹音，引擎用每个音的按住时长÷到下一音的间隔得"触键比"判连贯/短促并逐音打分，色块分数墙显示，成绩入仪表盘 |
+| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -108,6 +110,7 @@ app/
 - 节拍稳定度分析用 `beat-stability.js`（纯逻辑，58 单元测试）：`BeatStability.tap(t)` 采集击键时间戳，`iois` 算相邻间隔，`bpm` 取间隔中位数抗离群估速，`cv`（标准差/均值）量化波动，`stabilityScore` 把 CV 线性映射成 0–100 分，`trend` 用间隔的线性回归斜率判赶拍/拖拍/稳定，跟拍模式 `targetEval` 算对照目标 BPM 的平均绝对误差与准度；UI 实时条形图（按偏差染色）、节拍器试听、note-on 或空格键采集，完成后写入成就仪表盘
 - 双手协调练习用 `hands-sync.js`（纯逻辑，58 单元测试）：`handOf(note, split)` 按音高分左右手，`clusterByTime` 把相邻击键聚成一拍，`evalBeat` 判断该拍是否双手到齐并算落键时间差 spread，`spreadScore` 把 spread 线性映射成协调度；`HandsSync.feed(note,t)` 累计当前拍、超过窗口自动结算上一拍，统计 `goodBeats/streak/best/avgScore/bothHandsRate`；UI 圆形仪表 + 逐拍色点，note-on 喂入或左右手按钮模拟，完成后写入成就仪表盘
 - 琶音跑动测试用 `arpeggio-runs.js`（纯逻辑，90 单元测试）：`buildArpeggio(root,quality,octaves,direction)` 由根音+和弦性质（`CHORD_INTERVALS`）+八度+方向生成目标 MIDI 音序，`ArpeggioRuns.feed(note,t)` 按序校验（hit/miss/done），记录正确音之间的 IOI；`speedNps` 算每秒音数、`evennessScore` 把 IOI 变异系数线性映射成均匀度，综合分=均匀 60%+速度达标 40%−错误扣分；UI 目标音序高亮推进 + 进度条，note-on 喂入或点音序模拟，完成后写入成就仪表盘
+- 连奏/断奏控制用 `articulation.js`（纯逻辑，60 单元测试）：`legatoRatio(duration,ioi)=按住时长÷到下一音起音间隔`，比值≈1 为连奏、<0.4 为断奏；`ArticulationTrainer.noteOn/noteOff(note,t)` 同时吃按键与松键事件，每个音在「时值已知 + 下一音已起」时结算，按目标 `legatoScore`/`staccatoScore` 线性打分；这是首个用到 note-off 时间的模块，UI 逐音色块分数墙 + 连奏/断奏模拟按钮，完成后写入成就仪表盘
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -151,7 +154,7 @@ npx http-server -p 8099           # 用 Node
 
 ## 测试
 
-**一键跑全部 23 套测试**：
+**一键跑全部 24 套测试**：
 
 ```bash
 cd app
@@ -213,6 +216,9 @@ node js/hands-sync.test.mjs
 
 # 琶音跑动测试单元测试（90 用例）
 node js/arpeggio-runs.test.mjs
+
+# 连奏/断奏控制单元测试（60 用例）
+node js/articulation.test.mjs
 ```
 
 ## 数据生成（如需重建）
