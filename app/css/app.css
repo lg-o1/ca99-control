@@ -331,6 +331,38 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .trans-slider { flex: 1; max-width: 280px; accent-color: #667eea; height: 6px; }
 .trans-presets { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
 
+/* ---- 模块20：练习成就仪表盘 ---- */
+.dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.dash-card {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 12px; text-align: center; transition: transform .12s, box-shadow .12s;
+}
+.dash-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(102,126,234,.22); }
+.dash-card-icon { font-size: 26px; line-height: 1; }
+.dash-card-num { font-size: 30px; font-weight: 800; margin: 6px 0 2px; background: var(--grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.dash-card-lbl { font-size: 12px; color: var(--muted); }
+.dash-section-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+.dash-chart { display: flex; align-items: flex-end; gap: 10px; height: 130px; padding-top: 4px; }
+.dash-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.dash-bar-val { font-size: 11px; color: var(--muted); height: 14px; }
+.dash-bar { width: 70%; max-width: 30px; min-height: 4px; border-radius: 6px 6px 0 0; background: var(--grad); transition: height .3s; }
+.dash-bar-lbl { font-size: 12px; color: var(--muted); }
+.dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dash-table th, .dash-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--line); }
+.dash-table th { color: var(--muted); font-weight: 600; }
+.dash-table td:first-child, .dash-table th:first-child { text-align: left; }
+.dash-empty { color: var(--muted); text-align: center; padding: 16px; }
+.dash-badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+.dash-badge { border-radius: 12px; padding: 14px 10px; text-align: center; border: 1px solid var(--line); transition: transform .12s; }
+.dash-badge:hover { transform: translateY(-2px); }
+.dash-badge.unlocked { background: linear-gradient(160deg, rgba(102,126,234,.22), rgba(118,75,162,.16)); border-color: #667eea; }
+.dash-badge.ready { background: var(--panel2); border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok) inset; animation: dashPulse 1.6s ease-in-out infinite; }
+.dash-badge.locked { background: var(--panel2); opacity: .55; }
+.dash-badge-icon { font-size: 30px; line-height: 1; }
+.dash-badge-name { font-size: 13px; font-weight: 700; margin: 6px 0 3px; }
+.dash-badge-desc { font-size: 11px; color: var(--muted); line-height: 1.3; }
+@keyframes dashPulse { 0%,100% { box-shadow: 0 0 0 1px var(--ok) inset; } 50% { box-shadow: 0 0 12px rgba(74,222,128,.5), 0 0 0 1px var(--ok) inset; } }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 56px; }

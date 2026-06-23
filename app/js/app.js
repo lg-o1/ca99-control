@@ -20,6 +20,7 @@ import { SightReadingGame, staffPosition, needsLedger, noteLabel as sightNoteLab
 import { INTERVALS, EarTrainingGame, intervalName } from './ear-training.js';
 import { DYNAMICS, DynamicsGame, velocityToDynamic } from './dynamics-trainer.js';
 import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
+import { PracticeStats } from './practice-stats.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -38,6 +39,21 @@ let recorderOnChange = null;      // 录制状态变化回调（模块14注册�
 let scaleOnNote = null;    // 音阶练习的 note-on 回调（模块15注册）
 let sightOnNote = null;    // 视奏闪卡的 note-on 回调（模块16注册）
 let dynOnNote = null;      // 力度练习的 note-on 回调（模块18注册）
+// 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
+const practiceStats = new PracticeStats({
+  storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
+});
+let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
+// 把一次练习成绩记入统计；newly 为新解锁成就，弹个轻提示
+function recordPractice(moduleId, label, attempts, correct, bestStreak) {
+  if (!attempts) return; // 没答过题不记
+  const newly = practiceStats.record({ moduleId, label, attempts, correct, bestStreak });
+  if (dashboardOnUpdate) dashboardOnUpdate();
+  newly.forEach((id) => {
+    const a = practiceStats.allAchievements().find((x) => x.id === id);
+    if (a) log(`🏆 解锁成就：${a.icon} ${a.name} — ${a.desc}`, 'ok');
+  });
+}
 
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
@@ -1280,6 +1296,7 @@ function renderScale() {
       $('#scale-start').textContent = '▶ 开始练习';
       $('#scale-start').classList.remove('running');
       const done = session;
+      recordPractice('scale', '音阶练习', done.sequence.length + done.errors, done.sequence.length, 0);
       session = null; scaleOnNote = null;
       drawKeysFor(done.sequence, done.sequence.length);
       log(`音阶练习完成：错误 ${done.errors} 次`, 'ok');
@@ -1395,6 +1412,7 @@ function renderSight() {
 
   $('#sight-start').onclick = () => {
     if (game) {
+      recordPractice('sight', '视奏闪卡', game.attempts, game.score, game.best);
       game = null; sightOnNote = null;
       $('#sight-start').textContent = '▶ 开始练习';
       $('#sight-start').classList.remove('running');
@@ -1562,6 +1580,7 @@ function renderEar() {
 
   $('#ear-start').onclick = () => {
     if (game) {
+      recordPractice('ear', '音程听辨', game.attempts, game.score, game.best);
       game = null; answering = false;
       $('#ear-start').textContent = '▶ 开始练习';
       $('#ear-start').classList.remove('running');
@@ -1688,6 +1707,7 @@ function renderDynamics() {
 
   $('#dyn-start').onclick = () => {
     if (game) {
+      recordPractice('dynamics', '力度练习', game.attempts, game.score, game.best);
       game = null; dynOnNote = null; answering = false;
       $('#dyn-start').textContent = '▶ 开始练习';
       $('#dyn-start').classList.remove('running');
@@ -1781,12 +1801,106 @@ function renderTransposer() {
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
   document.querySelectorAll('.module').forEach(m => m.classList.toggle('active', m.id === `module-${name}`));
+  if (name === 'dash' && dashboardOnUpdate) dashboardOnUpdate();
+}
+
+// ---------- 模块20：练习成就仪表盘 ----------
+function renderDashboard() {
+  const root = $('#module-dash');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🏆 练习成就仪表盘</h2>
+    <p style="color:var(--muted);margin-bottom:14px">汇总各训练模块（视奏 / 听辨 / 力度 / 音阶）的练习成绩，记录连续天数、最佳连击，解锁成就徽章。每天练一点，看着进度长大。</p>
+
+    <div id="dash-cards" class="dash-cards"></div>
+
+    <div class="card-panel">
+      <div class="dash-section-title">最近 7 天</div>
+      <div id="dash-chart" class="dash-chart"></div>
+    </div>
+
+    <div class="card-panel">
+      <div class="dash-section-title">模块细分</div>
+      <div id="dash-modules"></div>
+    </div>
+
+    <div class="card-panel">
+      <div class="dash-section-title">成就徽章 <span id="dash-badge-count" style="color:var(--muted);font-weight:normal"></span></div>
+      <div id="dash-badges" class="dash-badges"></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="dash-reset" class="big-btn" style="background:var(--panel2)">🗑 重置统计</button>
+    </div>`;
+
+  const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  function paint() {
+    const s = practiceStats.snapshot();
+    // 概览卡片
+    $('#dash-cards').innerHTML = [
+      ['🎵', '总练习次数', s.totalSessions],
+      ['🎯', '总体正确率', s.totalAttempts ? Math.round(s.accuracy * 100) + '%' : '—'],
+      ['📅', '连续天数', s.dayStreak + ' 天'],
+      ['🔥', '最佳连击', s.bestStreak],
+      ['💯', '累计答对', s.totalCorrect],
+    ].map(([icon, lbl, val]) => `
+      <div class="dash-card">
+        <div class="dash-card-icon">${icon}</div>
+        <div class="dash-card-num">${val}</div>
+        <div class="dash-card-lbl">${lbl}</div>
+      </div>`).join('');
+
+    // 最近 7 天柱状图
+    const days = practiceStats.recentDays(7);
+    const max = Math.max(1, ...days.map(d => d.sessions));
+    $('#dash-chart').innerHTML = days.map(d => {
+      const h = Math.round((d.sessions / max) * 100);
+      const wd = ['日', '一', '二', '三', '四', '五', '六'][new Date(d.day + 'T00:00:00').getDay()];
+      return `<div class="dash-bar-col" title="${d.day}：${d.sessions} 次">
+        <div class="dash-bar-val">${d.sessions || ''}</div>
+        <div class="dash-bar" style="height:${Math.max(4, h)}%"></div>
+        <div class="dash-bar-lbl">${wd}</div>
+      </div>`;
+    }).join('');
+
+    // 模块细分
+    const mods = practiceStats.moduleStats();
+    $('#dash-modules').innerHTML = mods.length ? `
+      <table class="dash-table">
+        <thead><tr><th>模块</th><th>次数</th><th>答题</th><th>正确率</th><th>最佳连击</th></tr></thead>
+        <tbody>${mods.map(m => `<tr>
+          <td>${esc(m.label)}</td><td>${m.sessions}</td><td>${m.attempts}</td>
+          <td>${m.attempts ? Math.round(m.accuracy * 100) + '%' : '—'}</td><td>${m.bestStreak}</td>
+        </tr>`).join('')}</tbody>
+      </table>` : '<p class="dash-empty">还没有练习记录，去做一组训练吧！</p>';
+
+    // 成就徽章墙
+    const ach = practiceStats.allAchievements();
+    $('#dash-badges').innerHTML = ach.map(a => {
+      const cls = a.unlocked ? 'unlocked' : (a.ready ? 'ready' : 'locked');
+      return `<div class="dash-badge ${cls}" title="${esc(a.desc)}">
+        <div class="dash-badge-icon">${a.unlocked || a.ready ? a.icon : '🔒'}</div>
+        <div class="dash-badge-name">${esc(a.name)}</div>
+        <div class="dash-badge-desc">${esc(a.desc)}</div>
+      </div>`;
+    }).join('');
+    const unlocked = ach.filter(a => a.unlocked).length;
+    $('#dash-badge-count').textContent = `${unlocked} / ${ach.length}`;
+  }
+  dashboardOnUpdate = paint;
+  $('#dash-reset').onclick = () => {
+    if (confirm('确定清空所有练习统计和成就？此操作不可撤销。')) {
+      practiceStats.reset();
+      paint();
+      log('练习统计已重置', 'ok');
+    }
+  };
+  paint();
 }
 
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
