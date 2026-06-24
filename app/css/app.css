@@ -655,6 +655,21 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .ks-none { font-size: 18px; color: var(--muted, #888); font-style: italic; }
 .ks-hint { margin-top: 8px; text-align: center; font-size: 13px; color: #e8a44a; min-height: 18px; }
 
+/* 音阶指法提示（模块43） */
+.fing-staff { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; justify-content: center; min-height: 60px; }
+.fing-cell { display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 7px; border-radius: 8px; background: var(--panel2, rgba(127,127,127,.1));
+  border: 2px solid transparent; transition: all .15s; }
+.fing-num { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+  border-radius: 50%; background: #667eea; color: #fff; font-weight: 800; font-size: 14px; }
+.fing-note { font-size: 12px; color: var(--text, #eee); font-weight: 600; }
+.fing-cur { border-color: #43c59e; background: rgba(67,197,158,.18); box-shadow: 0 0 12px rgba(67,197,158,.4); }
+.fing-cur .fing-num { background: #43c59e; }
+.fing-played { opacity: .45; }
+.fing-played .fing-num { background: #888; }
+.fing-cross .fing-num { background: #e8a44a; box-shadow: 0 0 0 2px rgba(232,164,74,.5); }
+.fing-cross::after { content: '↩'; font-size: 11px; color: #e8a44a; font-weight: 700; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }

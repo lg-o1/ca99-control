@@ -43,6 +43,7 @@ import { RhythmDictationTrainer, DICTATION_LEVELS, patternToOnsets as dictOnsets
 import { SightTransposeTrainer, MELODIES as TRANS_MELODIES, TARGET_KEYS as TRANS_KEYS, SOURCE_ROOT as TRANS_SOURCE } from './sight-transpose.js';
 import { ChordInversionGame, INVERSIONS as INV_OPTIONS, QUALITIES as INV_QUALITIES, inversionName, stackIntervals as invStack } from './chord-inversion.js';
 import { KeySignatureGame, accidentalList as ksAccidentals, scaleMidi as ksScale } from './key-signature.js';
+import { ScaleFingeringSession, FINGERINGS as SF_FINGERINGS, listScales as sfList, scaleNotes as sfNotes, defaultRootMidi as sfRoot, fingers as sfFingers, crossingPoints as sfCross } from './scale-fingering.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -84,6 +85,7 @@ let fingerOffNote = null;   // 手指独立性的 note-off 回调（模块37注�
 let spanOnNote = null;      // 音阶八度跨度的 note-on 回调（模块38注册，带时间）
 let dictOnNote = null;      // 节奏听写的 note-on 回调（模块39注册，带时间）
 let transOnNote = null;     // 移调视奏的 note-on 回调（模块40注册）
+let fingOnNote = null;      // 音阶指法提示的 note-on 回调（模块43注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -248,6 +250,8 @@ function onMidiIn(bytes) {
     if (dictOnNote) dictOnNote(m.note, performance.now());
     // 驱动移调视奏
     if (transOnNote) transOnNote(m.note);
+    // 驱动音阶指法提示
+    if (fingOnNote) fingOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -5325,6 +5329,166 @@ function renderKeySignature() {
   };
 }
 
+// ========== 模块 43: 音阶指法提示 ==========
+function renderScaleFingering() {
+  const root = $('#module-fing');
+  let session = null;
+  let scaleId = 'C';
+  let hand = 'rh';
+  let bidir = false;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🖐️ 音阶指法提示</h2>
+    <p style="color:var(--muted);margin-bottom:14px">学标准钢琴<b>音阶指法</b>：屏幕给出一个八度音阶，每个音<b>上方标注该用几号手指</b>（右手 1=拇指…5=小指；左手相反）。<b>跟着弹</b>——弹对当前音就高亮下一个，红框标出<b>穿指/跨指点</b>（右手拇指从下方穿过、左手手指从拇指上方跨过）。诀窍：右手上行 C/G/D/A/E 大调都是 <b>1 2 3 1 2 3 4 5</b>，F 大调是例外 <b>1 2 3 4 1 2 3 4</b>。需连琴弹。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>选音阶</label>
+        <div class="ear-chips" id="fing-scales"></div></div>
+      <div class="param-row"><label>手</label>
+        <div class="ear-chips" id="fing-hand">
+          <button class="ear-chip on" data-h="rh">右手 RH</button>
+          <button class="ear-chip" data-h="lh">左手 LH</button>
+        </div></div>
+      <div class="param-row"><label>方向</label>
+        <div class="ear-chips" id="fing-dir">
+          <button class="ear-chip on" data-d="up">上行</button>
+          <button class="ear-chip" data-d="updown">上行+下行</button>
+        </div></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="fing-staff" class="fing-staff"></div>
+      <div id="fing-feedback" class="sight-feedback">选好音阶，按"开始"跟弹</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="fing-prog">0/0</span><span class="sight-stat-lbl">进度</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="fing-correct">0</span><span class="sight-stat-lbl">正确</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="fing-wrong">0</span><span class="sight-stat-lbl">错误</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="fing-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="fing-start" class="big-btn">▶ 开始跟弹</button>
+      <button id="fing-hear" class="big-btn" disabled>🔊 听一遍</button>
+      <span id="fing-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawScaleChips() {
+    $('#fing-scales').innerHTML = sfList().map((id) =>
+      `<button class="ear-chip ${id === scaleId ? 'on' : ''}" data-s="${id}">${SF_FINGERINGS[id].name}</button>`).join('');
+    $('#fing-scales').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => { if (session) return; scaleId = b.dataset.s; drawScaleChips(); drawStaff(); };
+    });
+  }
+  function bindToggle(sel, attr, getCur, setCur) {
+    $(sel).querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (session) return;
+        setCur(b.dataset[attr]);
+        $(sel).querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+        drawStaff();
+      };
+    });
+  }
+  drawScaleChips();
+  bindToggle('#fing-hand', 'h', () => hand, (v) => { hand = v; });
+  bindToggle('#fing-dir', 'd', () => bidir, (v) => { bidir = (v === 'updown'); });
+
+  // 画音阶谱面（静态预览或跟弹高亮）
+  function drawStaff() {
+    const rootMidi = sfRoot(scaleId);
+    let notes, fseq;
+    if (session) { notes = session.notes; fseq = session.fingerSeq; }
+    else {
+      notes = sfNotes(scaleId, rootMidi);
+      const up = sfFingers(scaleId, hand);
+      if (bidir) { notes = notes.concat(notes.slice(0, -1).reverse()); fseq = up.concat(up.slice(0, -1).reverse()); }
+      else fseq = up;
+    }
+    const cross = sfCross(fseq.slice(0, bidir ? sfFingers(scaleId, hand).length : fseq.length), hand);
+    const crossSet = new Set(cross);
+    const ptr = session ? session.pointer : -1;
+    $('#fing-staff').innerHTML = notes.map((n, i) => {
+      const cls = ['fing-cell'];
+      if (i === ptr) cls.push('fing-cur');
+      else if (session && i < ptr) cls.push('fing-played');
+      if (crossSet.has(i)) cls.push('fing-cross');
+      return `<div class="${cls.join(' ')}">
+        <span class="fing-num">${fseq[i]}</span>
+        <span class="fing-note">${CA99.noteName(n)}</span>
+      </div>`;
+    }).join('');
+  }
+  drawStaff();
+
+  function refreshStats() {
+    if (!session) { $('#fing-prog').textContent = '0/0'; return; }
+    $('#fing-prog').textContent = `${session.pointer}/${session.total}`;
+    $('#fing-correct').textContent = session.correct;
+    $('#fing-wrong').textContent = session.wrong;
+    $('#fing-acc').textContent = (session.correct + session.wrong) ? session.accuracy + '%' : '—';
+  }
+
+  function playDemo() {
+    const notes = session ? session.notes : sfNotes(scaleId, sfRoot(scaleId));
+    notes.forEach((n, i) => playTone(midiToFreq(n), i * 0.32, 0.42, 0.2));
+  }
+
+  function finish() {
+    const sum = session.summary();
+    recordPractice('fing', '音阶指法提示', session.correct + session.wrong, session.correct, 0);
+    const fb = $('#fing-feedback');
+    fb.textContent = `🎉 完成！${SF_FINGERINGS[scaleId].name}（${hand === 'rh' ? '右手' : '左手'}）正确率 ${sum.accuracy}%`;
+    fb.className = 'sight-feedback ok';
+    fingOnNote = null;
+    $('#fing-start').textContent = '▶ 开始跟弹';
+    $('#fing-start').classList.remove('running');
+    $('#fing-status').textContent = '已完成';
+    session = null;
+    drawScaleChips();
+  }
+
+  function stop() {
+    fingOnNote = null;
+    session = null;
+    $('#fing-start').textContent = '▶ 开始跟弹';
+    $('#fing-start').classList.remove('running');
+    $('#fing-status').textContent = '已停止';
+    $('#fing-feedback').textContent = '选好音阶，按"开始"跟弹';
+    $('#fing-feedback').className = 'sight-feedback';
+    drawScaleChips(); drawStaff(); refreshStats();
+  }
+
+  $('#fing-hear').onclick = playDemo;
+
+  $('#fing-start').onclick = () => {
+    if (session) { stop(); return; }
+    session = new ScaleFingeringSession(scaleId, { hand, bidirectional: bidir });
+    $('#fing-start').textContent = '⏸ 停止';
+    $('#fing-start').classList.add('running');
+    $('#fing-hear').disabled = false;
+    $('#fing-status').textContent = '进行中…';
+    $('#fing-feedback').textContent = `🎹 跟着指法弹 ${SF_FINGERINGS[scaleId].name}（${hand === 'rh' ? '右手' : '左手'}）`;
+    $('#fing-feedback').className = 'sight-feedback';
+    drawStaff(); refreshStats();
+    playDemo();
+    fingOnNote = (note) => {
+      if (!session) return;
+      const r = session.feed(note);
+      drawStaff(); refreshStats();
+      if (r.done) finish();
+      else if (!r.correct) {
+        $('#fing-feedback').textContent = `❌ 不是这个音，应弹 ${CA99.noteName(session.currentNote())}（${session.currentFinger()} 号指）`;
+        $('#fing-feedback').className = 'sight-feedback no';
+      } else {
+        $('#fing-feedback').textContent = `✅ 下一个：${CA99.noteName(session.currentNote())}（${session.currentFinger()} 号指）`;
+        $('#fing-feedback').className = 'sight-feedback ok';
+      }
+    };
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -5461,7 +5625,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
