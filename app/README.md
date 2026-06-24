@@ -61,6 +61,7 @@ app/
     progression-ear.js ← 和声进行听辨（听大调进行辨每个和弦的罗马数字级数，纯逻辑，337 单元测试）
     piano-keyboard.js  ← 通用全幅 88 键虚拟钢琴组件（可点击发声/高亮答案/演示点亮，纯布局逻辑 46 单元测试）
     score-follow.js    ← 曲谱跟弹（Synthesia 式：内置乐曲落音符到琴键、按音高+时机判分，纯逻辑，21 单元测试）
+    circle-of-fifths.js ← 五度圈交互工具（点调看调号/关系小调/正确拼写音阶/顺阶和弦 I–vii°，可试听音阶+和弦+终止式，纯逻辑，21 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -87,6 +88,7 @@ app/
 | ⭐ 演出预设 | ✅ | 把音色+VT 调音组合命名保存，一键调用；localStorage 持久化 + JSON 导入导出 |
 | 🎓 和弦练习 | ✅ | 实时识别弹奏的和弦/音程（含转位），挑战模式按提示弹和弦闯关计分 |
 | 🎵 节拍器 | ✅ | 可视+可听节拍器（强弱拍/拍号），弹奏时实测你的实际速度 BPM |
+| 🎡 五度圈 | ✅ | 交互式<b>五度圈</b>乐理中枢：SVG 圆盘外环 12 大调 / 内环关系小调，顺时针每格升五度（多 1♯）、逆时针降五度（多 1♭）。点任意调即显<b>调号</b>、<b>关系小调</b>、正确拼写的<b>音阶</b>（如 G→F#、Db→全降）与<b>顺阶三和弦 I ii iii IV V vi vii°</b>（罗马数字按大/小/减三色标）。可🔊播放音阶、点和弦试听、听 <b>I–IV–V–I 终止式</b>，钢琴上同步高亮（主音金色）。相邻调只差一个音——转调/扒谱/即兴配和声的核心地图，接 CA99 可直接弹真琴 |
 | ⏺ 录制回放 | ✅ | 录下弹奏，回放欣赏，或导出标准 MIDI 文件（.mid）保存/分享 |
 | 🎼 音阶练习 | ✅ | 选调+音阶类型，按高亮提示依次弹奏，实时检查对错+进度（8 种音阶/上下行/忽略八度） |
 | 👀 视奏闪卡 | ✅ | SVG 五线谱出题，看谱在琴键弹出对应音，弹对自动出下一题（高/低音谱号/连击/正确率/忽略八度） |
@@ -121,7 +123,7 @@ app/
 - 唱名听辨用 `solfege.js`（纯逻辑，196 单元测试）：`SCALES`（大调/小调的半音步进 + 可动唱名，小调用 Me/Le/Te）、`DEGREES` 七级功能名+诀窍、`degreeMidi(tonic,degree,scaleType)`/`tonicTriad(tonic,scaleType)`/`syllable(degree,scaleType)` 是纯工具函数。`SolfegeGame({rng,scaleType,degrees,tonicMin,tonicMax,choiceCount})`：`next()` 随机选主音+音级（启用音级里取干扰项打乱）、`triad()`/`target()`/`tonic()`/`choices()`/`check(answerDegree)`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。<b>纯听辨多选</b>，UI 先用 `playTone` 播主和弦建立调性、隔 750ms 再播目标音，点选项判分（无 note-on 钩子），主和弦与目标音可分别重听，成绩入仪表盘 |
 - 和弦性质听辨用 `chord-quality.js`（纯逻辑，185 单元测试）：`QUALITIES` 列出 9 种和弦性质（4 三和弦 major/minor/aug/dim + 5 七和弦 dom7/maj7/min7/m7b5/dim7，各含 `intervals[]` 相对根音半音、`symbol` 和弦记号、`family` 三/七和弦、`hint` 色彩诀窍）、`chordMidi(root,qualityId)` 构造和弦音。`ChordQualityGame({rng,qualities,rootMin,rootMax,choiceCount})`：`next()` 随机出题并构建打乱的多选干扰项、`notes()`/`choices()`/`root()`/`check(answerId)`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。<b>纯听辨多选</b>（像调式识别/转位听辨），UI 用 `playTone` 按选定方式播整块和弦/琶音、点选项判分（无 note-on 钩子），可🔊再听，成绩入仪表盘
 - 和声进行听辨用 `progression-ear.js`（纯逻辑，337 单元测试）：`DEGREES` 列出大调 7 个自然音级三和弦（罗马数字 I/ii/iii/IV/V/vi/vii°，各含 `quality`/`name`/`hint` 功能诀窍）、`PROGRESSIONS` 含 8 个常用进行（流行 I-V-vi-IV、doo-wop、卡农、ii-V-I、变格、正格、忧伤、摇滚）、`chordMidi(tonicMidi,degree)` 按调内三度叠置构造自然音级三和弦（含八度回绕）。`ProgressionEarGame({rng,progressions,tonicMin,tonicMax,choiceCount})`：`next()` 随机选进行+主音并构建整段和弦（第 1 个 I 为锚点）、`progressionNotes()`/`chords()`/`currentChord()`/`choices()`/`check(answerDegree)` 逐个和弦判分推进、`isComplete()`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult`/`onComplete` 回调。<b>纯听辨多选</b>，UI 用 `playTone` 顺序播整段、高亮当前待辨和弦、点罗马数字选项判分，成绩入仪表盘
-- **通用全幅虚拟钢琴** `piano-keyboard.js`（纯布局逻辑 46 单元测试）：一个可在任意模块复用的 88 键（A0–C8）钢琴组件。纯函数 `buildLayout(first,last,opts)` 算出白/黑键的绝对几何位置（白键等宽并排、黑键居中压缝），`isBlack`/`noteName`/`whiteCount` 等辅助；DOM 类 `PianoKeyboard(container,{labels,onNoteOn,onNoteOff})` 渲染可点击键盘，方法 `highlight/highlightMany(把答案音画在真实键位上，带炫彩描边+序号徽章)`、`flash(演示跟随点亮)`、`press/release(回显外部 MIDI)`、`scrollToShow(自动滚动居中)`、`clear`。按下/点亮带渐变发光动画。已接入：**音色浏览器**（点键发真实 MIDI 试听当前音色，切音色后不用去琴上就能判断对错）、**音阶练习**（整条音阶高亮+▶标下一个该弹的键）、**旋律听写**（点键输入、播放跟随点亮、放弃看答案时按顺序高亮）、**音程听辨/唱名听辨/和弦性质听辨/和声进行听辨**（答完把正确音画在键盘上）、**视奏闪卡**（没接 MIDI 也能点键作答，答错把正确音高亮）、**和弦练习**（挑战开始即把目标和弦该按的键高亮）、**和弦转位听辨**（答完画出三和弦音，低音特别标色）、**音程构建**（弹错/弹对都画出根音+目标音）、**调号识别/调式识别**（答完把该调/调式音阶带级数 1-7 画在键上）、**移调视奏**（看答案/完成把移调后目标音按序画出）、**移调器**（点键发真实移调 MIDI 直接听效果）、**和弦进行**（当前该弹的和弦实时高亮）、**音阶指法提示**（整条音阶画在 88 键上、每键标手指号、▶ 标当前该弹的键、红色标穿指/跨指点）、**曲谱跟弹**（Synthesia 式落音符到对应键、判定时刻高亮该弹的键）。这样即使看不懂题目，看答案在 88 键上的位置就知道该怎么弹 |
+- **通用全幅虚拟钢琴** `piano-keyboard.js`（纯布局逻辑 46 单元测试）：一个可在任意模块复用的 88 键（A0–C8）钢琴组件。纯函数 `buildLayout(first,last,opts)` 算出白/黑键的绝对几何位置（白键等宽并排、黑键居中压缝），`isBlack`/`noteName`/`whiteCount` 等辅助；DOM 类 `PianoKeyboard(container,{labels,onNoteOn,onNoteOff})` 渲染可点击键盘，方法 `highlight/highlightMany(把答案音画在真实键位上，带炫彩描边+序号徽章)`、`flash(演示跟随点亮)`、`press/release(回显外部 MIDI)`、`scrollToShow(自动滚动居中)`、`clear`。按下/点亮带渐变发光动画。已接入：**音色浏览器**（点键发真实 MIDI 试听当前音色，切音色后不用去琴上就能判断对错）、**音阶练习**（整条音阶高亮+▶标下一个该弹的键）、**旋律听写**（点键输入、播放跟随点亮、放弃看答案时按顺序高亮）、**音程听辨/唱名听辨/和弦性质听辨/和声进行听辨**（答完把正确音画在键盘上）、**视奏闪卡**（没接 MIDI 也能点键作答，答错把正确音高亮）、**和弦练习**（挑战开始即把目标和弦该按的键高亮）、**和弦转位听辨**（答完画出三和弦音，低音特别标色）、**音程构建**（弹错/弹对都画出根音+目标音）、**调号识别/调式识别**（答完把该调/调式音阶带级数 1-7 画在键上）、**移调视奏**（看答案/完成把移调后目标音按序画出）、**移调器**（点键发真实移调 MIDI 直接听效果）、**和弦进行**（当前该弹的和弦实时高亮）、**音阶指法提示**（整条音阶画在 88 键上、每键标手指号、▶ 标当前该弹的键、红色标穿指/跨指点）、**曲谱跟弹**（Synthesia 式落音符到对应键、判定时刻高亮该弹的键）、**五度圈**（当前调音阶高亮+主音金色、点和弦/终止式点亮试听三和弦）。这样即使看不懂题目，看答案在 88 键上的位置就知道该怎么弹 |
 | 🖐️ 音阶指法提示 | ✅ | 学标准钢琴<b>音阶指法</b>：屏幕给一个八度音阶（9 个调：C/G/D/A/E/F 大调 + A/E/D 自然小调），每个音上方标注<b>该用几号手指</b>（右手 1=拇指…5=小指，左手相反），可切左/右手、上行/上下行。<b>跟着弹</b>——弹对当前音就高亮下一个，红框标出<b>穿指/跨指点</b>（右手拇指穿过、左手手指跨过）。诀窍：C/G/D/A/E 大调右手都是 <b>1 2 3 1 2 3 4 5</b>、F 大调例外 <b>1 2 3 4 1 2 3 4</b>；左手都是 <b>5 4 3 2 1 3 2 1</b>。可🔊听一遍，需连琴弹，成绩入仪表盘。和"音阶练习"（练音准/速度）、"音阶八度跨度"（练跨多个八度）都不同——这里专练<b>正确指法与穿指动作</b> |
 | 🎯 音程构建 | ✅ | "听音训练"的<b>反向能力</b>：屏幕给一个<b>根音</b>+一个<b>音程名</b>（如"从 C4 往上弹纯五度"），你在键盘上<b>弹出目标音</b>。可选基础 6 种（M2/m3/M3/P4/P5/P8）或全部 12 种音程，方向可选向上/向下/双向。🔊 先听根音找位置，弹对自动判分并播下一题，弹错显示差几个半音。练即兴/移调/和声的核心手上功夫，需连琴弹，成绩入仪表盘。和"听音训练"（听两音辨音程）相反——这里练<b>知道音程名就在键盘上秒构建</b> |
 | 🎶 调式识别 | ✅ | 🔊 听一段<b>调式音阶</b>（7 个教会调式 Ionian/Dorian/Phrygian/Lydian/Mixolydian/Aeolian/Locrian 之一），从多个选项中<b>辨认是哪个调式</b>。可自选调式范围与选项数量（3/4/7 选 1）。答完显示调式特征提示（如利底亚=升四度、混合利底亚=降七度、弗里几亚=降二度），可🔊再听。无需连琴（纯听辨多选），成绩入仪表盘。补足"音阶训练"（练手）和"听音训练"（辨音程）之外的<b>调式色彩听辨</b>能力 |
@@ -165,6 +167,7 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 - 节拍器用 `metronome.js`（纯逻辑，33 单元测试）：`Metronome` 按 BPM 产生强/弱拍（定时器可注入），UI 用 Web Audio 发 click 声 + 节拍点闪烁；`TempoTracker` 用相邻 note-on 间隔的移动平均实测演奏 BPM（大间隔自动重置乐句）
 - 录制回放用 `recorder.js`（纯逻辑，38 单元测试）：`Recorder` 以毫秒时间戳记录 MIDI 事件，回放用注入定时器按相对时间重派发，`toMidiFile()` 编码标准 MIDI 文件（Type 0，VLQ delta、tempo meta、跳过非通道事件）。onMidiIn 录制所有输入；导出用 Blob 触发 .mid 下载
 - 音阶练习用 `scale-trainer.js`（纯逻辑，41 单元测试）：`buildScale`/`buildScaleUpDown` 生成 8 种音阶（大调/三种小调/五声/布鲁斯/半音阶）的 MIDI 序列，`ScaleSession` 按依次弹奏检查进度（可忽略八度），note-on 驱动前进/报错/完成，UI 高亮当前应弹的音
+- 五度圈用 `circle-of-fifths.js`（纯逻辑，21 单元测试）：`WHEEL` 12 格（顺时针每格升五度、关系大小调主音差小三度，6 点钟含 F#/Gb 等音）；`majorScaleSpelling(key)` 用字母序列+半音差算出<b>正确拼写</b>的 7 音音阶（保证 7 个字母不重复，如 G→F#、Db→全降、含必要重升降）；`diatonicChords(key)` 给出顺阶七级三和弦（罗马数字+质量 maj/min/dim+和弦名）；`chordMidi(key,degree,baseC)`/`scaleMidi(key,baseC)` 算 MIDI 供试听；`neighbors(key)` 取顺/逆时针相邻调与关系小调；`signatureLabel` 生成调号文字。UI 用 SVG 环形扇区手绘圆盘（`pt(r,deg)`+`sector(rIn,rOut,a0,a1)` 算annular sector path，0°在 12 点钟顺时针），外环大调/内环小调可点击选调、中心 hub 显示当前调+调号；右侧信息卡列调号/关系小调/音阶/相邻调+7 个配色和弦按钮；点和弦/「播放音阶」/「I–IV–V–I 终止式」用 Web Audio 发声并在 88 键上高亮（主音金色）。纯探索工具不计分
 - 视奏闪卡用 `sight-reading.js`（纯逻辑，62 单元测试）：`staffPosition`/`needsLedger`/`randomNote` 把 MIDI 音符映射到五线谱位置（高/低音谱号、自动加线），`SightReadingGame` 随机出题并校验（可忽略八度），记录得分/连击/最佳/正确率，UI 用 SVG 实时绘制谱表+符头，note-on 驱动判分与翻题
 - 曲谱跟弹用 `score-follow.js`（纯逻辑，21 单元测试）：内置 4 首公有领域旋律（顺序记谱 `[midi,durBeats]`，`null`=休止），`ScoreFollow` 按 BPM 把"拍"换成毫秒时间轴；播放头时间 `t`（毫秒）驱动 `judge(midi,t)`（找最近、音高匹配、在 good 窗内的未判音符，按 `|t−目标ms|` 分 PERFECT≤130ms/GOOD≤320ms，连对累计 Combo+加分）、`expire(t)`（过窗未弹自动判 MISS 并断连击）、`active(t)`/`upcoming(t,ahead)`（取该弹/即将落下的音符），`accuracy`/`stars`（90/70/50% → ★★★/★★/★）。UI 用 `requestAnimationFrame` 把 `performance.now()−t0` 换成 `t`：上方 SVG 五线谱整曲横向铺开 + 黄色光标随拍前进并自动滚动居中、音符按判定结果染色；中间 Synthesia 式下落高速路（用 `piano-keyboard.js` 的 `buildLayout` 取每键 x 中心，音符块按 `(目标ms−t)` 下落到底部判定线、对齐下方 88 键）；落到判定线时高亮该弹的键、弹对/漏弹弹出 PERFECT/GOOD/MISS×Combo 飘字。两种模式：🔊「听一遍」自动播放示范（不判分）、▶「开始跟弹」judge 判分；可选速度倍率（缩放有效 BPM）、简单/标准（octaveAgnostic）。键盘范围按曲子音域补齐到整八度。结束写入成就仪表盘
 - 音程听辨用 `ear-training.js`（纯逻辑，49 单元测试）：`INTERVALS` 表（0..12 半音）+ `EarTrainingGame` 随机出根音+音程（方向 up/down/harmonic/mixed，可选音程集合，自动保证音符落在合法 MIDI 范围），`check` 校验并记录得分/连击/最佳/正确率，UI 用 Web Audio 三角波发声播放，点按钮作答（无需连钢琴）
@@ -330,6 +333,7 @@ node js/chord-quality.test.mjs
 node js/progression-ear.test.mjs
 node js/piano-keyboard.test.mjs
 node js/score-follow.test.mjs
+node js/circle-of-fifths.test.mjs
 node js/bridge-protocol.test.mjs
 ```
 

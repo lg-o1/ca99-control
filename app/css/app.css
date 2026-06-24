@@ -857,3 +857,63 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   #conn-status { width: 100%; order: 5; margin: 4px 0 0; }
   .crumb { display: none; }
 }
+
+/* ---------- 五度圈（Circle of Fifths） ---------- */
+.cof-layout { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+.cof-wheel-wrap { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cof-svg { width: 340px; max-width: 84vw; height: auto; filter: drop-shadow(0 8px 26px rgba(0,0,0,.45)); }
+.cof-legend { font-size: 12px; color: var(--muted); display: flex; gap: 12px; align-items: center; }
+.cof-dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; }
+.cof-dot.maj { background: #3a4480; }
+.cof-dot.min { background: #20243c; border: 1px solid #3a4480; }
+
+.cof-seg { stroke: #14151f; stroke-width: 1.5; cursor: pointer; transition: fill .18s, filter .18s; }
+.cof-major { fill: #2c3358; }
+.cof-minor { fill: #20243c; }
+.cof-seg:hover { filter: brightness(1.35); }
+.cof-major:hover { fill: #46508f; }
+.cof-minor:hover { fill: #313869; }
+.cof-major.sel { fill: #6c63ff; }
+.cof-minor.sel { fill: #5b4a9a; }
+.cof-major.sel, .cof-minor.sel { filter: drop-shadow(0 0 6px rgba(124,108,255,.7)); }
+.cof-lbl { fill: #cdd3f0; font-weight: 700; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+.cof-lbl-maj { font-size: 16px; }
+.cof-lbl-min { font-size: 12px; fill: #9aa3cf; }
+.cof-lbl.sel { fill: #fff; }
+.cof-hub { fill: #181a2b; stroke: #3a4480; stroke-width: 2; }
+.cof-hub-key { fill: #fbbf24; font-size: 30px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
+.cof-hub-sig { fill: var(--muted); font-size: 11px; text-anchor: middle; dominant-baseline: middle; }
+
+.cof-info { flex: 1 1 320px; min-width: 280px; }
+.cof-card {
+  background: linear-gradient(150deg, var(--panel2), var(--panel));
+  border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px;
+}
+.cof-keytitle { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
+.cof-rel { font-size: 15px; font-weight: 600; color: #a78bfa; }
+.cof-sigrow { color: var(--text); margin-bottom: 10px; font-size: 14px; }
+.cof-sig-badge { background: #3a4480; color: #cdd3f0; font-size: 11px; padding: 2px 8px; border-radius: 6px; margin-right: 6px; }
+.cof-scale { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+.cof-deg {
+  display: inline-block; background: #20243c; color: #eef0f8; border: 1px solid var(--line);
+  border-radius: 7px; padding: 3px 8px; margin: 2px 3px; font-weight: 700; min-width: 20px; text-align: center;
+}
+.cof-neigh { color: var(--muted); font-size: 13px; }
+.cof-neigh b { color: #cdd3f0; }
+.cof-chords-title { font-size: 13px; color: var(--muted); margin: 4px 2px 8px; }
+.cof-chords { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 16px; }
+.cof-chord {
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 4px; cursor: pointer;
+  border-radius: 10px; border: 1px solid var(--line); background: #20243c; color: var(--text);
+  transition: transform .12s, box-shadow .12s, border-color .12s;
+}
+.cof-chord:hover { transform: translateY(-2px); border-color: var(--accent-hi); box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+.cof-chord.flash { box-shadow: 0 0 0 2px #34d399, 0 6px 18px rgba(52,211,153,.5); transform: translateY(-2px); }
+.cof-roman { font-size: 13px; font-weight: 800; color: #fbbf24; }
+.cof-chord.q-m .cof-roman { color: #22d3ee; }
+.cof-chord.q-dim .cof-roman { color: #f472b6; }
+.cof-cname { font-size: 13px; font-weight: 700; }
+.cof-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .cof-chords { grid-template-columns: repeat(4, 1fr); }
+}

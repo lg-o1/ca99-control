@@ -51,6 +51,7 @@ import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } fr
 import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
 import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
 import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE } from './score-follow.js';
+import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -7065,11 +7066,147 @@ function renderScoreFollow() {
   prepare();
 }
 
+function renderCircleFifths() {
+  const root = $('#module-cof');
+  let selMajor = 'C';   // 当前选中大调
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎡 五度圈（Circle of Fifths）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">乐理中枢工具：顺时针每走一格升一个<b>五度</b>（多 1 个升号 ♯），逆时针每格降五度（多 1 个降号 ♭）。点圈上任意调，立刻看它的<b>调号</b>、<b>关系小调</b>（外环大调／内环小调共用调号）、正确拼写的<b>音阶</b>与<b>顺阶和弦 I–vii°</b>，并能在钢琴上<b>试听音阶 / 和弦 / I–IV–V–I 终止式</b>。相邻调只差一个音，是<b>转调、扒谱、即兴配和声</b>的核心地图。</p>
+
+    <div class="cof-layout">
+      <div class="cof-wheel-wrap">
+        <svg id="cof-svg" viewBox="0 0 340 340" class="cof-svg" role="img" aria-label="五度圈"></svg>
+        <div class="cof-legend"><span class="cof-dot maj"></span>外环=大调　<span class="cof-dot min"></span>内环=关系小调</div>
+      </div>
+      <div class="cof-info" id="cof-info"></div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 当前调音阶高亮于此（主音金色）；点和弦/终止式会点亮并试听（接 CA99 则可直接弹真琴）</div>
+      <div id="cof-kb"></div>
+    </div>`;
+
+  const cofKb = new PianoKeyboard($('#cof-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+
+  const CX = 170, CY = 170;
+  const RR = { oOut: 162, oIn: 112, iOut: 110, iIn: 64 };
+  function pt(r, deg) {
+    const a = (deg - 90) * Math.PI / 180;
+    return [CX + r * Math.cos(a), CY + r * Math.sin(a)];
+  }
+  function sector(rIn, rOut, a0, a1) {
+    const [x0, y0] = pt(rOut, a0), [x1, y1] = pt(rOut, a1);
+    const [x2, y2] = pt(rIn, a1), [x3, y3] = pt(rIn, a0);
+    return `M${x0.toFixed(1)},${y0.toFixed(1)} A${rOut},${rOut} 0 0 1 ${x1.toFixed(1)},${y1.toFixed(1)} `
+      + `L${x2.toFixed(1)},${y2.toFixed(1)} A${rIn},${rIn} 0 0 0 ${x3.toFixed(1)},${y3.toFixed(1)} Z`;
+  }
+  function wheelEntry(maj) { return COF_WHEEL.find((w) => w.major === maj || w.enharmonic === maj); }
+
+  function buildWheel() {
+    const relMin = wheelEntry(selMajor).minor;
+    let segs = '', labels = '';
+    COF_WHEEL.forEach((w, i) => {
+      const a0 = i * 30 - 15, a1 = i * 30 + 15;
+      const selO = w.major === selMajor;
+      const selI = w.minor === relMin;
+      segs += `<path class="cof-seg cof-major${selO ? ' sel' : ''}" data-major="${w.major}" d="${sector(RR.oIn, RR.oOut, a0, a1)}"></path>`;
+      segs += `<path class="cof-seg cof-minor${selI ? ' sel' : ''}" data-major="${w.major}" d="${sector(RR.iIn, RR.iOut, a0, a1)}"></path>`;
+      const [mx, my] = pt((RR.oOut + RR.oIn) / 2, i * 30);
+      const majLabel = w.enharmonic ? `${w.major}/${w.enharmonic}` : w.major;
+      labels += `<text class="cof-lbl cof-lbl-maj${selO ? ' sel' : ''}" x="${mx.toFixed(1)}" y="${my.toFixed(1)}">${majLabel}</text>`;
+      const [nx, ny] = pt((RR.iOut + RR.iIn) / 2, i * 30);
+      labels += `<text class="cof-lbl cof-lbl-min${selI ? ' sel' : ''}" x="${nx.toFixed(1)}" y="${ny.toFixed(1)}">${w.minor}</text>`;
+    });
+    const w = wheelEntry(selMajor);
+    const hub = `<circle class="cof-hub" cx="${CX}" cy="${CY}" r="${RR.iIn - 4}"></circle>`
+      + `<text class="cof-hub-key" x="${CX}" y="${CY - 5}">${selMajor}</text>`
+      + `<text class="cof-hub-sig" x="${CX}" y="${CY + 16}">${cofSigLabel(w)}</text>`;
+    $('#cof-svg').innerHTML = segs + hub + labels;
+    $('#cof-svg').querySelectorAll('.cof-seg').forEach((el) => {
+      el.onclick = () => { selMajor = el.dataset.major; refresh(); };
+    });
+  }
+
+  function paintScale() {
+    const notes = cofScaleMidi(selMajor, 60);
+    const spelling = cofSpelling(selMajor);
+    cofKb.first = 60; cofKb.last = 84; cofKb.layout = kbBuildLayout(60, 84); cofKb._render();
+    const items = notes.map((m, idx) => ({
+      midi: m,
+      color: (idx === 0 || idx === 7) ? '#fbbf24' : HL_PALETTE[0],
+      text: spelling[idx % 7],
+    }));
+    cofKb.highlightMany(items, { scroll: false });
+  }
+
+  function playScale() {
+    const notes = cofScaleMidi(selMajor, 60);
+    notes.forEach((m, i) => setTimeout(() => {
+      playTone(midiToFreq(m), 0, 0.45); cofKb.flash(m, '#fbbf24');
+    }, i * 230));
+    setTimeout(paintScale, notes.length * 230 + 200);
+  }
+
+  function playChord(deg, btn) {
+    const notes = cofChordMidi(selMajor, deg, 60);
+    notes.forEach((m) => playTone(midiToFreq(m), 0, 1.0));
+    cofKb.highlightMany(notes.map((m) => ({ midi: m, color: '#34d399' })), { scroll: false });
+    if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 420); }
+    setTimeout(paintScale, 950);
+  }
+
+  function playCadence() {
+    const degs = [1, 4, 5, 1];
+    degs.forEach((d, i) => setTimeout(() => {
+      const notes = cofChordMidi(selMajor, d, 60);
+      notes.forEach((m) => playTone(midiToFreq(m), 0, 0.7));
+      cofKb.highlightMany(notes.map((m) => ({ midi: m, color: '#22d3ee' })), { scroll: false });
+    }, i * 640));
+    setTimeout(paintScale, degs.length * 640 + 300);
+  }
+
+  function refresh() {
+    buildWheel();
+    const w = wheelEntry(selMajor);
+    const nb = cofNeighbors(selMajor);
+    const spelling = cofSpelling(selMajor);
+    const chords = cofChords(selMajor);
+    $('#cof-info').innerHTML = `
+      <div class="cof-card">
+        <div class="cof-keytitle">${selMajor} 大调 <span class="cof-rel">/ ${w.minor} 关系小调</span></div>
+        <div class="cof-sigrow"><span class="cof-sig-badge">调号</span> ${cofSigLabel(w)}</div>
+        <div class="cof-scale">音阶　${spelling.map((n) => `<span class="cof-deg">${n}</span>`).join('')}</div>
+        <div class="cof-neigh">◄ <b>${nb.ccw}</b> 下属（少 1♯）　·　属（多 1♯）<b>${nb.cw}</b> ►</div>
+      </div>
+      <div class="cof-chords-title">顺阶三和弦（点按试听）</div>
+      <div class="cof-chords" id="cof-chords">
+        ${chords.map((c, i) => `<button class="cof-chord q-${c.quality || 'maj'}" data-deg="${i + 1}">
+          <span class="cof-roman">${c.roman}</span><span class="cof-cname">${c.name}</span></button>`).join('')}
+      </div>
+      <div class="cof-actions">
+        <button id="cof-play-scale" class="big-btn">🔊 播放音阶</button>
+        <button id="cof-play-cadence" class="big-btn">🎵 I–IV–V–I 终止式</button>
+      </div>`;
+    paintScale();
+    $('#cof-chords').querySelectorAll('.cof-chord').forEach((b) => {
+      b.onclick = () => playChord(parseInt(b.dataset.deg, 10), b);
+    });
+    $('#cof-play-scale').onclick = playScale;
+    $('#cof-play-cadence').onclick = playCadence;
+  }
+
+  refresh();
+}
+
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
