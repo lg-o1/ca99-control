@@ -44,6 +44,7 @@ import { SightTransposeTrainer, MELODIES as TRANS_MELODIES, TARGET_KEYS as TRANS
 import { ChordInversionGame, INVERSIONS as INV_OPTIONS, QUALITIES as INV_QUALITIES, inversionName, stackIntervals as invStack } from './chord-inversion.js';
 import { KeySignatureGame, accidentalList as ksAccidentals, scaleMidi as ksScale } from './key-signature.js';
 import { ScaleFingeringSession, FINGERINGS as SF_FINGERINGS, listScales as sfList, scaleNotes as sfNotes, defaultRootMidi as sfRoot, fingers as sfFingers, crossingPoints as sfCross } from './scale-fingering.js';
+import { IntervalBuildGame, INTERVALS as IB_INTERVALS, DIRECTIONS as IB_DIRECTIONS, noteName as ibNoteName } from './interval-build.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -87,6 +88,7 @@ let spanOnNote = null;      // 音阶八度跨度的 note-on 回调（模块38�
 let dictOnNote = null;      // 节奏听写的 note-on 回调（模块39注册，带时间）
 let transOnNote = null;     // 移调视奏的 note-on 回调（模块40注册）
 let fingOnNote = null;      // 音阶指法提示的 note-on 回调（模块43注册）
+let ivbOnNote = null;       // 音程构建的 note-on 回调（模块44注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -253,6 +255,8 @@ function onMidiIn(bytes) {
     if (transOnNote) transOnNote(m.note);
     // 驱动音阶指法提示
     if (fingOnNote) fingOnNote(m.note);
+    // 驱动音程构建
+    if (ivbOnNote) ivbOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -5490,6 +5494,147 @@ function renderScaleFingering() {
   };
 }
 
+// ---------- 模块44：音程构建 ----------
+function renderIntervalBuild() {
+  const root = $('#module-ivb');
+  let game = null;
+  let dirMode = 'up';
+  // 难度档：基础（常用音程）/ 全部
+  const PRESETS = {
+    basic: { ids: ['M2', 'm3', 'M3', 'P4', 'P5', 'P8'], name: '基础 6 种' },
+    all: { ids: IB_INTERVALS.map((i) => i.id), name: '全部 12 种' },
+  };
+  let presetId = 'basic';
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎯 音程构建</h2>
+    <p style="color:var(--muted);margin-bottom:14px">"听音训练"的<b>反向能力</b>：屏幕给一个<b>根音</b>+一个<b>音程名</b>（如"从 C4 往上弹纯五度"），你在键盘上<b>弹出那个目标音</b>。这是即兴、移调、和声的核心手上功夫——知道音程名就能在键盘上秒构建。先 🔊 听根音找到位置，再弹目标音。需连琴弹。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>音程范围</label>
+        <div class="ear-chips" id="ivb-preset"></div></div>
+      <div class="param-row"><label>方向</label>
+        <div class="ear-chips" id="ivb-dir">
+          <button class="ear-chip on" data-d="up">向上 ↑</button>
+          <button class="ear-chip" data-d="down">向下 ↓</button>
+          <button class="ear-chip" data-d="both">双向 ↕</button>
+        </div></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="ivb-prompt" class="ivb-prompt">
+        <div class="ivb-q">按"开始"出题</div>
+      </div>
+      <div id="ivb-feedback" class="sight-feedback">设置好后开始，跟着提示弹目标音</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="ivb-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ivb-streak">0</span><span class="sight-stat-lbl">连对</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ivb-best">0</span><span class="sight-stat-lbl">最佳连对</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ivb-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="ivb-start" class="big-btn">▶ 开始</button>
+      <button id="ivb-hear" class="big-btn" disabled>🔊 听根音</button>
+      <button id="ivb-skip" class="big-btn" disabled>下一题 →</button>
+      <span id="ivb-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawPresets() {
+    $('#ivb-preset').innerHTML = Object.entries(PRESETS).map(([id, p]) =>
+      `<button class="ear-chip ${id === presetId ? 'on' : ''}" data-p="${id}">${p.name}</button>`).join('');
+    $('#ivb-preset').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => { if (game) return; presetId = b.dataset.p; drawPresets(); };
+    });
+  }
+  drawPresets();
+
+  $('#ivb-dir').querySelectorAll('.ear-chip').forEach((b) => {
+    b.onclick = () => {
+      if (game) return;
+      dirMode = b.dataset.d;
+      $('#ivb-dir').querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+    };
+  });
+
+  function refreshStats() {
+    if (!game) return;
+    $('#ivb-score').textContent = game.score;
+    $('#ivb-streak').textContent = game.streak;
+    $('#ivb-best').textContent = game.best;
+    $('#ivb-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function showQuestion() {
+    const c = game.current;
+    const arrow = c.dir.sign > 0 ? '↑' : '↓';
+    $('#ivb-prompt').innerHTML = `
+      <div class="ivb-q">从 <span class="ivb-root">${ibNoteName(c.root)}</span> ${c.dir.name} <span class="ivb-iv">${c.interval.name}</span> <span class="ivb-arrow">${arrow}</span></div>
+      <div class="ivb-hint">弹出目标音（已隐藏，弹对自动判分）</div>`;
+  }
+
+  function hearRoot() {
+    if (!game || !game.current) return;
+    playTone(midiToFreq(game.current.root), 0, 0.6, 0.25);
+  }
+
+  function nextQuestion() {
+    game.next();
+    showQuestion();
+    $('#ivb-feedback').textContent = '🎹 找到根音，往' + (game.current.dir.sign > 0 ? '上' : '下') + '弹出目标音';
+    $('#ivb-feedback').className = 'sight-feedback';
+    hearRoot();
+  }
+
+  function start() {
+    const dirs = dirMode === 'both' ? ['up', 'down'] : [dirMode];
+    game = new IntervalBuildGame({ intervals: PRESETS[presetId].ids, directions: dirs });
+    $('#ivb-start').textContent = '⏸ 停止';
+    $('#ivb-start').classList.add('running');
+    $('#ivb-hear').disabled = false;
+    $('#ivb-skip').disabled = false;
+    $('#ivb-status').textContent = '进行中…';
+    refreshStats();
+    nextQuestion();
+    ivbOnNote = (note) => {
+      if (!game || !game.current) return;
+      const target = game.current.target;
+      const correct = game.check(note);
+      refreshStats();
+      if (correct) {
+        $('#ivb-feedback').textContent = `✅ 正确！${ibNoteName(target)}　连对 ${game.streak}`;
+        $('#ivb-feedback').className = 'sight-feedback ok';
+        recordPractice('ivb', '音程构建', 1, 1, 0);
+        setTimeout(() => { if (game) nextQuestion(); }, 700);
+      } else {
+        $('#ivb-feedback').textContent = `❌ 你弹的是 ${ibNoteName(note)}，目标是 ${ibNoteName(target)}（差 ${note - target > 0 ? '+' : ''}${note - target} 半音）`;
+        $('#ivb-feedback').className = 'sight-feedback no';
+        recordPractice('ivb', '音程构建', 1, 0, 0);
+      }
+    };
+  }
+
+  function stop() {
+    ivbOnNote = null;
+    game = null;
+    $('#ivb-start').textContent = '▶ 开始';
+    $('#ivb-start').classList.remove('running');
+    $('#ivb-hear').disabled = true;
+    $('#ivb-skip').disabled = true;
+    $('#ivb-status').textContent = '已停止';
+    $('#ivb-prompt').innerHTML = '<div class="ivb-q">按"开始"出题</div>';
+    $('#ivb-feedback').textContent = '设置好后开始，跟着提示弹目标音';
+    $('#ivb-feedback').className = 'sight-feedback';
+    drawPresets();
+  }
+
+  $('#ivb-start').onclick = () => { if (game) stop(); else start(); };
+  $('#ivb-hear').onclick = hearRoot;
+  $('#ivb-skip').onclick = () => { if (game) nextQuestion(); };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -5626,7 +5771,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
