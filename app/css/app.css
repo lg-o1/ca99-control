@@ -420,6 +420,29 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   background: linear-gradient(135deg, #7c5cff, #5566d6); box-shadow: 0 2px 8px rgba(102,126,234,.35);
 }
 .scf-hand-legend { font-size: 13px; color: var(--muted); }
+.scf-best-badge {
+  font-size: 13px; font-weight: 700; color: var(--muted); padding: 3px 11px; border-radius: 16px;
+  border: 1px dashed var(--line);
+}
+.scf-best-badge.has { color: #fbbf24; border-color: rgba(251,191,36,.5); background: rgba(251,191,36,.08); }
+/* ⑦ 完成后下一步建议 + 🎲 随机 */
+.scf-next {
+  margin-top: 10px; padding: 10px 14px; border-radius: 12px;
+  background: rgba(124,92,255,.08); border: 1px solid rgba(124,92,255,.25);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.scf-next-tip { font-size: 13px; color: var(--text); }
+/* ① 三星彩屑庆祝 */
+.scf-confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 5; }
+.scf-confetti i {
+  position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px;
+  opacity: 0; transform: rotate(var(--rot));
+  animation: scfConfetti linear forwards;
+}
+@keyframes scfConfetti {
+  0% { opacity: 1; transform: translate(0, -10px) rotate(var(--rot)); }
+  100% { opacity: 0; transform: translate(var(--dx), 230px) rotate(calc(var(--rot) + 540deg)); }
+}
 .scf-hand-legend .scf-leg-r { color: #6e86f5; font-size: 15px; }
 .scf-hand-legend .scf-leg-l { color: #a78bfa; font-size: 15px; }
 .scf-hint-btn {

@@ -117,6 +117,7 @@ export function songFromMidi(parsed, meta = {}) {
     durationMs: parsed.durationMs,
     notes: parsed.notes.map((n) => ({
       midi: n.midi, ms: n.ms, durMs: n.durMs, beat: n.beat, dur: n.dur, hand: n.hand || 'r',
+      velocity: n.velocity,
     })),
   };
 }
@@ -154,7 +155,7 @@ export class ScoreFollow {
         const durMs = (n.durMs != null ? n.durMs : beatToMs(n.dur || 0, this.bpm)) * sc;
         this.notes.push({
           i: i++, midi: n.midi, beat: n.beat ?? 0, dur: n.dur ?? 0,
-          ms, durMs, hand: n.hand || 'r',
+          ms, durMs, hand: n.hand || 'r', velocity: n.velocity ?? null,
           judged: false, grade: null, deltaMs: null,
         });
       }
