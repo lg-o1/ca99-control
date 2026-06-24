@@ -3107,6 +3107,11 @@ function renderArticulation() {
       </div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 你弹的音实时显示在 88 键上：<b>按住时键点亮</b>——连奏时下一个音按下、上一个还没松，相邻键会<b>重叠点亮</b>；断奏时键一个个<b>短促闪过</b>有间隙。绿=判为连贯/干净，红=不达标</div>
+      <div id="ar-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="ar-avg" class="sight-stat-num">—</div><div class="sight-stat-lbl">平均分</div></div>
       <div class="sight-stat"><div id="ar-cnt" class="sight-stat-num">0</div><div class="sight-stat-lbl">已评估</div></div>
@@ -3122,6 +3127,12 @@ function renderArticulation() {
   const dotsBox = $('#ar-dots');
   let simNote = 60;   // 模拟时轮换音高
   let simT = 0;       // 模拟时间轴（ms）
+
+  const arKb = new PianoKeyboard($('#ar-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  arKb.scrollToShow(48, 84);
 
   function targetHint() {
     const t = $('#ar-target').value;
@@ -3149,6 +3160,7 @@ function renderArticulation() {
   function onNote(r) {
     addDot(r);
     refresh();
+    arKb.flash(r.note, r.score >= 80 ? 'hsl(140,70%,48%)' : r.score >= 50 ? 'hsl(48,100%,55%)' : 'hsl(0,75%,55%)');
     const fb = $('#ar-feedback');
     if (r.score >= 80) { fb.className = 'sight-feedback ok'; fb.textContent = `✅ ${chordNoteName(r.note)} 很${at.target === 'legato' ? '连贯' : '干净'}！触键比 ${r.ratio.toFixed(2)}`; }
     else if (r.score >= 50) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${chordNoteName(r.note)} 还行，触键比 ${r.ratio.toFixed(2)}`; }
@@ -3177,9 +3189,10 @@ function renderArticulation() {
       stop();
       $('#ar-status').textContent = '完成 · 可重来';
     };
-    articOnNoteOn = (note, t) => at && at.noteOn(note, t);
-    articOnNoteOff = (note, t) => at && at.noteOff(note, t);
+    articOnNoteOn = (note, t) => { if (at) { at.noteOn(note, t); arKb.press(note); } };
+    articOnNoteOff = (note, t) => { if (at) { at.noteOff(note, t); arKb.release(note); } };
     dotsBox.innerHTML = '';
+    arKb.clear();
     $('#ar-feedback').className = 'sight-feedback';
     $('#ar-feedback').textContent = '🎧 连续弹音，引擎逐音判定';
     $('#ar-status').textContent = '进行中…';
@@ -3193,6 +3206,9 @@ function renderArticulation() {
     const dur = kind === 'legato' ? 190 : 40;
     at.noteOn(simNote, simT);
     at.noteOff(simNote, simT + dur);
+    const n = simNote;
+    arKb.press(n);
+    setTimeout(() => arKb.release(n), kind === 'legato' ? 360 : 90);
     simT += ioi;
     simNote = simNote >= 71 ? 60 : simNote + 2;
   }
@@ -3369,6 +3385,11 @@ function renderTrill() {
       <div id="tr-feedback" class="sight-feedback" style="margin-top:12px">点"开始"，然后在两个音之间快速交替</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 两个颤音键标在 88 键上（蓝<b>"下"</b>=下方音、橙<b>"上"</b>=上方音），看着键位在两键间<b>快速来回交替</b>；每敲一下对应键会闪光，点键也能模拟</div>
+      <div id="tr-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="tr-speed" class="sight-stat-num">—</div><div class="sight-stat-lbl">速度(次/秒)</div></div>
       <div class="sight-stat"><div id="tr-even" class="sight-stat-num">—</div><div class="sight-stat-lbl">均匀度</div></div>
@@ -3394,6 +3415,20 @@ function renderTrill() {
   let simT = 0;
   let simUp = false; // 模拟时下一击是上方音？
 
+  const trKb = new PianoKeyboard($('#tr-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { const { lo, hi } = curNotes(); if (m === lo || m === hi) { if (!tr || tr.done) start(); feed(m); } else playTone(midiToFreq(m), 0, 0.6); },
+  });
+
+  function paintKb() {
+    const { lo, hi } = curNotes();
+    trKb.highlightMany([
+      { midi: lo, color: 'hsl(205,75%,55%)', text: '下' },
+      { midi: hi, color: 'hsl(28,90%,55%)', text: '上' },
+    ], { scroll: false });
+    trKb.scrollToShow(Math.max(21, lo - 3), Math.min(108, hi + 3));
+  }
+
   function curNotes() {
     const lo = +loSel.value;
     return { lo, hi: lo + (+$('#tr-iv').value) };
@@ -3402,6 +3437,7 @@ function renderTrill() {
     const { lo, hi } = curNotes();
     $('#tr-lo-lbl').textContent = chordNoteName(lo);
     $('#tr-hi-lbl').textContent = chordNoteName(hi);
+    paintKb();
   }
 
   function pulseKey(note) {
@@ -3410,6 +3446,7 @@ function renderTrill() {
     if (!el) return;
     el.classList.add('lit');
     setTimeout(() => el.classList.remove('lit'), 90);
+    trKb.flash(note, note === hi ? 'hsl(28,90%,55%)' : 'hsl(205,75%,55%)');
     // 速度计随击动一下
     const fill = $('#tr-meter-fill');
     fill.style.width = (tr && tr.count ? Math.min(100, tr.count / tr.taps * 100) : 0) + '%';
@@ -3677,6 +3714,11 @@ function renderLeap() {
       <div id="lp-feedback" class="sight-feedback" style="margin-top:12px">点"开始"生成一串大跳，然后依次跳准</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 大跳画在 88 键上：蓝<b>"从"</b>=刚弹的上一个音、黄 ▶<b>"到"</b>=当前要跳到的目标音，两键之间的距离就是这一跳要跨多远；紫=后续目标。没连琴可点键模拟</div>
+      <div id="lp-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="lp-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">一次弹准率</div></div>
       <div class="sight-stat"><div id="lp-miss" class="sight-stat-num">—</div><div class="sight-stat-lbl">失误数</div></div>
@@ -3691,6 +3733,34 @@ function renderLeap() {
     </div>`;
 
   let lp = null;
+
+  const lpKb = new PianoKeyboard($('#lp-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { if (lp && !lp.done) feed(m); else playTone(midiToFreq(m), 0, 0.6); },
+  });
+  lpKb.scrollToShow(48, 84);
+
+  function paintKb() {
+    if (!lp) { lpKb.clear(); return; }
+    const idx = lp.progress;
+    const items = lp.seq.map((n, i) => {
+      if (i < idx) return { midi: n, color: 'hsl(140,25%,42%)' };
+      if (i === idx) return null;
+      return { midi: n, color: 'hsl(265,45%,52%)' };
+    }).filter(Boolean);
+    lpKb.highlightMany(items, { scroll: false });
+    if (!lp.done) {
+      const cur = lp.seq[idx];
+      const prev = idx > 0 ? lp.seq[idx - 1] : null;
+      if (prev != null) lpKb.highlight(prev, { color: 'hsl(205,75%,55%)', text: '从' });
+      if (cur != null) {
+        lpKb.highlight(cur, { color: 'hsl(48,100%,55%)', text: '到' });
+        const lo = prev != null ? Math.min(prev, cur) : cur;
+        const hi = prev != null ? Math.max(prev, cur) : cur;
+        lpKb.scrollToShow(Math.max(21, lo - 2), Math.min(108, hi + 2));
+      }
+    }
+  }
 
   function opts() {
     const [low, high] = $('#lp-range').value.split(',').map(Number);
@@ -3707,6 +3777,7 @@ function renderLeap() {
     $('#lp-seq').querySelectorAll('.lp-note').forEach((b) => {
       b.onclick = () => { if (!lp || lp.done) return; feed(+b.dataset.note); };
     });
+    paintKb();
   }
 
   function pulse(index, miss) {
