@@ -40,8 +40,13 @@ reference/                  ← 所有调研与逆向成果（参考资料）
     govee-api-summary.md    ← Govee API（LAN UDP 同步）
     sound-limits-summary.md ← 音色限制 + VST 方案
     piano-creative-summary.md ← 创意玩法清单
-app/                        ← PWA + Web MIDI 应用（待开发）
-scripts/                    ← Python 原型脚本（USB 测试用）
+app/                        ← PWA + Web MIDI 应用（43 个模块已实现）
+  js/bridge-protocol.js     ← WebSocket 桥接协议契约 + BridgeClient 状态机
+bridge/                     ← Windows 蓝牙 MIDI 桥（WinRT → WebSocket）
+  ca99_midi_bridge.py       ← Python winsdk 桥接服务（pip install winsdk）
+  README.md                 ← 桥详细说明 + 协议 + 已知坑
+scripts/                    ← 辅助脚本
+  validate_ca99_usb.py      ← USB 真机协议验证（mido + python-rtmidi）
 docs/
   PLAYBOOK.md               ← 玩法规划（10个不带灯 + 结合灯）
 ```
@@ -49,7 +54,8 @@ docs/
 ## 技术方案（已确定）
 
 - **架构**：PWA + Web MIDI API —— 一套代码，电脑(USB) + 安卓 Chrome(USB-OTG/蓝牙)都能跑
-- **连接**：默认同时支持 USB 和蓝牙 MIDI（Web MIDI 把两者都当 MIDIPort，运行时让用户选）
+- **连接**：USB 直连无需任何配置；**Windows 蓝牙** 需运行 `bridge/ca99_midi_bridge.py`（WinRT 桥，见下）；macOS / Android 蓝牙原生支持
+- **Windows 蓝牙限制**：Chrome Web MIDI 走 WinMM，看不到 BLE-MIDI 设备；`bridge/` 目录的 Python 桥用 WinRT 连接 CA99 并以 WebSocket 暴露给浏览器，`midi-core.js` 自动探测（`?bridge=` 参数或 `localStorage`），app 零改动
 - **协议**：直接复用 `reference/appui-extract/` 的 JSON 数据表 + `reference/protocol/` 的格式说明
 - **借鉴社区**：尽量用成熟开源方案（WEBMIDI.js、Piano-LED-Visualizer、govee-python-sdk 等，见 research/）
 
