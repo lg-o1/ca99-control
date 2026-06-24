@@ -40,7 +40,7 @@ reference/                  ← 所有调研与逆向成果（参考资料）
     govee-api-summary.md    ← Govee API（LAN UDP 同步）
     sound-limits-summary.md ← 音色限制 + VST 方案
     piano-creative-summary.md ← 创意玩法清单
-app/                        ← PWA + Web MIDI 应用（43 个模块已实现）
+app/                        ← PWA + Web MIDI 应用（48 个模块已实现）
   js/bridge-protocol.js     ← WebSocket 桥接协议契约 + BridgeClient 状态机
 bridge/                     ← Windows 蓝牙 MIDI 桥（WinRT → WebSocket）
   ca99_midi_bridge.py       ← Python winsdk 桥接服务（pip install winsdk）

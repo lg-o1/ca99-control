@@ -59,7 +59,6 @@ app/
     solfege.js         ← 唱名/音级听辨（建立调性后辨认音级 Do-Re-Mi，纯逻辑，196 单元测试）
     chord-quality.js   ← 和弦性质听辨（听和弦辨大/小/增/减/七和弦类型，纯逻辑，185 单元测试）
     progression-ear.js ← 和声进行听辨（听大调进行辨每个和弦的罗马数字级数，纯逻辑，337 单元测试）
-    score-follow.js    ← 曲谱跟弹（Synthesia 式下落音符+判定打分引擎，纯逻辑，21 单元测试）
     piano-keyboard.js  ← 通用全幅 88 键虚拟钢琴组件（可点击发声/高亮答案/演示点亮，纯布局逻辑 46 单元测试）
     score-follow.js    ← 曲谱跟弹（Synthesia 式：内置乐曲落音符到琴键、按音高+时机判分，纯逻辑，21 单元测试）
     app.js            ← 主入口 + 各玩法模块
@@ -129,7 +128,6 @@ app/
 | 🎵 唱名听辨 | ✅ | 视唱练耳的<b>地基</b>：先🔊听一个<b>主和弦</b>建立调性，再听一个音，判断它是音阶里的<b>第几级</b>（唱名 Do Re Mi Fa Sol La Ti / 1-7）。支持大调/小调（小调用 Me/Le/Te 唱名）、自选音级范围与选项数量（3/4/7 选 1），可分别🔊再听主和弦或目标音。答完显示该音级的功能名与诀窍（如 Ti→Do、Fa→Mi）。无需连琴（纯听辨多选），成绩入仪表盘。和"音程听辨"（听两音距离、不依赖调性）不同——这里练<b>调性感/相对音高</b>，是即兴扒谱视唱的核心 |
 | 🎹 和弦性质听辨 | ✅ | 🔊 听一个<b>和弦</b>，辨认它的<b>性质/类型</b>：大三/小三/增三/减三（三和弦）或属七/大七/小七/半减七/减七（七和弦）。可自选和弦范围、播放方式（仅整块/仅琶音/整块+琶音）与选项数量（3/4/9 选 1）。答完显示该和弦的色彩诀窍（如增三悬浮对称、减七极度紧张）。无需连琴（纯听辨多选），成绩入仪表盘。和"和弦转位"（练同一和弦的不同排列）、"和弦练习"（弹出和弦名）都不同——这里练<b>和弦色彩/类型听觉</b>，是和声听辨的地基 |
 | 🎶 和声进行听辨 | ✅ | 🔊 听一段<b>大调和弦进行</b>，逐个辨认每个和弦的<b>罗马数字级数</b>（I/ii/iii/IV/V/vi/vii°）。第 1 个和弦固定 I 作锚点，之后辨每个和弦的功能/走向。可自选进行范围（流行/doo-wop/卡农/ii-V-I/变格/正格/忧伤/摇滚 8 种）与选项数量（3/4/7 选 1）。答完显示该级功能诀窍（如 V 强烈想回 I、vii° 极不稳定）。无需连琴（纯听辨多选），成绩入仪表盘。和"和弦进行"（看级数弹出和弦）不同——这里练<b>和声功能/进行走向听觉</b>，是扒和弦/即兴/编配的核心 |
-| 🎹 曲谱跟弹 | ✅ | <b>Synthesia 式</b>下落音符跟弹：挑一首内置童谣（小星星/欢乐颂/玛丽的小羊/铃儿响叮当），音符像 Synthesia 一样<b>从上往下落到对应琴键</b>，上方<b>五线谱</b>同步走光标——同时练<b>识谱+跟弹</b>。音符落到判定线那刻弹对应键，按<b>音高+时机</b>双重打分（正中 PERFECT / 稍偏 GOOD / 漏弹 MISS），连对累计 Combo、完成评 1-3 星。可调速度（0.5/0.75/1×）与难度（忽略八度/要准八度）。先🔊「听一遍」看示范，再▶「开始跟弹」；没接 MIDI 也能点屏幕 88 键作答，成绩入仪表盘 |
 | 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏/踏板时机/颤音速度/装饰音/音程大跳/旋律突出/力度渐变/速度渐变/复节奏/颗粒性/手指独立性/音阶八度跨度/节奏听写/移调视奏/和弦转位听辨/调号识别/音阶指法提示/音程构建/调式识别/唱名听辨/和弦性质听辨/和声进行听辨/曲谱跟弹各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） || 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -168,6 +166,7 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 - 录制回放用 `recorder.js`（纯逻辑，38 单元测试）：`Recorder` 以毫秒时间戳记录 MIDI 事件，回放用注入定时器按相对时间重派发，`toMidiFile()` 编码标准 MIDI 文件（Type 0，VLQ delta、tempo meta、跳过非通道事件）。onMidiIn 录制所有输入；导出用 Blob 触发 .mid 下载
 - 音阶练习用 `scale-trainer.js`（纯逻辑，41 单元测试）：`buildScale`/`buildScaleUpDown` 生成 8 种音阶（大调/三种小调/五声/布鲁斯/半音阶）的 MIDI 序列，`ScaleSession` 按依次弹奏检查进度（可忽略八度），note-on 驱动前进/报错/完成，UI 高亮当前应弹的音
 - 视奏闪卡用 `sight-reading.js`（纯逻辑，62 单元测试）：`staffPosition`/`needsLedger`/`randomNote` 把 MIDI 音符映射到五线谱位置（高/低音谱号、自动加线），`SightReadingGame` 随机出题并校验（可忽略八度），记录得分/连击/最佳/正确率，UI 用 SVG 实时绘制谱表+符头，note-on 驱动判分与翻题
+- 曲谱跟弹用 `score-follow.js`（纯逻辑，21 单元测试）：内置 4 首公有领域旋律（顺序记谱 `[midi,durBeats]`，`null`=休止），`ScoreFollow` 按 BPM 把"拍"换成毫秒时间轴；播放头时间 `t`（毫秒）驱动 `judge(midi,t)`（找最近、音高匹配、在 good 窗内的未判音符，按 `|t−目标ms|` 分 PERFECT≤130ms/GOOD≤320ms，连对累计 Combo+加分）、`expire(t)`（过窗未弹自动判 MISS 并断连击）、`active(t)`/`upcoming(t,ahead)`（取该弹/即将落下的音符），`accuracy`/`stars`（90/70/50% → ★★★/★★/★）。UI 用 `requestAnimationFrame` 把 `performance.now()−t0` 换成 `t`：上方 SVG 五线谱整曲横向铺开 + 黄色光标随拍前进并自动滚动居中、音符按判定结果染色；中间 Synthesia 式下落高速路（用 `piano-keyboard.js` 的 `buildLayout` 取每键 x 中心，音符块按 `(目标ms−t)` 下落到底部判定线、对齐下方 88 键）；落到判定线时高亮该弹的键、弹对/漏弹弹出 PERFECT/GOOD/MISS×Combo 飘字。两种模式：🔊「听一遍」自动播放示范（不判分）、▶「开始跟弹」judge 判分；可选速度倍率（缩放有效 BPM）、简单/标准（octaveAgnostic）。键盘范围按曲子音域补齐到整八度。结束写入成就仪表盘
 - 音程听辨用 `ear-training.js`（纯逻辑，49 单元测试）：`INTERVALS` 表（0..12 半音）+ `EarTrainingGame` 随机出根音+音程（方向 up/down/harmonic/mixed，可选音程集合，自动保证音符落在合法 MIDI 范围），`check` 校验并记录得分/连击/最佳/正确率，UI 用 Web Audio 三角波发声播放，点按钮作答（无需连钢琴）
 - 力度练习用 `dynamics-trainer.js`（纯逻辑，52 单元测试）：`DYNAMICS` 把 velocity 1..127 无缝划成 6 档（pp/p/mp/mf/f/ff），`velocityToIndex` 定位档位，`DynamicsGame` 出目标力度并按 note-on velocity 校验（容差可调，相邻档可算对），记录得分/连击/最佳/正确率，UI 用刻度色带+指针实时显示你弹的力度落点
 - 移调器用 `transposer.js`（纯逻辑，74 单元测试）：`encodeTransposeByte` 把半音 -12..12 编码成 CA99 TransposeValue 字节（0x40+半音，实测 -12→0x34/+12→0x4C），`Transposer` 跟踪移调量、`targetKeyName` 算听感调、`transposeNote` 软件移调音符；UI 用滑块/±按钮/预设切换，`CA99.buildTranspose` 发 SysEx 让钢琴自身发声也移调
@@ -330,6 +329,7 @@ node js/solfege.test.mjs
 node js/chord-quality.test.mjs
 node js/progression-ear.test.mjs
 node js/piano-keyboard.test.mjs
+node js/score-follow.test.mjs
 node js/bridge-protocol.test.mjs
 ```
 
