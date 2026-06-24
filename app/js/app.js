@@ -32,6 +32,7 @@ import { PedalTiming, PEDAL_THRESHOLD } from './pedal-timing.js';
 import { TrillTrainer } from './trill.js';
 import { OrnamentTrainer, ORNAMENT_LABELS } from './ornament.js';
 import { LeapTrainer } from './leap.js';
+import { VoicingTrainer } from './voicing.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -63,6 +64,7 @@ let pedalTimeOnCC = null;   // 踏板时机的 CC 回调（模块28注册）
 let trillOnNote = null;     // 颤音训练的 note-on 回调（模块29注册）
 let ornamentOnNote = null;  // 装饰音训练的 note-on 回调（模块30注册）
 let leapOnNote = null;      // 大跳准确度的 note-on 回调（模块31注册）
+let voicingOnNote = null;   // 旋律声部突出的 note-on 回调（模块32注册，带力度）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -209,6 +211,8 @@ function onMidiIn(bytes) {
     if (ornamentOnNote) ornamentOnNote(m.note, performance.now());
     // 驱动大跳准确度训练
     if (leapOnNote) leapOnNote(m.note, performance.now());
+    // 驱动旋律声部突出（带力度）
+    if (voicingOnNote) voicingOnNote(m.note, m.velocity, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -3514,6 +3518,147 @@ function renderLeap() {
   renderSeq();
 }
 
+// ---------- 模块32：旋律声部突出 ----------
+function renderVoicing() {
+  const root = $('#module-voicing');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🔝 旋律声部突出（Voicing）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">钢琴进阶技巧：弹和弦时，<b>旋律声部</b>（通常是最高音）要比内声部更响，让旋律"浮"在和声之上。本模块每轮请你<b>同时按下一个和弦</b>（至少 2 个音），引擎检查目标声部的力度是否明显高于其它音。和弦弹完后会自动结算（约 ${'80'}ms 内按下的算同一和弦）。没连琴可点下方"模拟"按钮。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>目标声部</label>
+        <select id="vo-voice"><option value="top" selected>最高音（旋律在上）</option><option value="bottom">最低音（旋律在下/低音突出）</option></select>
+      </div>
+      <div class="param-row"><label>力度余量要求</label>
+        <select id="vo-margin"><option value="10">轻松（高 10）</option><option value="15" selected>标准（高 15）</option><option value="25">严格（高 25）</option></select>
+      </div>
+      <div class="param-row"><label>练习和弦数</label>
+        <select id="vo-rounds"><option value="3">3 个</option><option value="5" selected>5 个</option><option value="8">8 个</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div id="vo-chord" class="vo-chord"><span style="color:var(--muted)">点"开始"，然后同时按下一个和弦</span></div>
+      <div id="vo-feedback" class="sight-feedback" style="margin-top:12px">每个和弦让旋律音更响</div>
+      <div id="vo-dots" class="vo-dots"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="vo-avg" class="sight-stat-num">—</div><div class="sight-stat-lbl">平均分</div></div>
+      <div class="sight-stat"><div id="vo-clean" class="sight-stat-num">—</div><div class="sight-stat-lbl">达标和弦</div></div>
+      <div class="sight-stat"><div id="vo-prog" class="sight-stat-num">0</div><div class="sight-stat-lbl">进度</div></div>
+      <div class="sight-stat"><div id="vo-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="vo-start" class="big-btn">▶ 开始 / 重来</button>
+      <button id="vo-sim-good" class="big-btn" style="background:var(--panel2)">🎹 模拟（旋律突出）</button>
+      <button id="vo-sim-bad" class="big-btn" style="background:var(--panel2)">🎹 模拟（旋律埋没）</button>
+      <span id="vo-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let vo = null;
+  let flushTimer = 0;
+  const WINDOW = 80;
+
+  function opts() {
+    return { targetVoice: $('#vo-voice').value, margin: +$('#vo-margin').value, rounds: +$('#vo-rounds').value, window: WINDOW };
+  }
+
+  function renderDots() {
+    const rounds = vo ? vo.rounds : +$('#vo-rounds').value;
+    const res = vo ? vo.results : [];
+    let html = '';
+    for (let i = 0; i < rounds; i++) {
+      const r = res[i];
+      const cls = !r ? 'pending' : r.score >= 80 ? 'good' : r.score >= 40 ? 'mid' : 'bad';
+      const txt = r ? r.score : '·';
+      html += `<div class="vo-dot ${cls}">${txt}</div>`;
+    }
+    $('#vo-dots').innerHTML = html;
+    $('#vo-prog').textContent = `${res.length}/${rounds}`;
+  }
+
+  function showChord(r) {
+    const voice = $('#vo-voice').value === 'top' ? '最高音' : '最低音';
+    const fb = $('#vo-feedback');
+    if (r.single) { fb.className = 'sight-feedback'; fb.textContent = '⚠ 只按了一个音，请同时按 2 个以上音组成和弦'; }
+    else if (r.score >= 80) { fb.className = 'sight-feedback ok'; fb.textContent = `🎉 ${voice}力度 ${r.vTarget}，比内声部高 ${r.diff} — 旋律很突出！`; }
+    else if (r.score >= 40) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${voice}比内声部高 ${r.diff}，再多突出一点（目标 +${vo.margin}）`; }
+    else if (r.diff <= 0) { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${voice}被埋没了（差 ${r.diff}）— 旋律音要更用力`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${voice}只高 ${r.diff}，远不够（目标 +${vo.margin}）`; }
+    renderDots();
+  }
+
+  function showSummary(s) {
+    $('#vo-avg').textContent = s.avgScore;
+    $('#vo-clean').textContent = `${s.clean}/${s.chords}`;
+    $('#vo-best').textContent = vo.best;
+    const fb = $('#vo-feedback');
+    if (s.avgScore >= 80) { fb.className = 'sight-feedback ok'; fb.textContent = `🏆 平均 ${s.avgScore} 分，${s.clean}/${s.chords} 个和弦旋律突出到位！`; }
+    else if (s.avgScore >= 50) { fb.className = 'sight-feedback'; fb.textContent = `平均 ${s.avgScore} 分，${s.clean}/${s.chords} 达标。多练旋律声部的"重量"` }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `平均 ${s.avgScore} 分。试试旋律手指多沉一点、内声部放轻` }
+    recordPractice('voicing', '旋律声部突出', s.chords, s.clean, vo.best);
+    voicingOnNote = null;
+    $('#vo-status').textContent = '完成 · 可重来';
+    renderDots();
+  }
+
+  function scheduleFlush() {
+    if (flushTimer) clearTimeout(flushTimer);
+    flushTimer = setTimeout(() => { if (vo && !vo.done) vo.flush(); }, WINDOW + 40);
+  }
+
+  function feedNote(note, vel) {
+    if (!vo || vo.done) return;
+    vo.feed(note, vel, performance.now());
+    $('#vo-chord').innerHTML = vo.buffer
+      .slice().sort((a, b) => a.note - b.note)
+      .map((b) => `<span class="vo-key">${chordNoteName(b.note)}<small>v${b.vel}</small></span>`).join('');
+    scheduleFlush();
+  }
+
+  function start() {
+    vo = new VoicingTrainer(opts());
+    vo.onChord = (r) => showChord(r);
+    vo.onComplete = (s) => showSummary(s);
+    voicingOnNote = (note, vel) => feedNote(note, vel);
+    $('#vo-avg').textContent = '—'; $('#vo-clean').textContent = '—'; $('#vo-best').textContent = vo.best;
+    $('#vo-chord').innerHTML = '<span style="color:var(--muted)">同时按下一个和弦…</span>';
+    const fb = $('#vo-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = `🎯 弹 ${vo.rounds} 个和弦，每个让${$('#vo-voice').value === 'top' ? '最高' : '最低'}音更响`;
+    $('#vo-status').textContent = '进行中…';
+    renderDots();
+  }
+
+  // 模拟：按一个 C 大三和弦，旋律突出 / 埋没
+  function sim(good) {
+    if (!vo || vo.done) start();
+    const voice = $('#vo-voice').value;
+    // C(60) E(64) G(67)，目标声部 top=67 / bottom=60
+    const target = voice === 'top' ? 67 : 60;
+    const t = performance.now();
+    [60, 64, 67].forEach((n) => {
+      let v = 50;
+      if (n === target) v = good ? 95 : 35;  // 突出 or 埋没
+      vo.feed(n, v, t);
+    });
+    $('#vo-chord').innerHTML = vo.buffer.slice().sort((a, b) => a.note - b.note)
+      .map((b) => `<span class="vo-key">${chordNoteName(b.note)}<small>v${b.vel}</small></span>`).join('');
+    vo.flush();
+  }
+
+  $('#vo-voice').onchange = () => { vo = null; renderDots(); };
+  $('#vo-margin').onchange = () => { vo = null; renderDots(); };
+  $('#vo-rounds').onchange = () => { vo = null; renderDots(); };
+  $('#vo-start').onclick = start;
+  $('#vo-sim-good').onclick = () => sim(true);
+  $('#vo-sim-bad').onclick = () => sim(false);
+
+  renderDots();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -3645,7 +3790,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;
