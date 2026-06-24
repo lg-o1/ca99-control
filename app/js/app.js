@@ -53,6 +53,7 @@ import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBui
 import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi } from './score-follow.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
+import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
@@ -6434,6 +6435,206 @@ function renderNoteId() {
   };
 }
 
+// ========== 模块 51: 五线谱识谱卡（staff reading）==========
+function renderStaffRead() {
+  const root = $('#module-staffread');
+  let game = null;
+  let mode = 'name';     // name | key
+  let clefs = 'treble';  // treble | bass | grand
+  let useOctave = false;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎼 五线谱识谱卡</h2>
+    <p style="color:var(--muted);margin-bottom:14px">看懂五线谱的<b>第一步</b>：屏幕在五线谱上画一个音符，你<b>说出它的音名</b>。这是"看谱→音名→键位"读谱链的中间环（和"键盘音名认知"配合，从此读谱不再靠数线）。两种练法：<b>看谱选音名</b>（从选项里选）、<b>看谱点键</b>（在 88 键上点出它）。答完显示<b>口诀提示</b>（高音谱号线 EGBDF·间 FACE / 低音谱号线 GBDFA·间 ACEG）并把音画在键盘上。可选谱号（高音/低音/大谱表）。和"视奏闪卡"（必须真弹）不同——这里纯认读，零基础也能上手。无需连琴，成绩入仪表盘。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>练习方式</label>
+        <select id="sr-mode">
+          <option value="name">看谱选音名</option>
+          <option value="key">看谱点键</option>
+        </select></div>
+      <div class="param-row"><label>谱号</label>
+        <select id="sr-clef">
+          <option value="treble">高音谱号 𝄞</option>
+          <option value="bass">低音谱号 𝄢</option>
+          <option value="grand">大谱表（两谱号随机）</option>
+        </select></div>
+      <div class="param-row"><label>音名带八度</label>
+        <div class="ear-chips" id="sr-oct-chips">
+          <button class="ear-chip on" data-o="0">只音名 (C)</button>
+          <button class="ear-chip" data-o="1">带八度 (C4)</button>
+        </div></div>
+    </div>
+
+    <div class="sight-stage">
+      <div class="sight-staff-wrap"><div id="sr-staff"></div></div>
+      <div id="sr-feedback" class="sight-feedback">选好设置，按"开始"出题</div>
+      <div id="sr-tip" class="mid-hint"></div>
+    </div>
+
+    <div class="ear-answers" id="sr-answers"></div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap" id="sr-kbcap">🎹 答完会把这个音画在 88 键上</div>
+      <div id="sr-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="sr-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sr-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sr-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sr-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="sr-start" class="big-btn">▶ 开始练习</button>
+      <span id="sr-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  const CLEF_GLYPH = { treble: '𝄞', bass: '𝄢' };
+  function drawStaff(note, clef) {
+    const W = 240, H = 200;
+    const topY = 64, stepPx = 7;
+    const yForPos = (pos) => topY + (8 - pos) * stepPx;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="sight-svg" preserveAspectRatio="xMidYMid meet">`;
+    for (let p = 0; p <= 8; p += 2) {
+      const y = yForPos(p);
+      svg += `<line x1="30" y1="${y}" x2="${W - 16}" y2="${y}" class="staff-line"/>`;
+    }
+    svg += `<text x="38" y="${yForPos(2) + 6}" class="clef-glyph">${CLEF_GLYPH[clef] || CLEF_GLYPH.treble}</text>`;
+    if (note != null) {
+      const pos = srStaffPos(note, clef);
+      const cy = yForPos(pos);
+      const cx = 150;
+      if (pos > 8) { for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
+      if (pos < 0) { for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
+      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="10" ry="7.5" transform="rotate(-20)" class="note-head"/></g>`;
+    }
+    svg += `</svg>`;
+    $('#sr-staff').innerHTML = svg;
+  }
+
+  function flash(ok) {
+    const wrap = $('#sr-staff').closest('.sight-staff-wrap');
+    if (!wrap) return;
+    wrap.classList.remove('flash-ok', 'flash-no');
+    void wrap.offsetWidth;
+    wrap.classList.add(ok ? 'flash-ok' : 'flash-no');
+  }
+
+  drawStaff(null, 'treble');
+
+  const srKb = new PianoKeyboard($('#sr-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => {
+      playTone(midiToFreq(m), 0, 0.6);
+      if (game && game.current && mode === 'key' && !answering) answerKey(m);
+    },
+  });
+  srKb.scrollToShow(48, 79);
+
+  $('#sr-mode').onchange = () => { if (!game) mode = $('#sr-mode').value; };
+  $('#sr-clef').onchange = () => { if (!game) { clefs = $('#sr-clef').value; drawStaff(null, clefs === 'grand' ? 'treble' : clefs); } };
+  $('#sr-oct-chips').querySelectorAll('.ear-chip').forEach((b) => {
+    b.onclick = () => {
+      if (game) return;
+      $('#sr-oct-chips').querySelectorAll('.ear-chip').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+      useOctave = b.dataset.o === '1';
+    };
+  });
+
+  function refreshStats() {
+    $('#sr-score').textContent = game.score;
+    $('#sr-streak').textContent = game.streak;
+    $('#sr-best').textContent = game.best;
+    $('#sr-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  let answering = false;
+
+  function showResult(correct) {
+    refreshStats();
+    flash(correct);
+    $('#sr-tip').textContent = '💡 ' + game.current.tip;
+    srKb.highlightMany([{ midi: game.current.midi, color: correct ? '#34d399' : '#fbbf24', text: game.current.name }]);
+    const fb = $('#sr-feedback');
+    if (correct) { fb.textContent = `✅ 对了！这是 ${game.current.name} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${game.current.name}`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1800);
+  }
+
+  function answerName(name) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctName = game.current.name;
+    const correct = game.check(name);
+    $('#sr-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      if (b.dataset.n === correctName) b.classList.add('correct');
+      else if (b.dataset.n === name) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    showResult(correct);
+  }
+
+  function answerKey(m) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correct = game.check(m);
+    showResult(correct);
+  }
+
+  function drawAnswers() {
+    const wrap = $('#sr-answers');
+    if (mode !== 'name') { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = game.choices().map((c) =>
+      `<button class="ear-ans" data-n="${c}">${c}</button>`).join('');
+    wrap.querySelectorAll('.ear-ans').forEach((b) => { b.onclick = () => answerName(b.dataset.n); });
+  }
+
+  function nextQuestion() {
+    answering = false;
+    game.next();
+    srKb.clear();
+    $('#sr-tip').textContent = '';
+    drawStaff(game.current.midi, game.current.clef);
+    if (mode === 'name') {
+      $('#sr-kbcap').textContent = '🎹 答完会把这个音画在 88 键上';
+      $('#sr-feedback').textContent = '🎼 五线谱上这个音叫什么？';
+    } else {
+      $('#sr-kbcap').textContent = '🎹 在键盘上点出五线谱上这个音' + (game.octaveAgnostic ? '（任意八度同名键都行）' : '');
+      $('#sr-feedback').textContent = '🎼 在键盘上点出这个音';
+    }
+    $('#sr-feedback').className = 'sight-feedback';
+    drawAnswers();
+  }
+
+  $('#sr-start').onclick = () => {
+    if (game) {
+      recordPractice('staffread', '五线谱识谱卡', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#sr-start').textContent = '▶ 开始练习';
+      $('#sr-start').classList.remove('running');
+      $('#sr-status').textContent = '已停止';
+      $('#sr-answers').innerHTML = '';
+      $('#sr-tip').textContent = '';
+      srKb.clear();
+      drawStaff(null, clefs === 'grand' ? 'treble' : clefs);
+      $('#sr-feedback').textContent = '选好设置，按"开始"出题';
+      $('#sr-feedback').className = 'sight-feedback';
+      ['sr-mode', 'sr-clef'].forEach((id) => { const e = document.getElementById(id); if (e) e.disabled = false; });
+      return;
+    }
+    game = new StaffReadGame({ mode, clefs, useOctave, octaveAgnostic: true, choiceCount: 4 });
+    $('#sr-start').textContent = '⏸ 停止练习';
+    $('#sr-start').classList.add('running');
+    $('#sr-status').textContent = '进行中…';
+    ['sr-mode', 'sr-clef'].forEach((id) => { const e = document.getElementById(id); if (e) e.disabled = true; });
+    refreshStats();
+    nextQuestion();
+  };
+}
+
 // ========== 模块 46: 唱名/音级听辨（solfège）==========
 function renderSolfege() {
   const root = $('#module-solfege');
@@ -7680,7 +7881,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
