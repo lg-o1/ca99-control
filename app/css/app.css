@@ -627,6 +627,19 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .rd-good { background: #2fae73; }
 .rd-off { background: #e85a5a; }
 
+/* 移调视奏（模块40） */
+.st-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.st-chip { min-width: 38px; padding: 7px 9px; border-radius: 8px; text-align: center;
+  font-weight: 700; font-size: 13px; border: 2px solid transparent;
+  background: var(--panel2, rgba(127,127,127,.12)); color: var(--text, #eee); transition: all .12s ease; }
+.st-src { border-color: rgba(102,126,234,.5); }
+.st-pending { color: var(--muted, #888); background: transparent; border: 2px dashed rgba(127,127,127,.3); }
+.st-hit { background: #2fae73; color: #fff; border-color: transparent; }
+.st-miss { background: #e85a5a; color: #fff; border-color: transparent; }
+.st-key { font-weight: 700; font-size: 15px; color: #667eea; }
+.st-answer { display: inline-flex; gap: 6px; align-items: center; color: var(--muted, #888); font-size: 13px; }
+.st-answer b { color: #e8a44a; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }

@@ -40,6 +40,7 @@ import { EvennessTrainer } from './evenness.js';
 import { FingerIndependenceTrainer, FINGER_PRESETS } from './finger-independence.js';
 import { ScaleSpanTrainer, SCALE_TYPES as SPAN_SCALE_TYPES, SPAN_OCTAVES, SPAN_DIRECTIONS } from './scale-span.js';
 import { RhythmDictationTrainer, DICTATION_LEVELS, patternToOnsets as dictOnsets } from './rhythm-dictation.js';
+import { SightTransposeTrainer, MELODIES as TRANS_MELODIES, TARGET_KEYS as TRANS_KEYS, SOURCE_ROOT as TRANS_SOURCE } from './sight-transpose.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -80,6 +81,7 @@ let fingerOnNote = null;    // 手指独立性的 note-on 回调（模块37注�
 let fingerOffNote = null;   // 手指独立性的 note-off 回调（模块37注册）
 let spanOnNote = null;      // 音阶八度跨度的 note-on 回调（模块38注册，带时间）
 let dictOnNote = null;      // 节奏听写的 note-on 回调（模块39注册，带时间）
+let transOnNote = null;     // 移调视奏的 note-on 回调（模块40注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -242,6 +244,8 @@ function onMidiIn(bytes) {
     if (spanOnNote) spanOnNote(m.note, performance.now());
     // 驱动节奏听写（带时间）
     if (dictOnNote) dictOnNote(m.note, performance.now());
+    // 驱动移调视奏
+    if (transOnNote) transOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -4837,6 +4841,179 @@ function renderRhythmDictation() {
   resetTapDots();
 }
 
+function renderSightTranspose() {
+  const root = $('#module-trans');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎼 移调视奏</h2>
+    <p style="color:var(--muted);margin-bottom:14px">练<b>看谱移调</b>：屏幕给出一段<b>原调（C）</b>里的小旋律 + 一个<b>目标调</b>，你要把同一段旋律<b>移到目标调</b>弹出来——起音落在目标的第一个音上，其余保持一样的音程关系。和"移调器"（整体升降键盘）、"视奏闪卡"（照谱原样弹）、"旋律听写"（凭听复奏原音高）都不同。忽略八度，弹对音级即可。综合分 = 音级正确率。</p>
+
+    <div class="card-panel">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <span style="color:var(--muted);min-width:64px">原调旋律</span>
+        <div id="st-source" class="st-chips"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="color:var(--muted);min-width:64px">移到</span>
+        <span id="st-target-name" class="st-key">—</span>
+        <span id="st-answer" class="st-answer" style="display:none"></span>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="st-play" class="st-chips"></div>
+      <div id="st-feedback" class="sight-feedback" style="margin-top:14px">点"换一题"出题，然后在琴上把这段旋律移到目标调弹出来</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="st-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="st-note" class="sight-stat-num">—</div><div class="sight-stat-lbl">音准</div></div>
+      <div class="sight-stat"><div id="st-shape" class="sight-stat-num">—</div><div class="sight-stat-lbl">旋律形状</div></div>
+      <div class="sight-stat"><div id="st-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="st-new" class="big-btn">🔁 换一题</button>
+      <button id="st-hear" class="big-btn" style="background:#475569">🔊 听原调</button>
+      <button id="st-reveal" class="big-btn" style="background:#475569">👁 看答案</button>
+      <button id="st-sim" class="big-btn" style="background:#667eea">🎲 模拟一遍</button>
+      <span id="st-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let trainer = null;
+  let revealed = false;
+
+  function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+  function playTone(freq, when, dur) {
+    try {
+      _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = _audioCtx;
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + when);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + when + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + when + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime + when); o.stop(ctx.currentTime + when + dur + 0.02);
+    } catch (e) { /* 无音频时静默 */ }
+  }
+  function playSeq(seq) { const step = 0.36; seq.forEach((n, i) => playTone(midiToFreq(n), i * step, 0.32)); }
+
+  function chips(container, seq, cls) {
+    const wrap = $(container); wrap.innerHTML = '';
+    seq.forEach((n) => {
+      const c = document.createElement('span');
+      c.className = 'st-chip' + (cls ? ' ' + cls : '');
+      c.textContent = CA99.noteName(n);
+      wrap.appendChild(c);
+    });
+  }
+
+  function drawPlayDots() {
+    const wrap = $('#st-play'); wrap.innerHTML = '';
+    for (let i = 0; i < trainer.total; i++) {
+      const c = document.createElement('span');
+      c.className = 'st-chip st-pending'; c.textContent = '·';
+      wrap.appendChild(c);
+    }
+  }
+
+  function showQuestion() {
+    chips('#st-source', trainer.sourceSeq, 'st-src');
+    $('#st-target-name').textContent = trainer.targetKey.name + `（${trainer.melody.solfa}）`;
+    $('#st-answer').style.display = 'none';
+    $('#st-answer').textContent = '';
+    revealed = false;
+    drawPlayDots();
+  }
+
+  function fillPlay(i, ok) {
+    const dots = document.querySelectorAll('#st-play .st-chip');
+    if (dots[i]) {
+      dots[i].textContent = CA99.noteName(trainer.played[i]);
+      dots[i].classList.remove('st-pending');
+    }
+  }
+
+  function finishRound(r) {
+    transOnNote = null;
+    // 给每个弹奏的音上色
+    const dots = document.querySelectorAll('#st-play .st-chip');
+    r.perNote.forEach((p, i) => { if (dots[i]) dots[i].classList.add(p.ok ? 'st-hit' : 'st-miss'); });
+    $('#st-score').textContent = r.score;
+    $('#st-note').textContent = Math.round(r.noteAccuracy * 100) + '%';
+    $('#st-shape').textContent = Math.round(r.shapeAccuracy * 100) + '%';
+    $('#st-best').textContent = trainer.best;
+    recordPractice('trans', '移调视奏', r.total, r.correct, r.score);
+    const fb = $('#st-feedback');
+    fb.className = 'sight-feedback ok';
+    let tip;
+    if (r.wrongKey) tip = '旋律对了，但没移到目标调——注意起音要落在目标调上';
+    else if (r.extra > 0) tip = `多弹了 ${r.extra} 个音`;
+    else if (r.score >= 90) tip = '移调准确，漂亮！';
+    else if (r.shapeAccuracy >= 0.8) tip = '音程关系基本对，个别音再准一点';
+    else tip = '先在心里把每个音程往上搬，再弹';
+    fb.textContent = `综合 ${r.score} 分 · 音准 ${Math.round(r.noteAccuracy * 100)}% · 形状 ${Math.round(r.shapeAccuracy * 100)}%（起音${r.rootOk ? '对' : '错'}） —— ${tip}`;
+    $('#st-status').textContent = '完成（换一题再来）';
+  }
+
+  function arm() {
+    transOnNote = (note) => {
+      const i = trainer.played.length;
+      const res = trainer.feed(note);
+      fillPlay(i);
+      $('#st-status').textContent = `${trainer.played.length}/${trainer.total}`;
+      if (res && res.done) finishRound(res);
+    };
+  }
+
+  function newRound() {
+    transOnNote = null;
+    trainer = new SightTransposeTrainer({});
+    showQuestion();
+    $('#st-score').textContent = '—'; $('#st-note').textContent = '—'; $('#st-shape').textContent = '—';
+    $('#st-best').textContent = trainer.best;
+    const fb = $('#st-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = `把这段旋律移到 ${trainer.targetKey.name} 弹出来（忽略八度，弹对音级即可）`;
+    $('#st-status').textContent = `0/${trainer.total}`;
+    arm();
+  }
+
+  function reveal() {
+    if (!trainer) return;
+    revealed = !revealed;
+    const a = $('#st-answer');
+    if (revealed) {
+      a.style.display = 'inline-flex';
+      a.innerHTML = '答案：' + trainer.expected.map((n) => `<b>${CA99.noteName(n)}</b>`).join(' ');
+    } else {
+      a.style.display = 'none';
+    }
+  }
+
+  function simulate() {
+    if (!trainer) newRound();
+    transOnNote = null;
+    trainer.newRound({});
+    showQuestion();
+    $('#st-best').textContent = trainer.best;
+    // 模拟：92% 弹对移调音，偶尔错一个半音
+    trainer.expected.forEach((n, i) => {
+      const note = Math.random() < 0.9 ? n : n + (Math.random() < 0.5 ? 1 : -1);
+      const i2 = trainer.played.length;
+      const res = trainer.feed(note);
+      fillPlay(i2);
+      if (res && res.done) finishRound(res);
+    });
+  }
+
+  $('#st-new').onclick = newRound;
+  $('#st-hear').onclick = () => { if (trainer) playSeq(trainer.sourceSeq); };
+  $('#st-reveal').onclick = reveal;
+  $('#st-sim').onclick = simulate;
+
+  newRound();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -4973,7 +5150,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

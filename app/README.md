@@ -49,6 +49,7 @@ app/
     finger-independence.js ← 手指独立性（按住几个键不放、动其他手指，测按住音是否滑脱+音型对错，纯逻辑，44 单元测试）
     scale-span.js     ← 音阶八度跨度（音阶连跑 2~3 个八度，测音符正确+速度均匀+穿指衔接，纯逻辑，62 单元测试）
     rhythm-dictation.js ← 节奏听写（听一段节奏后凭记忆敲回来，与速度无关只比长短比例，纯逻辑，60 单元测试）
+    sight-transpose.js ← 移调视奏（看 C 调小旋律移到目标调弹出来，测移调音级正确率+旋律形状，纯逻辑，55 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -100,7 +101,8 @@ app/
 | 🖐️ 手指独立性 | ✅ | 练 finger independence：用部分手指按住几个键不放，同时用其他手指反复敲移动音型（5 套预设，如按 C+E 动 G、按 C+E+G 动 B↔D），可选重复 2/3/4 遍；引擎边记 note-on/off，每敲一个移动音就快照"该按住的音是否都还按着"，统计独立保持率 + 音型正确率（顺序对不对），综合分=独立保持 60%+音型 40%，并计滑脱次数（按住音在收尾前被抬起）；按住键/移动键实时高亮，需连琴检测按住与松开、模拟一遍演示评分，成绩入仪表盘 |
 | 🎹 音阶八度跨度 | ✅ | 练 scale span：把音阶连续跑过 2~3 个八度（上行/上下行，任意调+8 种音阶），重点不只是音对不对——综合分=音符正确 50%+速度均匀 30%（整串 IOI 的变异系数）+穿指衔接 20%（跨八度根音处间隔是否明显慢于中位=卡顿）；琴键条按八度铺开、穿指点标橙边、跟弹时实时高亮命中/错音，需连琴依次弹、模拟一遍演示评分，成绩入仪表盘。与"音阶练习"（只判音准/进度）互补 |
 | 👂 节奏听写 | ✅ | 练 rhythm dictation（耳朵）：先<b>听</b>一段节奏（屏幕<b>不显示</b>长短），再在<b>任意一个键</b>上把它<b>敲回来</b>；评分<b>与速度无关</b>——把你敲出的相邻间隔（IOI）整体缩放到与目标同样的总时长后，逐间隔比相对误差，只看<b>长短比例</b>对不对（短短长 vs 长短短），所以敲快敲慢都行。综合分=节奏比例准确度 × 敲击个数匹配度（多敲/少敲打折）；3 档难度（八分/四分→加附点四分→加十六分/附点八分），听完用 Web Audio 咔哒声播放、敲回来时点亮圆点、打分后用对比条画"目标 vs 你的"长短，需连琴敲、模拟一遍演示评分，成绩入仪表盘。与"节奏跟拍"（看着谱跟节拍器、判绝对落点）不同，这里全凭听 |
-| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏/踏板时机/颤音速度/装饰音/音程大跳/旋律突出/力度渐变/速度渐变/复节奏/颗粒性/手指独立性/音阶八度跨度/节奏听写各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
+| 🎼 移调视奏 | ✅ | 练 sight transposition（看谱移调）：屏幕给一段<b>原调（C）</b>小旋律（6 首唱名片段：上下行五音/主和弦琶音/小星星/欢乐颂/玛丽小羊/下行四音）+ 一个<b>目标调</b>（7 个调），你要把同一段旋律<b>移到目标调</b>弹出来——起音落目标音、其余保持一样音程。综合分=移调后音级正确率（忽略八度）；另算<b>旋律形状</b>（音程序列）正确率，用来识别"旋律对了但调没移对"并给提示；可🔊听原调旋律、👁看答案、🎲模拟一遍，需连琴弹，成绩入仪表盘。和"移调器"（整体升降键盘）、"视奏闪卡"（照谱原样弹）、"旋律听写"（凭听复奏原音高）都不同 |
+| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏/踏板时机/颤音速度/装饰音/音程大跳/旋律突出/力度渐变/速度渐变/复节奏/颗粒性/手指独立性/音阶八度跨度/节奏听写/移调视奏各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -147,6 +149,7 @@ app/
 - 手指独立性用 `finger-independence.js`（纯逻辑，44 单元测试）：`evaluateIndependence(events,{held,pattern})` 在 note-on/off 事件流上重放并维护"当前按下键集合"，每遇到一个移动音（非 held 的 on）就快照 `held.every(h=>down.has(h))` 记入 `heldDownAtTap`，独立保持率=全按住的敲击数÷移动敲击数；音型正确率=移动音逐位与 pattern（循环展开）相符的比例；综合分=独立保持×0.6+音型×0.4；另统计 `slips`（held 音在最后一个移动音之前被松开的次数，收尾正常松开不计——靠预扫描的 `lastMovingTime` 区分）。`FingerIndependenceTrainer.noteOn/noteOff(note,time)` 累积到 `targetTaps=pattern.length*reps` 个移动敲击后自动结算，记 best/rounds；UI 5 套预设（按 C+E 动 G 等）、按住键/移动键实时高亮，连琴检测按住与松开、模拟一遍演示评分（含偶发滑脱），成绩入仪表盘。与"双手协调""琶音跑动"互补——这里专练"按住的不动、该动的动"
 - 音阶八度跨度用 `scale-span.js`（纯逻辑，62 单元测试，复用 evenness 的 `cv`/`toIois`、scale-trainer 的 `SCALE_TYPES`/`rootPitchClass`）：`buildSpan(root,type,octave,octaves,direction)` 生成跨 N 个八度的音阶 MIDI 序列（上行/上下行不重复顶点），`crossingIndices(seq,rootPc)` 找出每次跨入新八度根音的下标（穿指点）；`evaluateSpan(events,{expected,crossings})` 三段打分——音符正确率（逐位对，0.5）+速度均匀度（整串 IOI 的 `cv` 经 `1−cv/evenTol` 映射，0.3）+穿指衔接（穿指点进入音的 IOI 是否 > 中位 IOI×hitchRatio=卡顿，按未卡顿比例，0.2）。`ScaleSpanTrainer.feed(note,time)` 累积到 total 个音自动结算，记 best/rounds；UI 琴键条按八度铺开、穿指点橙边、跟弹实时高亮命中/错音，连琴依次弹、模拟一遍（含偶发穿指卡顿与错音）演示评分，成绩入仪表盘。与"音阶练习"（只判音准/进度）互补——这里多看"跨八度的连贯与均匀"
 - 节奏听写用 `rhythm-dictation.js`（纯逻辑，60 单元测试）：`generatePattern(rng,level)` 按难度生成一串时值（以八分音符为 1 单位，3 档可用 0.5~4 单位），`iois` 取时值序列去掉末位即相邻间隔；`patternToOnsets(durations,bpm,start)` 供 UI 用 Web Audio 播放。核心 `evaluateDictation(targetIois,userIois,{tol})` <b>与速度无关</b>：先把用户总时长缩放对齐到目标总时长（`scale=sum(target)/sum(user)`）去掉速度因素，再逐间隔算相对误差 `relErr=|scaledUser−target|/target`、`1−relErr/tol` 映射成 0~1 分取均值得节奏准确度；个数匹配用 Dice 系数 `2k/(n+m)`（多敲/少敲都打折），综合分=节奏准确度×个数匹配度×100。`RhythmDictationTrainer.feed(note,time)` 只看时间不看音高，采满 `expectedTaps`（=音符个数）自动结算、也可少敲后手动 `finish()`，记 best/rounds；UI 听完点亮圆点、对比条画"目标 vs 你的"长短，连琴敲、模拟一遍演示评分，成绩入仪表盘。与"节奏跟拍"（看谱跟节拍器判绝对落点）互补——这里凭听、判相对长短
+- 移调视奏用 `sight-transpose.js`（纯逻辑，55 单元测试）：旋律用相对主音的半音偏移表示（与调无关），`transpose(offsets,rootMidi)` 移到某主音，`intervals(seq)` 取相邻音程。`evaluateTranspose(played,expected,{octaveFlexible})` 把用户弹的音和"移到目标调的期望序列"逐音比——音级正确率（默认忽略八度，用 pitch class 比）×100 即综合分，多弹按 `min(0.3, extra×0.1)` 轻度扣分；另算<b>形状正确率</b>（相邻音程序列匹配比例）与<b>起音是否对</b>，当形状≥0.8 但音级<0.6 且起音错时置 `wrongKey` 提示"旋律对了但调没移对"。`SightTransposeTrainer.feed(note)` 采满 `total`（=音符数）自动结算、也可少弹手动 `finish()`，记 best/rounds；UI 展示原调音名片段+目标调、可🔊听原调（Web Audio 三角波音序）、👁看答案、弹奏实时填色（对绿错红）、模拟一遍演示评分，成绩入仪表盘。和"移调器"（整体升降键盘）、"视奏闪卡"（照谱原样弹）、"旋律听写"（凭听复奏原音高）都不同——这里练"看谱即时移调"
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -190,7 +193,7 @@ npx http-server -p 8099           # 用 Node
 
 ## 测试
 
-**一键跑全部 36 套测试**：
+**一键跑全部 37 套测试**：
 
 ```bash
 cd app
@@ -269,6 +272,7 @@ node js/evenness.test.mjs
 node js/finger-independence.test.mjs
 node js/scale-span.test.mjs
 node js/rhythm-dictation.test.mjs
+node js/sight-transpose.test.mjs
 ```
 
 ## 数据生成（如需重建）
