@@ -7501,6 +7501,22 @@ function renderScoreFollow() {
           </label>
           <span style="color:var(--muted);font-size:13px">支持标准 MIDI 文件（多轨/和弦/双手/变速）</span>
         </div></div>
+      <div class="param-row" style="align-items:flex-start"><label>📷 拍谱识别</label>
+        <div class="scf-omr">
+          <div class="scf-omr-line">
+            <label class="scf-upload-btn">📷 选择乐谱图片
+              <input type="file" id="scf-omr-file" accept="image/*,.pdf" style="display:none">
+            </label>
+            <span class="scf-omr-exp">实验功能</span>
+          </div>
+          <div class="scf-omr-line">
+            <span class="scf-omr-lbl">OMR 服务地址</span>
+            <input type="text" id="scf-omr-url" class="scf-omr-url" placeholder="http://127.0.0.1:8000/omr" spellcheck="false">
+            <button class="ear-chip" id="scf-omr-save">保存</button>
+          </div>
+          <div class="scf-omr-hint">拍一张或上传乐谱图片，自动识别为可跟弹的 MIDI。需在本机运行 OMR 服务（如 homr），接收 <code>image</code> 表单字段、返回标准 MIDI 文件。还没服务时请用上面的「上传 MIDI」。</div>
+          <div class="scf-omr-status" id="scf-omr-status"></div>
+        </div></div>
       <div class="param-row" id="scf-hand-row" style="display:none"><label>练哪只手</label>
         <div class="ear-chips" id="scf-hand">
           <button class="ear-chip on" data-h="both">🙌 双手</button>
@@ -7815,25 +7831,72 @@ function renderScoreFollow() {
     if (!file) return;
     try {
       const buf = await file.arrayBuffer();
-      const parsed = parseMidi(buf);
-      if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
-      const id = 'midi-' + Date.now();
-      const title = '📄 ' + file.name.replace(/\.(midi?|MIDI?)$/i, '');
-      const song = scfFromMidi(parsed, { id, title });
-      customSongs.push(song);
-      songId = id;
-      loopFrom = 1; loopTo = 9999;
-      drawSongChips();
-      prepare();
-      const rc = countHand(parsed, 'r'), lc = countHand(parsed, 'l');
-      const handTxt = parsed.hasHands ? `，右手 ${rc} / 左手 ${lc}` : '';
-      $('#scf-feedback').textContent = `✅ 已载入「${title.replace('📄 ', '')}」：${parsed.notes.length} 个音符${handTxt}，约 ${parsed.bpm} BPM。选一档训练开始。`;
+      const info = loadMidiBuffer(buf, file.name.replace(/\.(midi?|MIDI?)$/i, ''));
+      $('#scf-feedback').textContent = `✅ 已载入「${info.title.replace('📄 ', '')}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。选一档训练开始。`;
       $('#scf-feedback').className = 'sight-feedback ok';
     } catch (err) {
       $('#scf-feedback').textContent = '❌ MIDI 解析失败：' + (err && err.message ? err.message : err);
       $('#scf-feedback').className = 'sight-feedback err';
     }
     e.target.value = ''; // 允许重复上传同一文件
+  };
+
+  // 从 MIDI 字节流载入一首跟弹曲目（上传 / OMR 识别共用）
+  function loadMidiBuffer(buf, rawTitle) {
+    const parsed = parseMidi(buf);
+    if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
+    const id = 'midi-' + Date.now();
+    const title = '📄 ' + rawTitle;
+    const song = scfFromMidi(parsed, { id, title });
+    customSongs.push(song);
+    songId = id;
+    loopFrom = 1; loopTo = 9999;
+    drawSongChips();
+    prepare();
+    const rc = countHand(parsed, 'r'), lc = countHand(parsed, 'l');
+    const handTxt = parsed.hasHands ? `，右手 ${rc} / 左手 ${lc}` : '';
+    return { title, notes: parsed.notes.length, handTxt, bpm: parsed.bpm };
+  }
+
+  // ⑤ 拍谱识别（OMR）：把乐谱图片 POST 给本机 OMR 服务，返回 MIDI 后自动导入
+  const OMR_KEY = 'ca99_scf_omr_url';
+  const loadOmrUrl = () => { try { return localStorage.getItem(OMR_KEY) || ''; } catch (_) { return ''; } };
+  const saveOmrUrl = (v) => { try { localStorage.setItem(OMR_KEY, v); } catch (_) {} };
+  const setOmrStatus = (msg, cls) => {
+    const el = $('#scf-omr-status'); if (!el) return;
+    el.textContent = msg; el.className = 'scf-omr-status' + (cls ? ' ' + cls : '');
+  };
+  if ($('#scf-omr-url')) $('#scf-omr-url').value = loadOmrUrl();
+  if ($('#scf-omr-save')) $('#scf-omr-save').onclick = () => {
+    const v = $('#scf-omr-url').value.trim();
+    saveOmrUrl(v);
+    setOmrStatus(v ? '✅ 已保存服务地址' : '已清空服务地址', v ? 'ok' : '');
+  };
+  if ($('#scf-omr-file')) $('#scf-omr-file').onchange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const url = loadOmrUrl();
+    if (!url) { setOmrStatus('⚠️ 请先填写并保存本机 OMR 服务地址（如 http://127.0.0.1:8000/omr）。还没有服务？可先用上面的「上传 MIDI」。', 'err'); return; }
+    setOmrStatus('🔍 正在识别「' + file.name + '」…（首次识别可能较慢）');
+    try {
+      const fd = new FormData();
+      fd.append('image', file, file.name);
+      const resp = await fetch(url, { method: 'POST', body: fd });
+      if (!resp.ok) throw new Error('服务返回 HTTP ' + resp.status);
+      const buf = await resp.arrayBuffer();
+      if (!buf || buf.byteLength < 8) throw new Error('返回内容为空，可能不是 MIDI');
+      const info = loadMidiBuffer(buf, '识别 · ' + file.name.replace(/\.(png|jpe?g|pdf|gif|bmp|webp)$/i, ''));
+      setOmrStatus(`✅ 识别成功：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。选一档训练开始跟弹。`, 'ok');
+      $('#scf-feedback').textContent = `✅ 已从乐谱图片识别载入「${info.title.replace('📄 ', '')}」。`;
+      $('#scf-feedback').className = 'sight-feedback ok';
+    } catch (err) {
+      const m = (err && err.message) ? err.message : String(err);
+      const hint = /Failed to fetch|NetworkError|fetch|Load failed/i.test(m)
+        ? '无法连接 OMR 服务——请确认本机已启动 homr/OMR 服务并允许跨域（CORS）。'
+        : m;
+      setOmrStatus('❌ 识别失败：' + hint, 'err');
+    }
   };
 
   // 准备引擎与键盘范围（静态预览，不播放）
