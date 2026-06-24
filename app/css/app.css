@@ -443,6 +443,38 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   0% { opacity: 1; transform: translate(0, -10px) rotate(var(--rot)); }
   100% { opacity: 0; transform: translate(var(--dx), 230px) rotate(calc(var(--rot) + 540deg)); }
 }
+/* ⑥ 练习足迹面板 */
+.scf-history { margin-top: 16px; }
+.scf-hist-empty {
+  padding: 16px; border-radius: 12px; border: 1px dashed var(--line);
+  color: var(--muted); font-size: 13px; line-height: 1.6;
+}
+.scf-hist-head { font-size: 15px; font-weight: 800; color: var(--text); margin-bottom: 10px; }
+.scf-hist-sum { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 6px; }
+.scf-hist-grid { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: start; }
+@media (max-width: 720px) { .scf-hist-grid { grid-template-columns: 1fr; } }
+.scf-hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.scf-hist-table th {
+  text-align: left; color: var(--muted); font-weight: 600; font-size: 12px;
+  padding: 4px 8px; border-bottom: 1px solid var(--line);
+}
+.scf-hist-table td { padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.scf-hist-name { font-weight: 600; color: var(--text); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scf-hist-bar { position: relative; min-width: 120px; }
+.scf-hist-bar span {
+  display: inline-block; height: 14px; border-radius: 7px; vertical-align: middle;
+  background: linear-gradient(90deg, #7c5cff, #22d3ee); min-width: 4px;
+}
+.scf-hist-bar b { margin-left: 7px; color: var(--text); font-size: 12px; }
+.scf-hist-best { color: #fbbf24; white-space: nowrap; }
+.scf-hist-last { color: var(--muted); white-space: nowrap; }
+.scf-hist-week { background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.scf-hist-week-cap { font-size: 12px; color: var(--muted); margin-bottom: 8px; text-align: center; }
+.scf-days { display: flex; gap: 8px; align-items: flex-end; height: 78px; }
+.scf-day { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; width: 24px; }
+.scf-day-bar { width: 16px; border-radius: 4px 4px 0 0; background: linear-gradient(#22d3ee, #7c5cff); }
+.scf-day-n { font-size: 10px; color: var(--text); height: 12px; }
+.scf-day-l { font-size: 11px; color: var(--muted); }
 .scf-hand-legend .scf-leg-r { color: #6e86f5; font-size: 15px; }
 .scf-hand-legend .scf-leg-l { color: #a78bfa; font-size: 15px; }
 .scf-hint-btn {

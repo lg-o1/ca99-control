@@ -7405,6 +7405,83 @@ function renderScoreFollow() {
     el.classList.toggle('has', !!txt);
   }
 
+  // ⑥ 练习足迹：每遍计分的演奏都记一条日志（最多留最近 200 条），供「每首练几次/近7天哪首练最多」统计
+  const LOG_KEY = 'ca99_scf_log';
+  function loadLog() {
+    try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]') || []; } catch { return []; }
+  }
+  function logPlay(id, title, s) {
+    const log = loadLog();
+    log.push({ id, title, ts: Date.now(), stars: s.stars, pct: s.accuracy });
+    while (log.length > 200) log.shift();
+    try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch {}
+  }
+  // 渲染练习足迹面板：每首练习次数排行 + 近 7 天每日柱状 + 本周练最多
+  function renderHistory() {
+    const el = $('#scf-history'); if (!el) return;
+    const log = loadLog();
+    const best = loadBest();
+    if (!log.length) {
+      el.innerHTML = `<div class="scf-hist-empty">还没有练习足迹——选一首用 🐢 等待练习 或 🎯 跟弹判分 弹一遍，这里就会记录你练了哪些曲子、各练了几遍、最近 7 天哪首练得最多。</div>`;
+      return;
+    }
+    const titleOf = (id) => (allSongs().find((x) => x.id === id) || {}).title || (log.find((l) => l.id === id) || {}).title || id;
+    // 每首练习次数排行
+    const byId = {};
+    log.forEach((l) => { (byId[l.id] = byId[l.id] || { id: l.id, plays: 0, lastTs: 0 }).plays++; byId[l.id].lastTs = Math.max(byId[l.id].lastTs, l.ts); });
+    const rank = Object.values(byId).sort((a, b) => b.plays - a.plays);
+    const maxPlays = rank[0].plays;
+    const rel = (ts) => {
+      const d = Math.floor((Date.now() - ts) / 86400000);
+      if (d <= 0) return '今天'; if (d === 1) return '昨天'; if (d < 7) return `${d} 天前`;
+      return `${Math.floor(d / 7)} 周前`;
+    };
+    const star = (n) => '★'.repeat(n) + '☆'.repeat(3 - n);
+    const rows = rank.slice(0, 8).map((r) => {
+      const b = best[r.id];
+      const bestTxt = b ? `${star(b.stars)} ${b.pct}%` : '—';
+      const w = Math.round((r.plays / maxPlays) * 100);
+      return `<tr>
+        <td class="scf-hist-name">${titleOf(r.id)}</td>
+        <td class="scf-hist-bar"><span style="width:${w}%"></span><b>${r.plays}</b></td>
+        <td class="scf-hist-best">${bestTxt}</td>
+        <td class="scf-hist-last">${rel(r.lastTs)}</td>
+      </tr>`;
+    }).join('');
+    // 近 7 天每日练习次数柱状
+    const days = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
+      const start = d.getTime(), end = start + 86400000;
+      const cnt = log.filter((l) => l.ts >= start && l.ts < end).length;
+      days.push({ label: ['日', '一', '二', '三', '四', '五', '六'][d.getDay()], cnt });
+    }
+    const dmax = Math.max(1, ...days.map((d) => d.cnt));
+    const bars = days.map((d) => {
+      const h = Math.round((d.cnt / dmax) * 56);
+      return `<div class="scf-day"><span class="scf-day-bar" style="height:${Math.max(3, h)}px" title="${d.cnt} 遍"></span><span class="scf-day-n">${d.cnt || ''}</span><span class="scf-day-l">${d.label}</span></div>`;
+    }).join('');
+    // 本周（近 7 天）练最多
+    const weekAgo = Date.now() - 7 * 86400000;
+    const wk = {};
+    log.filter((l) => l.ts >= weekAgo).forEach((l) => { wk[l.id] = (wk[l.id] || 0) + 1; });
+    const topWk = Object.entries(wk).sort((a, b) => b[1] - a[1])[0];
+    const weekLine = topWk
+      ? `本周练最多：<b>${titleOf(topWk[0])}</b>　${topWk[1]} 遍`
+      : '本周还没练，加油！';
+    const totalPlays = log.length;
+    el.innerHTML = `
+      <div class="scf-hist-head">🎼 练习足迹　<span class="scf-hist-sum">累计 ${totalPlays} 遍 · ${rank.length} 首曲子 · ${weekLine}</span></div>
+      <div class="scf-hist-grid">
+        <table class="scf-hist-table"><thead><tr><th>曲目</th><th>练习次数</th><th>最佳</th><th>最近</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="scf-hist-week">
+          <div class="scf-hist-week-cap">近 7 天</div>
+          <div class="scf-days">${bars}</div>
+        </div>
+      </div>`;
+  }
+
   root.innerHTML = `
     <h2 style="margin-bottom:6px">🎹 曲谱跟弹（Synthesia 式）</h2>
     <p style="color:var(--muted);margin-bottom:14px">音符像 <b>Synthesia</b> 一样从上往下<b>落到对应琴键</b>（块上直接标<b>音名</b>），上方 <b>五线谱</b>同步走光标——既练<b>识谱</b>又练<b>跟弹</b>。三档训练<b>由易到难</b>：🔊 听示范 → 🐢 等待练习（弹对才前进，卡住可按 💡 提示）→ 🎯 跟弹判分（按音高+时机给 <span style="color:#34d399">PERFECT</span>/<span style="color:#22d3ee">GOOD</span>/<span style="color:#f87171">MISS</span>，连对累计 Combo）。可开 🥁 <b>节拍器</b>、🐇 <b>渐进提速</b>，左右手分色显示。内置 7 首（含巴赫小步舞曲/致爱丽丝/肖邦夜曲），也能<b>上传任意 .mid/.midi 文件</b>。没接 MIDI 也能点屏幕琴键作答。</p>
@@ -7502,7 +7579,9 @@ function renderScoreFollow() {
       <span class="scf-ladder-arrow">→</span>
       <button id="scf-practice" class="scf-mode-btn primary">🎯 跟弹判分</button>
       <span id="scf-status" style="color:var(--muted);margin-left:6px">未开始</span>
-    </div>`;
+    </div>
+
+    <div id="scf-history" class="scf-history"></div>`;
 
   const scfKb = new PianoKeyboard($('#scf-kb'), {
     labels: 'c',
@@ -8074,9 +8153,11 @@ function renderScoreFollow() {
       const s = sf.summary();
       recordPractice('scorefollow', '曲谱跟弹', s.judgedCount || s.total, s.perfect + s.good, s.maxCombo);
       const { isRecord } = recordBest(songId, s);   // ③ 计入每首最高分
+      logPlay(songId, getCurrentSong().title, s);   // ⑥ 记练习足迹
       $('#scf-feedback').textContent = `🔁 循环练习结束：弹了 ${sf.judgedCount} 个音，正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}。${isRecord ? '🏅 刷新本曲最佳！' : ''}`;
       drawTimingChart();   // ⑦ 循环练习也画落点对比
       updateBestBadge();
+      renderHistory();
     } else {
       $('#scf-feedback').textContent = wasScored ? '已停止。换一档训练或重来。' : '挑一首曲子或上传 MIDI，选一档训练开始';
     }
@@ -8100,6 +8181,7 @@ function renderScoreFollow() {
       const s = sf.summary();
       recordPractice('scorefollow', '曲谱跟弹', s.total, s.perfect + s.good, s.maxCombo);
       const { isRecord } = recordBest(songId, s);   // ③ 计入每首最高分
+      logPlay(songId, getCurrentSong().title, s);   // ⑥ 记练习足迹
       // ⑨ 渐进提速：本遍正确率高就把下一遍速度 +0.05×（上限 1.5×）
       let bumped = '';
       if (progSpeed && s.accuracy >= 80 && speed < 1.5) {
@@ -8118,6 +8200,7 @@ function renderScoreFollow() {
       updateBestBadge();
       if (s.stars >= 3) fireConfetti();   // ① 满星撒彩屑庆祝
       showNextSuggestion();    // ⑦ 推荐乐句视奏闭环
+      renderHistory();         // ⑥ 刷新练习足迹
       if (bumped) prepare();   // 用新速度重建，徽章同步刷新
     } else {
       $('#scf-feedback').textContent = '示范结束，按 🐢 等待练习 或 🎯 跟弹判分 自己试试。';
@@ -8132,6 +8215,7 @@ function renderScoreFollow() {
   $('#scf-practice').onclick = () => start('practice');
 
   prepare();
+  renderHistory();   // ⑥ 初始渲染练习足迹
 }
 
 // ---------- 模块48：乐句视奏（phrase sight-reading）----------
