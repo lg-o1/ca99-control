@@ -46,6 +46,7 @@ import { KeySignatureGame, accidentalList as ksAccidentals, scaleMidi as ksScale
 import { ScaleFingeringSession, FINGERINGS as SF_FINGERINGS, listScales as sfList, scaleNotes as sfNotes, defaultRootMidi as sfRoot, fingers as sfFingers, crossingPoints as sfCross } from './scale-fingering.js';
 
 const midi = new MidiCore();
+if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
 let rotateEngine = null;   // 自动换音色引擎（模块6使用，提前声明避免 TDZ）
 let morphEngine = null;    // VT 渐变引擎（模块7使用，提前声明避免 TDZ）

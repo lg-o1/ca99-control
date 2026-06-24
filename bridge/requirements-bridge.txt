@@ -1,0 +1,4 @@
+# CA99 蓝牙 MIDI 桥依赖
+# 仅 Windows 需要（用 WinRT 访问蓝牙 MIDI）
+winsdk>=1.0.0b10
+websockets>=12.0

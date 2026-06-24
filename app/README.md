@@ -11,7 +11,8 @@ app/
   manifest.json       ← PWA manifest
   css/app.css         ← 样式
   js/
-    midi-core.js      ← Web MIDI 连接层（USB+蓝牙统一，借鉴官方 webmidi.js）
+    midi-core.js      ← MIDI 连接层（双传输：Web MIDI 默认 / WebSocket 桥接走蓝牙）
+    bridge-protocol.js ← 桥接协议（纯函数 + BridgeClient，midi-core 与 Python 桥共用）
     ca99.js           ← CA99 协议库（buildSoundSelect/buildSysEx/buildVT... 纯函数，可测试）
     ca99.test.mjs     ← 协议库单元测试（20 用例，node 运行）
     auto-rotate.js    ← 自动换音色引擎（纯逻辑，21 单元测试）
@@ -164,6 +165,10 @@ app/
 
 `midi-core.js` 用 `navigator.requestMIDIAccess({sysex:true})` 枚举所有端口——**USB 和蓝牙 MIDI 都在列表里**，运行时在顶栏下拉选择，或自动选含 "CA99"/"Kawai" 的端口。无需改代码切换连接方式。
 
+### 蓝牙 MIDI 桥（Windows）
+
+Windows 上 Chrome/Edge 的 Web MIDI 走 WinMM，**看不到蓝牙 (BLE-MIDI)**。`bridge/` 下提供一个 Python-`winsdk` 桥（走 WinRT，能看到蓝牙且自动重组分片 SysEx）。前端**零改动**复用：打开 app 时加 `?bridge=ws://127.0.0.1:8765`（或 `localStorage.setItem('ca99.bridgeUrl', ...)`），`midi-core.js` 自动切到 WebSocket 传输；没配桥时仍走默认 Web MIDI。USB-B 连接最简单、延迟最低、**不需要桥**。详见 `../bridge/README.md`。
+
 ## 前置依赖
 
 | 用途 | 需要 | 说明 |
@@ -201,7 +206,7 @@ npx http-server -p 8099           # 用 Node
 
 ## 测试
 
-**一键跑全部 40 套测试**：
+**一键跑全部 41 套测试**：
 
 ```bash
 cd app
@@ -284,6 +289,7 @@ node js/sight-transpose.test.mjs
 node js/chord-inversion.test.mjs
 node js/key-signature.test.mjs
 node js/scale-fingering.test.mjs
+node js/bridge-protocol.test.mjs
 ```
 
 ## 数据生成（如需重建）
