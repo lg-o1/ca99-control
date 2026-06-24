@@ -26,6 +26,7 @@ import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
 import { Accompaniment, PATTERNS as ACCOMP_PATTERNS, getPattern as accompGetPattern } from './accompaniment.js';
 import { analyzeChord, COLOR_KEYS as CCOLOR_KEYS, tonicTriadPcs as ccolorTonicTriad } from './chord-color.js';
+import { heatColor as lsHeatColor, pickColor as lsPickColor, sparkSpec as lsSparkSpec, beamHeight as lsBeamHeight, stageFrac as lsStageFrac, isMilestone as lsIsMilestone, THEMES as LS_THEMES, ComboCounter as LsCombo } from './light-show.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -111,6 +112,8 @@ let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册�
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
 let chordColorOnNotesChanged = null; // 和弦色彩板的"按下集合变化"回调（模块58注册）
+let lightShowOnNote = null;  // 自由演奏灯光秀的 note-on 回调（模块59注册，带力度）
+let lightShowOffNote = null; // 自由演奏灯光秀的 note-off 回调（模块59注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -291,6 +294,8 @@ function onMidiIn(bytes) {
     if (accompOnNotesChanged) accompOnNotesChanged(heldNotes.notes);
     // 驱动和弦色彩板（按下集合）
     if (chordColorOnNotesChanged) chordColorOnNotesChanged(heldNotes.notes);
+    // 驱动自由演奏灯光秀（带力度）
+    if (lightShowOnNote) lightShowOnNote(m.note, m.velocity);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -304,6 +309,8 @@ function onMidiIn(bytes) {
     if (articOnNoteOff) articOnNoteOff(m.note, performance.now());
     // 驱动手指独立性（note-off，检测按住音是否滑脱）
     if (fingerOffNote) fingerOffNote(m.note, performance.now());
+    // 驱动自由演奏灯光秀（松键）
+    if (lightShowOffNote) lightShowOffNote(m.note);
   }
   else if (m.type === 'cc') {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -9895,6 +9902,139 @@ function renderChordColorBoard() {
   update([]);
 }
 
+// ---------- 模块59：🎆 自由演奏灯光秀（Free-Play Light Show） ----------
+function renderLightShow() {
+  const root = $('#module-lightshow');
+  let theme = 'heat';   // 当前配色主题
+  let fxOn = true;      // ✨ 特效开关
+  let soundOn = true;   // 🔊 点屏幕琴键时是否合成发声
+  const combo = new LsCombo(1400);
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎆 自由演奏灯光秀</h2>
+    <p style="color:var(--muted);margin-bottom:14px">不绑定任何曲目，<b>随便弹</b>！你弹的<b>每一个音</b>都会在屏幕上迸发<b>力度感应</b>的火花和光柱——弹得越用力，火花越多越暖、光柱越高。连续快弹会<b>连击</b>，到 5/10/15… 触发 🔥 大爆发。接上 CA99 就是把你的真实触键画成一场<b>声光秀</b>；没连琴直接点下面的琴键也行。很适合给小朋友玩。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>配色主题</label>
+        <div id="ls-themes" class="ear-chips">${LS_THEMES.map(t => `<button class="ear-chip${t.id === 'heat' ? ' on' : ''}" data-t="${t.id}">${t.name}</button>`).join('')}</div>
+      </div>
+      <div class="param-row" style="gap:18px;flex-wrap:wrap">
+        <label class="ls-check"><input type="checkbox" id="ls-fx" checked> ✨ 击中特效</label>
+        <label class="ls-check"><input type="checkbox" id="ls-sound" checked> 🔊 点键发声</label>
+        <button id="ls-clear" class="mini-btn">🧹 清屏 / 重置连击</button>
+      </div>
+    </div>
+
+    <div id="ls-stage" class="ls-stage">
+      <div id="ls-fxlayer" class="ls-fxlayer"></div>
+      <div class="ls-hud">
+        <div class="ls-combo" id="ls-combo"></div>
+        <div class="ls-stat">🎵 <b id="ls-total">0</b> 音 · 🔥 最高连击 <b id="ls-max">0</b></div>
+      </div>
+      <div class="ls-hint" id="ls-hint">弹一个音，或点下面的琴键 ✨</div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 你弹/点的键会随主题<b>发光</b>，并在上方舞台对应位置喷出火花光柱（接 CA99 则真实触键力度直接驱动）</div>
+      <div id="ls-kb"></div>
+    </div>`;
+
+  const stage = $('#ls-stage');
+  const fxLayer = $('#ls-fxlayer');
+  const hintEl = $('#ls-hint');
+  const comboEl = $('#ls-combo');
+  const totalEl = $('#ls-total');
+  const maxEl = $('#ls-max');
+  let hintHidden = false;
+
+  const kb = new PianoKeyboard($('#ls-kb'), {
+    first: 21, last: 108, labels: 'c',
+    onNoteOn: (m) => trigger(m, 96),
+    onNoteOff: (m) => kb.release(m),
+  });
+
+  // 在舞台对应位置喷一束火花 + 升一道光柱（数量/大小/颜色/高度随力度）
+  function blast(midi, vel, color, big) {
+    if (!fxOn) return;
+    const W = stage.clientWidth || 600;
+    const x = lsStageFrac(midi) * W;
+    const baseY = stage.clientHeight || 240;
+    const spec = lsSparkSpec(vel, { big });
+
+    // 光柱
+    const beam = document.createElement('div');
+    beam.className = 'ls-beam';
+    beam.style.cssText = `left:${x}px;--bh:${lsBeamHeight(vel, baseY - 30)}px;--bc:${color}`;
+    fxLayer.appendChild(beam);
+    setTimeout(() => beam.remove(), 720);
+
+    // 火花
+    const topY = baseY - lsBeamHeight(vel, baseY - 30) * 0.7;
+    for (let k = 0; k < spec.count; k++) {
+      const p = document.createElement('i');
+      const ang = (Math.PI * 2 * k) / spec.count + Math.random() * 0.6;
+      const dist = spec.spread * (0.5 + Math.random() * 0.8);
+      const dx = Math.cos(ang) * dist;
+      const dy = Math.sin(ang) * dist - 16;
+      const dur = 0.5 + Math.random() * 0.4;
+      const s = (spec.size * (0.7 + Math.random() * 0.7)).toFixed(1);
+      p.className = 'ls-spark';
+      p.style.cssText = `left:${x}px;top:${topY}px;width:${s}px;height:${s}px;margin-left:${(-s / 2).toFixed(1)}px;background:${color};color:${color};--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;animation-duration:${dur}s`;
+      fxLayer.appendChild(p);
+      setTimeout(() => p.remove(), dur * 1000 + 90);
+    }
+  }
+
+  // 连击飘字（里程碑）
+  function comboFlair(c) {
+    comboEl.textContent = `🔥 连击 ${c}！`;
+    comboEl.classList.remove('pop'); void comboEl.offsetWidth; comboEl.classList.add('pop');
+  }
+
+  // 核心：触发一次灯光（来自真实 MIDI 或点屏幕键）
+  function trigger(midi, vel) {
+    if (!hintHidden) { hintEl.style.display = 'none'; hintHidden = true; }
+    const v = (vel == null ? 90 : vel);
+    const color = lsPickColor(theme, v, midi);
+    // 琴键发光
+    kb.press(midi);
+    kb.flash(midi, color);
+    // 发声（仅来自屏幕点击，真实 MIDI 由钢琴自身发声）
+    // 连击
+    const c = combo.hit(performance.now());
+    totalEl.textContent = combo.total;
+    maxEl.textContent = combo.max;
+    const big = lsIsMilestone(c);
+    if (big) comboFlair(c);
+    else if (c >= 2) { comboEl.textContent = `× ${c}`; }
+    // 特效
+    blast(midi, v, color, big);
+  }
+
+  // 屏幕点击键：先发声再触发灯光（真实 MIDI 由钢琴自身发声，不在此合成）
+  kb.onNoteOn = (midi) => {
+    if (soundOn) { try { playTone(midiToFreq(midi), 0, 0.55, 0.2); } catch (_) { /* ignore */ } }
+    trigger(midi, 96);
+  };
+
+  // 主题切换
+  $('#ls-themes').querySelectorAll('button').forEach(b => b.onclick = () => {
+    theme = b.dataset.t;
+    $('#ls-themes').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  });
+  $('#ls-fx').onchange = (e) => { fxOn = e.target.checked; };
+  $('#ls-sound').onchange = (e) => { soundOn = e.target.checked; };
+  $('#ls-clear').onclick = () => {
+    fxLayer.innerHTML = '';
+    combo.reset();
+    totalEl.textContent = '0'; maxEl.textContent = '0'; comboEl.textContent = '';
+  };
+
+  // 真实 MIDI 驱动（带力度，不发声——钢琴自己响）
+  lightShowOnNote = (midi, vel) => trigger(midi, vel);
+  lightShowOffNote = (midi) => kb.release(midi);
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -10035,7 +10175,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
