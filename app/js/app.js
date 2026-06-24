@@ -49,6 +49,7 @@ import { ModeIdGame, MODES as MID_MODES, modeName as midModeName } from './mode-
 import { SolfegeGame, DEGREES as SOL_DEGREES, syllable as solSyllable, noteName as solNoteName } from './solfege.js';
 import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } from './chord-quality.js';
 import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
+import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE } from './piano-keyboard.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -288,6 +289,10 @@ function send(bytes) {
 }
 function sendMulti(msgs) { msgs.forEach(send); }
 
+// 发真实 MIDI 音符到钢琴（音色浏览器试听用 → 听到的就是当前选中的真实音色）
+function kbMidiOn(midi, channel = 0, vel = 82) { send([0x90 | (channel & 0x0f), midi & 0x7f, vel & 0x7f]); }
+function kbMidiOff(midi, channel = 0) { send([0x80 | (channel & 0x0f), midi & 0x7f, 0]); }
+
 // ========== 模块 1: 音色浏览器 ==========
 function renderSounds() {
   const root = $('#module-sounds');
@@ -301,7 +306,17 @@ function renderSounds() {
         <option value="8">Layer</option><option value="9">Lower</option>
       </select></label>
     </div>
-    <div class="sound-grid" id="sound-grid"></div>`;
+    <div class="sound-grid" id="sound-grid"></div>
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 点击琴键试听当前音色（发真实 MIDI 到钢琴，切换音色后直接点键判断音色对不对，无需去琴上弹）</div>
+      <div id="sound-kb"></div>
+    </div>`;
+  const kb = new PianoKeyboard($('#sound-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { kbMidiOn(m, +$('#sound-part').value); },
+    onNoteOff: (m) => { kbMidiOff(m, +$('#sound-part').value); },
+  });
+  kb.scrollToShow(48, 72);
   const grid = $('#sound-grid');
   const draw = () => {
     const q = $('#sound-search').value.toLowerCase();
@@ -1406,10 +1421,27 @@ function renderScale() {
 
     <div class="scale-keys" id="scale-keys"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 整条音阶画在 88 键上 — <span class="kb-legend" style="color:#5b8cff"><i></i>音阶音</span> <span class="kb-legend" style="color:#fbbf24"><i></i>▶ 下一个该弹的键</span>（点键可试听）</div>
+      <div id="scale-kb"></div>
+    </div>
+
     <div class="rotate-bar">
       <button id="scale-start" class="big-btn">▶ 开始练习</button>
       <span id="scale-status" style="color:var(--muted)">未开始</span>
     </div>`;
+
+  const kb = new PianoKeyboard($('#scale-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  function paintKb(seq, idx) {
+    const map = new Map();
+    seq.forEach((n) => { if (!map.has(n)) map.set(n, { midi: n, color: '#5b8cff' }); });
+    if (idx >= 0 && idx < seq.length) map.set(seq[idx], { midi: seq[idx], color: '#fbbf24', text: '▶' });
+    kb.highlightMany([...map.values()], { scroll: false });
+    if (seq.length) kb.scrollToShow(Math.min(...seq), Math.max(...seq));
+  }
 
   function currentSeq() {
     const r = $('#scale-root').value, type = $('#scale-type').value;
@@ -1427,6 +1459,7 @@ function renderScale() {
       }
       return `<div class="${cls}">${chordNoteName(n)}</div>`;
     }).join('');
+    paintKb(seq, idx);
   }
   drawKeys();
 
@@ -1480,6 +1513,7 @@ function renderScale() {
   function drawKeysFor(seq, idx) {
     $('#scale-keys').innerHTML = seq.map((n, i) =>
       `<div class="scale-key ${i < idx ? 'done' : ''}">${chordNoteName(n)}</div>`).join('');
+    paintKb(seq, -1);
   }
 }
 
@@ -1667,6 +1701,11 @@ function renderEar() {
 
     <div class="ear-answers" id="ear-answers"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完显示这两个音在 88 键上的位置 — <span class="kb-legend" style="color:#5b8cff"><i></i>低音</span> <span class="kb-legend" style="color:#fbbf24"><i></i>高音</span>（点键试听）</div>
+      <div id="ear-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="ear-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="ear-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -1703,6 +1742,14 @@ function renderEar() {
   }
   drawAnswers();
 
+  drawAnswers();
+
+  const earKb = new PianoKeyboard($('#ear-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  earKb.scrollToShow(55, 79);
+
   function refreshStats() {
     $('#ear-score').textContent = game.score;
     $('#ear-streak').textContent = game.streak;
@@ -1726,12 +1773,15 @@ function renderEar() {
     const fb = $('#ear-feedback');
     if (ok) { fb.textContent = `✅ 对了！是${intervalName(correctSemis)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
     else { fb.textContent = `❌ 不对，正确答案是 ${intervalName(correctSemis)}`; fb.className = 'sight-feedback no'; }
+    const ns = game.notes();
+    if (ns && ns.length >= 2) earKb.highlightMany([{ midi: ns[0], color: '#5b8cff', text: '低' }, { midi: ns[1], color: '#fbbf24', text: '高' }]);
     setTimeout(() => { if (game) nextQuestion(); }, 1100);
   }
 
   function nextQuestion() {
     answering = false;
     const notes = game.next();
+    earKb.clear();
     $('#ear-answers').querySelectorAll('.ear-ans').forEach(b => { b.disabled = false; b.classList.remove('correct', 'wrong'); });
     $('#ear-feedback').textContent = '🎧 听一听，选出音程';
     $('#ear-feedback').className = 'sight-feedback';
@@ -2200,7 +2250,7 @@ function renderMelody() {
       <span id="mel-status" style="color:var(--muted)">未开始</span>
     </div>`;
 
-  let game = null, ac = null;
+  let game = null, ac = null, kb = null;
   function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
   function tone(midi, when, dur) {
     try {
@@ -2220,7 +2270,10 @@ function renderMelody() {
   function playMelody() {
     if (!game || !game.melody.length) return;
     const c = ctx(); const start = c.currentTime + 0.08; const d = noteDur();
-    game.melody.forEach((n, i) => tone(n, start + i * d, d * 0.9));
+    game.melody.forEach((n, i) => {
+      tone(n, start + i * d, d * 0.9);
+      setTimeout(() => { if (kb) kb.flash(n, '#22d3ee'); }, 80 + i * d * 1000);
+    });
   }
 
   function drawDots() {
@@ -2235,20 +2288,20 @@ function renderMelody() {
     }).join('');
   }
 
-  // 屏幕琴键：覆盖该调主音上下一个八度的白键，方便无真机点按
+  // 全幅 88 键：可点击当琴键输入，揭晓答案时把旋律按顺序画在键上
   function drawKeyboard() {
     const k = keyObj();
-    const lo = k.tonic - 2, hi = k.tonic + 14;
-    let html = '';
-    for (let n = lo; n <= hi; n++) {
-      const pc = ((n % 12) + 12) % 12;
-      const isBlack = [1, 3, 6, 8, 10].includes(pc);
-      html += `<button class="mel-pk ${isBlack ? 'black' : 'white'}" data-n="${n}">${isBlack ? '' : CA99.noteName(n)}</button>`;
+    if (!kb) {
+      kb = new PianoKeyboard($('#mel-keyboard'), {
+        labels: 'c',
+        onNoteOn: (m) => { tone(m, ctx().currentTime + 0.001, 0.5); feed(m); },
+      });
     }
-    $('#mel-keyboard').innerHTML = html;
-    $('#mel-keyboard').querySelectorAll('.mel-pk').forEach(b => {
-      b.onclick = () => feed(+b.dataset.n);
-    });
+    kb.scrollToShow(k.tonic - 2, k.tonic + 14);
+  }
+  function paintAnswer() {
+    if (!kb || !game || !game.melody.length) return;
+    kb.highlightMany(game.melody.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
   }
 
   function updateStats() {
@@ -2262,6 +2315,7 @@ function renderMelody() {
   function nextRound() {
     game.revealed = false;
     game.next();
+    if (kb) kb.clear();
     drawDots();
     $('#mel-feedback').textContent = '🎧 听好了，复奏出来…';
     $('#mel-feedback').className = 'sight-feedback';
@@ -2274,6 +2328,7 @@ function renderMelody() {
     const r = game.play(note);
     if (!r) return;
     if (r.ok) {
+      if (kb) kb.flash(note, '#34d399');
       drawDots();
       const fb = $('#mel-feedback');
       if (r.done) {
@@ -2289,6 +2344,7 @@ function renderMelody() {
       const fb = $('#mel-feedback');
       fb.className = 'sight-feedback no';
       fb.textContent = '❌ 不对，再试这个音';
+      if (kb) kb.flash(note, '#fb7185');
     }
   }
 
@@ -2312,6 +2368,7 @@ function renderMelody() {
     if (!game || !game.melody.length) return;
     game.revealed = true;
     drawDots();
+    paintAnswer();
     $('#mel-feedback').className = 'sight-feedback no';
     $('#mel-feedback').textContent = '答案已显示，听一遍后继续';
     game.giveUp();
@@ -5873,6 +5930,11 @@ function renderSolfege() {
 
     <div class="ear-answers" id="sol-answers"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完显示在 88 键上 — <span class="kb-legend" style="color:#5b8cff"><i></i>主和弦(Do的位置)</span> <span class="kb-legend" style="color:#fbbf24"><i></i>这个音</span>（点键试听）</div>
+      <div id="sol-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="sol-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="sol-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -5906,6 +5968,12 @@ function renderSolfege() {
   drawScale();
   drawDegs();
   $('#sol-cc').onchange = () => { if (!game) choiceCount = +$('#sol-cc').value; };
+
+  const solKb = new PianoKeyboard($('#sol-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  solKb.scrollToShow(55, 79);
 
   function refreshStats() {
     $('#sol-score').textContent = game.score;
@@ -5954,6 +6022,11 @@ function renderSolfege() {
     const label = correctDeg + ' ' + solSyllable(correctDeg, scaleType);
     if (correct) { fb.textContent = `✅ 对了！是 ${label} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
     else { fb.textContent = `❌ 不对，正确答案是 ${label}`; fb.className = 'sight-feedback no'; }
+    const tri = game.triad() || [];
+    const tgt = game.target();
+    const items = tri.map((n) => ({ midi: n, color: '#5b8cff' }));
+    if (tgt != null) items.push({ midi: tgt, color: '#fbbf24', text: String(correctDeg) });
+    solKb.highlightMany(items);
     playTarget();
     setTimeout(() => { if (game) nextQuestion(); }, 1900);
   }
@@ -5961,6 +6034,7 @@ function renderSolfege() {
   function nextQuestion() {
     answering = false;
     game.next();
+    solKb.clear();
     drawAnswers();
     $('#sol-hint').textContent = '';
     $('#sol-feedback').textContent = '🤔 这是第几级（哪个唱名）？';
@@ -6038,6 +6112,11 @@ function renderChordQuality() {
 
     <div class="ear-answers" id="cq-answers"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完把这个和弦的音画在 88 键上（数字=从根音起第几个音，点键可试听）</div>
+      <div id="cq-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="cq-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="cq-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -6071,6 +6150,12 @@ function renderChordQuality() {
   drawChips();
   drawPlay();
   $('#cq-cc').onchange = () => { if (!game) choiceCount = +$('#cq-cc').value; };
+
+  const cqKb = new PianoKeyboard($('#cq-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  cqKb.scrollToShow(48, 72);
 
   function refreshStats() {
     $('#cq-score').textContent = game.score;
@@ -6115,12 +6200,15 @@ function renderChordQuality() {
     const fb = $('#cq-feedback');
     if (correct) { fb.textContent = `✅ 对了！${cqName(correctId)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
     else { fb.textContent = `❌ 不对，正确答案是 ${cqName(correctId)}`; fb.className = 'sight-feedback no'; }
+    const seq = game.notes() || [];
+    cqKb.highlightMany(seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
     setTimeout(() => { if (game) nextQuestion(); }, 1900);
   }
 
   function nextQuestion() {
     answering = false;
     game.next();
+    cqKb.clear();
     drawAnswers();
     $('#cq-hint').textContent = '';
     $('#cq-feedback').textContent = '🤔 这是什么和弦？';
@@ -6189,6 +6277,11 @@ function renderProgressionEar() {
 
     <div class="ear-answers" id="pe-answers"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完把当前这个和弦的音画在 88 键上（数字=和弦内第几个音，点键可试听）</div>
+      <div id="pe-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="pe-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="pe-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -6215,6 +6308,12 @@ function renderProgressionEar() {
   }
   drawChips();
   $('#pe-cc').onchange = () => { if (!game) choiceCount = +$('#pe-cc').value; };
+
+  const peKb = new PianoKeyboard($('#pe-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  peKb.scrollToShow(48, 72);
 
   function refreshStats() {
     $('#pe-score').textContent = game.score;
@@ -6281,6 +6380,8 @@ function renderProgressionEar() {
     $('#pe-hint').textContent = '💡 ' + info.roman + ' ' + info.name + '：' + info.hint;
     drawSlots(false);
     playChordAt(slotIdx);
+    const seq = game.progressionNotes()[slotIdx] || [];
+    peKb.highlightMany(seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
     const fb = $('#pe-feedback');
     if (game.isComplete()) {
       if (correct) { fb.textContent = `✅ ${info.roman} 对了！整段完成 · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
@@ -6293,6 +6394,7 @@ function renderProgressionEar() {
       setTimeout(() => {
         if (!game) return;
         answering = false;
+        peKb.clear();
         drawAnswers();
         $('#pe-hint').textContent = '';
         $('#pe-feedback').textContent = `🤔 第 ${game.index() + 1} 个和弦是什么级数？`;
@@ -6304,6 +6406,7 @@ function renderProgressionEar() {
   function nextProgression() {
     answering = false;
     game.next();
+    peKb.clear();
     drawSlots(false);
     drawAnswers();
     $('#pe-hint').textContent = '';

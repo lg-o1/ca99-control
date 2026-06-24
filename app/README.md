@@ -59,6 +59,7 @@ app/
     solfege.js         ← 唱名/音级听辨（建立调性后辨认音级 Do-Re-Mi，纯逻辑，196 单元测试）
     chord-quality.js   ← 和弦性质听辨（听和弦辨大/小/增/减/七和弦类型，纯逻辑，185 单元测试）
     progression-ear.js ← 和声进行听辨（听大调进行辨每个和弦的罗马数字级数，纯逻辑，337 单元测试）
+    piano-keyboard.js  ← 通用全幅 88 键虚拟钢琴组件（可点击发声/高亮答案/演示点亮，纯布局逻辑 46 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -73,7 +74,7 @@ app/
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
-| 🎵 音色浏览器 | ✅ | 346 音色，按分类筛选/搜索，点击切换（标准 Bank Select + PC） |
+| 🎵 音色浏览器 | ✅ | 346 音色，按分类筛选/搜索，点击切换（标准 Bank Select + PC）。下方配<b>全幅 88 键虚拟钢琴</b>，切音色后直接点键即发真实 MIDI 试听，不用去琴上弹就能判断音色对不对 |
 | 🔧 VT 调音台 | ✅ | 42 个 Virtual Technician 参数，滑块/下拉实时调 |
 | 🎛️ 系统/混响 | ✅ | 音量/混响类型/键盘模式 |
 | 🥁 节奏 | ✅ | 100 鼓点节奏选择 |
@@ -117,7 +118,8 @@ app/
 - 调式识别用 `mode-id.js`（纯逻辑，146 单元测试）：`MODES` 列出 7 个教会调式（各含 `offsets[7]` 相对主音半音、`degree` 在大调中的级数、`hint` 特征提示）、`scaleMidi(root,modeId)` 生成 8 音音阶（含八度）、`stepPattern(modeId)` 返回全/半音步进指纹（如 Ionian=[2,2,1,2,2,2,1]、Dorian 是回文）。`ModeIdGame({rng,modes,rootMin,rootMax,choiceCount})`：`next()` 随机出题并构建打乱的多选干扰项、`notes()`/`choices()`/`check(answerId)`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。这是<b>纯听辨多选</b>（像调号识别/和弦转位），用 `playTone` 播音阶、点选项判分，无 note-on 钩子。答完显示调式特征提示，可🔊再听，成绩入仪表盘 |
 - 唱名听辨用 `solfege.js`（纯逻辑，196 单元测试）：`SCALES`（大调/小调的半音步进 + 可动唱名，小调用 Me/Le/Te）、`DEGREES` 七级功能名+诀窍、`degreeMidi(tonic,degree,scaleType)`/`tonicTriad(tonic,scaleType)`/`syllable(degree,scaleType)` 是纯工具函数。`SolfegeGame({rng,scaleType,degrees,tonicMin,tonicMax,choiceCount})`：`next()` 随机选主音+音级（启用音级里取干扰项打乱）、`triad()`/`target()`/`tonic()`/`choices()`/`check(answerDegree)`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。<b>纯听辨多选</b>，UI 先用 `playTone` 播主和弦建立调性、隔 750ms 再播目标音，点选项判分（无 note-on 钩子），主和弦与目标音可分别重听，成绩入仪表盘 |
 - 和弦性质听辨用 `chord-quality.js`（纯逻辑，185 单元测试）：`QUALITIES` 列出 9 种和弦性质（4 三和弦 major/minor/aug/dim + 5 七和弦 dom7/maj7/min7/m7b5/dim7，各含 `intervals[]` 相对根音半音、`symbol` 和弦记号、`family` 三/七和弦、`hint` 色彩诀窍）、`chordMidi(root,qualityId)` 构造和弦音。`ChordQualityGame({rng,qualities,rootMin,rootMax,choiceCount})`：`next()` 随机出题并构建打乱的多选干扰项、`notes()`/`choices()`/`root()`/`check(answerId)`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。<b>纯听辨多选</b>（像调式识别/转位听辨），UI 用 `playTone` 按选定方式播整块和弦/琶音、点选项判分（无 note-on 钩子），可🔊再听，成绩入仪表盘
-- 和声进行听辨用 `progression-ear.js`（纯逻辑，337 单元测试）：`DEGREES` 列出大调 7 个自然音级三和弦（罗马数字 I/ii/iii/IV/V/vi/vii°，各含 `quality`/`name`/`hint` 功能诀窍）、`PROGRESSIONS` 含 8 个常用进行（流行 I-V-vi-IV、doo-wop、卡农、ii-V-I、变格、正格、忧伤、摇滚）、`chordMidi(tonicMidi,degree)` 按调内三度叠置构造自然音级三和弦（含八度回绕）。`ProgressionEarGame({rng,progressions,tonicMin,tonicMax,choiceCount})`：`next()` 随机选进行+主音并构建整段和弦（第 1 个 I 为锚点）、`progressionNotes()`/`chords()`/`currentChord()`/`choices()`/`check(answerDegree)` 逐个和弦判分推进、`isComplete()`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult`/`onComplete` 回调。<b>纯听辨多选</b>，UI 用 `playTone` 顺序播整段、高亮当前待辨和弦、点罗马数字选项判分，成绩入仪表盘 |
+- 和声进行听辨用 `progression-ear.js`（纯逻辑，337 单元测试）：`DEGREES` 列出大调 7 个自然音级三和弦（罗马数字 I/ii/iii/IV/V/vi/vii°，各含 `quality`/`name`/`hint` 功能诀窍）、`PROGRESSIONS` 含 8 个常用进行（流行 I-V-vi-IV、doo-wop、卡农、ii-V-I、变格、正格、忧伤、摇滚）、`chordMidi(tonicMidi,degree)` 按调内三度叠置构造自然音级三和弦（含八度回绕）。`ProgressionEarGame({rng,progressions,tonicMin,tonicMax,choiceCount})`：`next()` 随机选进行+主音并构建整段和弦（第 1 个 I 为锚点）、`progressionNotes()`/`chords()`/`currentChord()`/`choices()`/`check(answerDegree)` 逐个和弦判分推进、`isComplete()`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult`/`onComplete` 回调。<b>纯听辨多选</b>，UI 用 `playTone` 顺序播整段、高亮当前待辨和弦、点罗马数字选项判分，成绩入仪表盘
+- **通用全幅虚拟钢琴** `piano-keyboard.js`（纯布局逻辑 46 单元测试）：一个可在任意模块复用的 88 键（A0–C8）钢琴组件。纯函数 `buildLayout(first,last,opts)` 算出白/黑键的绝对几何位置（白键等宽并排、黑键居中压缝），`isBlack`/`noteName`/`whiteCount` 等辅助；DOM 类 `PianoKeyboard(container,{labels,onNoteOn,onNoteOff})` 渲染可点击键盘，方法 `highlight/highlightMany(把答案音画在真实键位上，带炫彩描边+序号徽章)`、`flash(演示跟随点亮)`、`press/release(回显外部 MIDI)`、`scrollToShow(自动滚动居中)`、`clear`。按下/点亮带渐变发光动画。已接入：**音色浏览器**（点键发真实 MIDI 试听当前音色，切音色后不用去琴上就能判断对错）、**音阶练习**（整条音阶高亮+▶标下一个该弹的键）、**旋律听写**（点键输入、播放跟随点亮、放弃看答案时按顺序高亮）、**音程听辨/唱名听辨/和弦性质听辨/和声进行听辨**（答完把正确音画在键盘上）。这样即使看不懂题目，看答案在 88 键上的位置就知道该怎么弹 |
 | 🖐️ 音阶指法提示 | ✅ | 学标准钢琴<b>音阶指法</b>：屏幕给一个八度音阶（9 个调：C/G/D/A/E/F 大调 + A/E/D 自然小调），每个音上方标注<b>该用几号手指</b>（右手 1=拇指…5=小指，左手相反），可切左/右手、上行/上下行。<b>跟着弹</b>——弹对当前音就高亮下一个，红框标出<b>穿指/跨指点</b>（右手拇指穿过、左手手指跨过）。诀窍：C/G/D/A/E 大调右手都是 <b>1 2 3 1 2 3 4 5</b>、F 大调例外 <b>1 2 3 4 1 2 3 4</b>；左手都是 <b>5 4 3 2 1 3 2 1</b>。可🔊听一遍，需连琴弹，成绩入仪表盘。和"音阶练习"（练音准/速度）、"音阶八度跨度"（练跨多个八度）都不同——这里专练<b>正确指法与穿指动作</b> |
 | 🎯 音程构建 | ✅ | "听音训练"的<b>反向能力</b>：屏幕给一个<b>根音</b>+一个<b>音程名</b>（如"从 C4 往上弹纯五度"），你在键盘上<b>弹出目标音</b>。可选基础 6 种（M2/m3/M3/P4/P5/P8）或全部 12 种音程，方向可选向上/向下/双向。🔊 先听根音找位置，弹对自动判分并播下一题，弹错显示差几个半音。练即兴/移调/和声的核心手上功夫，需连琴弹，成绩入仪表盘。和"听音训练"（听两音辨音程）相反——这里练<b>知道音程名就在键盘上秒构建</b> |
 | 🎶 调式识别 | ✅ | 🔊 听一段<b>调式音阶</b>（7 个教会调式 Ionian/Dorian/Phrygian/Lydian/Mixolydian/Aeolian/Locrian 之一），从多个选项中<b>辨认是哪个调式</b>。可自选调式范围与选项数量（3/4/7 选 1）。答完显示调式特征提示（如利底亚=升四度、混合利底亚=降七度、弗里几亚=降二度），可🔊再听。无需连琴（纯听辨多选），成绩入仪表盘。补足"音阶训练"（练手）和"听音训练"（辨音程）之外的<b>调式色彩听辨</b>能力 |
@@ -235,7 +237,7 @@ npx http-server -p 8099           # 用 Node
 
 ## 测试
 
-**一键跑全部 46 套测试**：
+**一键跑全部 47 套测试**：
 
 ```bash
 cd app
@@ -323,6 +325,7 @@ node js/mode-id.test.mjs
 node js/solfege.test.mjs
 node js/chord-quality.test.mjs
 node js/progression-ear.test.mjs
+node js/piano-keyboard.test.mjs
 node js/bridge-protocol.test.mjs
 ```
 

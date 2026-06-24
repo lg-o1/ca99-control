@@ -713,6 +713,88 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .pe-slot.done { background: rgba(74,222,128,.14); border-color: var(--ok, #4ade80); color: var(--ok, #4ade80); }
 .pe-slot.future { opacity: .45; }
 
+/* ===== 通用全幅虚拟钢琴 ===== */
+.kb-scroll {
+  width: 100%; overflow-x: auto; overflow-y: hidden;
+  padding: 10px 4px 14px; border-radius: 14px;
+  background: linear-gradient(180deg, #1a1a22, #0d0d12);
+  box-shadow: inset 0 2px 10px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.04);
+  -webkit-overflow-scrolling: touch;
+}
+.kb-scroll::-webkit-scrollbar { height: 8px; }
+.kb-scroll::-webkit-scrollbar-thumb { background: #44465a; border-radius: 4px; }
+.kb-scroll::-webkit-scrollbar-track { background: transparent; }
+.kb-inner { position: relative; margin: 0 auto; }
+.kb-key {
+  position: absolute; top: 0; box-sizing: border-box; cursor: pointer;
+  display: flex; align-items: flex-end; justify-content: center;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+  transition: transform .05s, box-shadow .12s, filter .12s;
+}
+.kb-white {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4fb 72%, #e2e3ee 100%);
+  border: 1px solid #c4c6d6; border-top: none;
+  border-radius: 0 0 6px 6px; z-index: 1;
+  box-shadow: inset 0 -5px 8px rgba(120,120,160,.18), 0 2px 3px rgba(0,0,0,.25);
+}
+.kb-black {
+  background: linear-gradient(180deg, #4a4a58 0%, #232330 55%, #0e0e16 100%);
+  border: 1px solid #000; border-top: none;
+  border-radius: 0 0 5px 5px; z-index: 3;
+  box-shadow: inset 0 -3px 6px rgba(255,255,255,.12), 0 3px 5px rgba(0,0,0,.5);
+}
+.kb-name { font-size: 9px; font-weight: 700; padding-bottom: 4px; pointer-events: none; letter-spacing: .2px; }
+.kb-white .kb-name { color: #8a8db0; }
+.kb-black .kb-name { color: #c9cbe0; }
+.kb-badge {
+  position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; font-weight: 800; color: #fff; pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6); line-height: 1;
+}
+.kb-white .kb-badge { color: #4a3df0; }
+
+/* 按下 / 演示点亮：炫彩发光 */
+.kb-key.kb-press, .kb-key.kb-demo {
+  transform: translateY(2px);
+  filter: brightness(1.06);
+}
+.kb-white.kb-press, .kb-white.kb-demo {
+  background: linear-gradient(180deg, #c7ccff 0%, #9aa2ff 60%, #7c83f0 100%);
+  box-shadow: 0 0 14px 2px rgba(124,131,240,.7), inset 0 -4px 8px rgba(60,40,160,.4);
+}
+.kb-black.kb-press, .kb-black.kb-demo {
+  background: linear-gradient(180deg, #7c83f0 0%, #4a3df0 60%, #2b2199 100%);
+  box-shadow: 0 0 16px 3px rgba(124,131,240,.85), inset 0 -3px 6px rgba(255,255,255,.2);
+}
+
+/* 高亮答案：用 --hl 自定义色描边 + 内发光 */
+.kb-key.kb-hl {
+  box-shadow: 0 0 0 2px var(--hl, #667eea) inset, 0 0 12px 1px var(--hl, #667eea);
+  z-index: 5;
+}
+.kb-white.kb-hl {
+  background: linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--hl, #667eea) 28%, #fff) 100%);
+}
+.kb-black.kb-hl {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--hl, #667eea) 60%, #2a2a36) 0%, #15151f 100%);
+}
+
+@keyframes kbFlash {
+  0% { box-shadow: 0 0 0 0 var(--hl, #7c83f0), 0 0 6px 1px var(--hl, #7c83f0); }
+  60% { box-shadow: 0 0 0 6px rgba(124,131,240,0), 0 0 22px 6px var(--hl, #7c83f0); }
+  100% { box-shadow: 0 0 0 0 rgba(124,131,240,0); }
+}
+.kb-key.kb-flash { animation: kbFlash .42s ease-out; }
+
+/* 键盘标题条 + 提示 */
+.kb-wrap { margin: 14px 0; }
+.kb-wrap .kb-cap {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; color: var(--muted); margin-bottom: 6px;
+}
+.kb-legend { display: inline-flex; align-items: center; gap: 4px; }
+.kb-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; box-shadow: 0 0 6px 1px currentColor; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }
