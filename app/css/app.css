@@ -756,6 +756,39 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 }
 .ac-cell.current .ac-cell-beat { background: #667eea; }
 
+/* ---- 模块58：和弦色彩板 ---- */
+.ccb-stage {
+  position: relative; border-radius: 18px; overflow: hidden;
+  min-height: 200px; margin: 4px 0 16px;
+  background: var(--panel); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+}
+.ccb-glow {
+  position: absolute; inset: 0; background: transparent;
+  transition: background .25s ease; opacity: .85; pointer-events: none;
+}
+.ccb-stage.flash .ccb-glow { animation: ccbFlash 0.9s ease-in-out infinite; }
+@keyframes ccbFlash { 0%,100% { opacity: .85; } 50% { opacity: .35; } }
+.ccb-front {
+  position: relative; z-index: 1; text-align: center; padding: 20px 16px; width: 100%;
+}
+.ccb-sym {
+  font-size: 56px; font-weight: 900; line-height: 1.05; letter-spacing: 1px;
+  transition: color .2s ease, text-shadow .2s ease;
+}
+.ccb-quality { font-size: 17px; font-weight: 800; margin-top: 6px; color: var(--text); }
+.ccb-mood { font-size: 15px; margin-top: 8px; color: var(--text); opacity: .92; }
+.ccb-func { font-size: 14px; margin-top: 8px; color: var(--muted); font-weight: 700; }
+.ccb-home {
+  font-size: 14px; margin-top: 10px; font-weight: 800; color: #34d399;
+  background: rgba(52,211,153,.14); display: inline-block;
+  padding: 5px 12px; border-radius: 999px;
+}
+.ccb-chal-target { font-size: 22px; font-weight: 900; color: var(--text); margin: 2px 0 4px; }
+.ccb-chal-fb { min-height: 20px; font-weight: 700; font-size: 14px; }
+.ccb-chal-fb.ok { color: var(--ok); }
+.ccb-chal-fb.no { color: #f59e0b; }
+
 /* ---- 模块24：节拍稳定度 ---- */
 .bs-score { font-size: 64px; font-weight: 900; line-height: 1; color: var(--text); }
 .bs-trend { margin-top: 12px; font-size: 15px; font-weight: 700; color: var(--muted); }

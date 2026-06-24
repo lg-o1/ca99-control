@@ -25,6 +25,7 @@ import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
 import { Accompaniment, PATTERNS as ACCOMP_PATTERNS, getPattern as accompGetPattern } from './accompaniment.js';
+import { analyzeChord, COLOR_KEYS as CCOLOR_KEYS, tonicTriadPcs as ccolorTonicTriad } from './chord-color.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -109,6 +110,7 @@ let scfOnNote = null;       // 曲谱跟弹的 note-on 回调（模块45注册�
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
+let chordColorOnNotesChanged = null; // 和弦色彩板的"按下集合变化"回调（模块58注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -287,6 +289,8 @@ function onMidiIn(bytes) {
     if (rhythmSightTap) rhythmSightTap(performance.now());
     // 驱动伴奏音型练习（按下集合）
     if (accompOnNotesChanged) accompOnNotesChanged(heldNotes.notes);
+    // 驱动和弦色彩板（按下集合）
+    if (chordColorOnNotesChanged) chordColorOnNotesChanged(heldNotes.notes);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -295,6 +299,7 @@ function onMidiIn(bytes) {
     if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
     if (chordSightOnNotesChanged) chordSightOnNotesChanged(heldNotes.notes);
     if (accompOnNotesChanged) accompOnNotesChanged(heldNotes.notes);
+    if (chordColorOnNotesChanged) chordColorOnNotesChanged(heldNotes.notes);
     // 驱动连奏/断奏控制（松键）
     if (articOnNoteOff) articOnNoteOff(m.note, performance.now());
     // 驱动手指独立性（note-off，检测按住音是否滑脱）
@@ -9404,6 +9409,241 @@ function renderAccompaniment() {
   previewBuild();
 }
 
+// ========== 模块 58: 和弦色彩板（声光 + 和声） ==========
+function renderChordColorBoard() {
+  const root = $('#module-ccolor');
+  // 快捷和弦芯片（让没连琴的人也能立刻看到颜色）
+  const QUICK = [
+    { sym: 'C',   notes: [60, 64, 67] },
+    { sym: 'Dm',  notes: [62, 65, 69] },
+    { sym: 'Em',  notes: [64, 67, 71] },
+    { sym: 'F',   notes: [65, 69, 72] },
+    { sym: 'G',   notes: [67, 71, 74] },
+    { sym: 'G7',  notes: [67, 71, 74, 77] },
+    { sym: 'Am',  notes: [57, 60, 64] },
+    { sym: 'Bdim',notes: [71, 74, 77] },
+    { sym: 'Cmaj7',notes: [60, 64, 67, 71] },
+    { sym: 'Caug',notes: [60, 64, 68] },
+  ];
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🌈 和弦色彩板</h2>
+    <p style="color:var(--muted);margin-bottom:14px">弹下任意<b>和弦</b>（≥3 个键），屏幕和琴键立刻<b>染上对应的颜色光</b>，并告诉你它的<b>名字 / 性格情绪 / 在调里的功能</b>。大调暖、小调冷、属七和减和弦会<b>闪烁</b>提醒"想回家/紧张"。没连琴就点下面的快捷和弦或直接点琴键搭和弦。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调（看功能）</label>
+        <select id="ccb-key">${CCOLOR_KEYS.map(k => `<option value="${k.id}">${k.name}</option>`).join('')}</select>
+        <span style="color:var(--muted);font-size:12px;margin-left:8px">设了调才显示罗马级数 I/ii/V7 与"想回家"提示</span>
+      </div>
+      <div class="param-row"><label>快捷和弦</label>
+        <div id="ccb-quick" class="ear-chips">${QUICK.map(q => `<button class="ear-chip" data-n="${q.notes.join(',')}">${q.sym}</button>`).join('')}</div>
+      </div>
+    </div>
+
+    <div id="ccb-stage" class="ccb-stage">
+      <div id="ccb-glow" class="ccb-glow"></div>
+      <div class="ccb-front">
+        <div id="ccb-sym" class="ccb-sym">—</div>
+        <div id="ccb-quality" class="ccb-quality">弹一个和弦试试</div>
+        <div id="ccb-mood" class="ccb-mood"></div>
+        <div id="ccb-func" class="ccb-func"></div>
+        <div id="ccb-home" class="ccb-home"></div>
+      </div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 把<b>你按下的音</b>按和声功能染色发光；若设了调且弹到"属"功能，会同时把<b>主和弦（家🏠）</b>淡淡标出，提示你可以解决回家（点键可搭和弦，再点取消）</div>
+      <div id="ccb-kb"></div>
+    </div>
+
+    <div class="card-panel">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <button id="ccb-chal" class="big-btn">🎯 开始认色挑战</button>
+        <div id="ccb-chal-box" style="display:none;flex:1;min-width:220px">
+          <div style="color:var(--muted);font-size:13px">请弹出一个 ——</div>
+          <div id="ccb-chal-target" class="ccb-chal-target">—</div>
+          <div id="ccb-chal-fb" class="ccb-chal-fb"></div>
+        </div>
+        <div class="chord-stats">
+          <span>得分 <b id="ccb-score">0</b></span>
+          <span>连击 <b id="ccb-streak">0</b></span>
+          <span>第 <b id="ccb-round">0</b>/8 关</span>
+        </div>
+      </div>
+    </div>`;
+
+  const stage = $('#ccb-stage'), glow = $('#ccb-glow');
+  const symEl = $('#ccb-sym'), qualEl = $('#ccb-quality'), moodEl = $('#ccb-mood');
+  const funcEl = $('#ccb-func'), homeEl = $('#ccb-home');
+  let clickSet = new Set();
+  let challenge = null; // {targets:[], idx, score, streak, best}
+
+  const ccbKb = new PianoKeyboard($('#ccb-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => {
+      if (clickSet.has(m)) clickSet.delete(m); else clickSet.add(m);
+      playTone(midiToFreq(m), 0, 0.6);
+      update([...clickSet]);
+    },
+  });
+  ccbKb.scrollToShow(52, 79);
+
+  const keyObj = () => CCOLOR_KEYS.find(k => k.id === $('#ccb-key').value);
+
+  // 8 种挑战目标（按品质名找和弦）
+  const CHAL_POOL = [
+    { suffix: '',   name: '大三和弦 ☀️' },
+    { suffix: 'm',  name: '小三和弦 🌙' },
+    { suffix: '7',  name: '属七和弦 🏃' },
+    { suffix: 'dim',name: '减三和弦 😣' },
+    { suffix: 'maj7',name: '大七和弦 🍷' },
+    { suffix: 'm7', name: '小七和弦 🌊' },
+    { suffix: 'aug',name: '增三和弦 🌀' },
+    { suffix: 'sus4',name: '挂四和弦 🪂' },
+  ];
+
+  function paint(r) {
+    if (!r || !r.ok) {
+      stage.classList.remove('flash');
+      glow.style.background = 'transparent';
+      symEl.textContent = '—';
+      symEl.style.color = 'var(--text)';
+      qualEl.textContent = r && r.hint ? r.hint : '弹一个和弦试试';
+      moodEl.textContent = '';
+      funcEl.textContent = '';
+      homeEl.textContent = '';
+      return;
+    }
+    glow.style.background = `radial-gradient(circle at 50% 45%, ${r.glow} 0%, ${r.color} 38%, transparent 72%)`;
+    stage.classList.toggle('flash', !!r.flash);
+    symEl.textContent = r.symbol + (r.inversion ? ' （转位）' : '');
+    symEl.style.color = r.glow;
+    symEl.style.textShadow = `0 0 24px ${r.color}`;
+    qualEl.textContent = r.quality + '（' + r.names.join(' ') + '）';
+    moodEl.textContent = '情绪：' + r.mood;
+    if (r.degree != null) {
+      funcEl.textContent = `在${keyObj().name}里：${r.roman} 级 · ${r.func}`;
+      funcEl.style.display = '';
+    } else {
+      funcEl.textContent = keyObj().tonicPc == null ? '（设个调可看它的级数与功能）' : '不在该调自然音阶上（离调和弦）';
+      funcEl.style.display = '';
+    }
+    homeEl.textContent = r.hint || '';
+    homeEl.style.display = r.hint ? '' : 'none';
+  }
+
+  function paintKeys(r) {
+    const items = [];
+    if (r && r.ok) {
+      // 当前按下的音按和声色高亮
+      const cur = [...clickSet];
+      cur.forEach((n, i) => items.push({ midi: n, color: r.color, text: r.names[i] ?? '' }));
+      // 属功能时把"家"（主和弦）淡淡标出
+      if (r.wantsHome) {
+        const tri = ccolorTonicTriad(keyObj());
+        if (tri) {
+          tri.forEach((pc) => {
+            const midi = 60 + ((pc - 0 + 12) % 12); // C5 区域
+            if (!clickSet.has(midi)) items.push({ midi, color: 'hsl(140,55%,45%)', text: '家' });
+          });
+        }
+      }
+    } else {
+      [...clickSet].forEach((n) => items.push({ midi: n, color: 'hsl(0,0%,50%)', text: '' }));
+    }
+    ccbKb.clear();
+    if (items.length) ccbKb.highlightMany(items);
+  }
+
+  function update(notes) {
+    const r = analyzeChord(notes, keyObj());
+    paint(r);
+    paintKeys(r);
+    if (challenge) judgeChallenge(r);
+    return r;
+  }
+
+  // ---- 认色挑战 ----
+  function shuffle(a) { const x = a.slice(); for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; }
+  function startChallenge() {
+    challenge = { targets: shuffle(CHAL_POOL).slice(0, 8), idx: 0, score: 0, streak: 0, best: 0, locked: false };
+    $('#ccb-chal').textContent = '⏹ 结束挑战';
+    $('#ccb-chal').classList.add('running');
+    $('#ccb-chal-box').style.display = 'block';
+    nextChallenge();
+    paintChalStats();
+    log('和弦色彩挑战: 开始', 'ok');
+  }
+  function stopChallenge(finished) {
+    if (challenge && challenge.score > 0) {
+      recordPractice('ccolor', '和弦色彩板', challenge.idx, challenge.score, challenge.best);
+    }
+    challenge = null;
+    $('#ccb-chal').textContent = '🎯 开始认色挑战';
+    $('#ccb-chal').classList.remove('running');
+    $('#ccb-chal-box').style.display = 'none';
+    if (finished) log('和弦色彩挑战: 完成 🎉', 'ok'); else log('和弦色彩挑战: 结束');
+  }
+  function nextChallenge() {
+    challenge.locked = false;
+    const t = challenge.targets[challenge.idx];
+    $('#ccb-chal-target').textContent = t.name;
+    $('#ccb-chal-fb').textContent = '';
+    $('#ccb-chal-fb').className = 'ccb-chal-fb';
+    $('#ccb-round').textContent = challenge.idx;
+  }
+  function paintChalStats() {
+    $('#ccb-score').textContent = challenge ? challenge.score : 0;
+    $('#ccb-streak').textContent = challenge ? challenge.streak : 0;
+    $('#ccb-round').textContent = challenge ? challenge.idx : 0;
+  }
+  function judgeChallenge(r) {
+    if (!challenge || challenge.locked || !r || !r.ok) return;
+    const want = challenge.targets[challenge.idx].suffix;
+    const fb = $('#ccb-chal-fb');
+    if (r.chord.suffix === want) {
+      challenge.locked = true;
+      challenge.score++; challenge.streak++;
+      challenge.best = Math.max(challenge.best, challenge.streak);
+      fb.textContent = `✓ 对！${r.symbol} 就是${challenge.targets[challenge.idx].name}`;
+      fb.className = 'ccb-chal-fb ok';
+      paintChalStats();
+      challenge.idx++;
+      if (challenge.idx >= challenge.targets.length) {
+        $('#ccb-chal-target').textContent = '🎉 全部完成！';
+        setTimeout(() => stopChallenge(true), 900);
+      } else {
+        setTimeout(() => { if (challenge) { nextChallenge(); } }, 900);
+      }
+    } else {
+      // 弹错品质：连击清零（每个组合只扣一次，靠 wrongShown 防抖）
+      if (challenge._lastWrong !== r.symbol) {
+        challenge._lastWrong = r.symbol;
+        challenge.streak = 0;
+        fb.textContent = `这是 ${r.symbol}（${r.quality}），再找找${challenge.targets[challenge.idx].name}`;
+        fb.className = 'ccb-chal-fb no';
+        paintChalStats();
+      }
+    }
+  }
+
+  // 事件绑定
+  $('#ccb-key').onchange = () => update([...clickSet]);
+  $('#ccb-quick').querySelectorAll('button').forEach(b => b.onclick = () => {
+    clickSet = new Set(b.dataset.n.split(',').map(Number));
+    [...clickSet].forEach((n, i) => playTone(midiToFreq(n), i * 0.04, 0.6));
+    update([...clickSet]);
+  });
+  $('#ccb-chal').onclick = () => { if (challenge) stopChallenge(false); else startChallenge(); };
+
+  // MIDI 实弹驱动：同步到 clickSet 并刷新
+  chordColorOnNotesChanged = (notes) => {
+    clickSet = new Set(notes);
+    update(notes);
+  };
+
+  update([]);
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -9544,7 +9784,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
