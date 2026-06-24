@@ -24,6 +24,7 @@ import { PracticeStats } from './practice-stats.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
+import { Accompaniment, PATTERNS as ACCOMP_PATTERNS, getPattern as accompGetPattern } from './accompaniment.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -81,6 +82,7 @@ let dynOnNote = null;      // 力度练习的 note-on 回调（模块18注册）
 let rhythmTapOnNote = null; // 节奏跟拍的 note-on 回调（模块21注册）
 let melodyOnNote = null;    // 旋律听写的 note-on 回调（模块22注册）
 let chordProgOnNotesChanged = null; // 和弦进行练习的音符变化回调（模块23注册）
+let accompOnNotesChanged = null; // 伴奏音型练习的音符变化回调（模块57注册）
 let beatTapOnNote = null;   // 节拍稳定度的 note-on 回调（模块24注册）
 let handsOnNote = null;     // 双手协调的 note-on 回调（模块25注册）
 let arpOnNote = null;       // 琶音跑动的 note-on 回调（模块26注册）
@@ -283,6 +285,8 @@ function onMidiIn(bytes) {
     if (chordSightOnNotesChanged) chordSightOnNotesChanged(heldNotes.notes);
     // 驱动节奏视奏（任意键当一次击打）
     if (rhythmSightTap) rhythmSightTap(performance.now());
+    // 驱动伴奏音型练习（按下集合）
+    if (accompOnNotesChanged) accompOnNotesChanged(heldNotes.notes);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -290,6 +294,7 @@ function onMidiIn(bytes) {
     if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
     if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
     if (chordSightOnNotesChanged) chordSightOnNotesChanged(heldNotes.notes);
+    if (accompOnNotesChanged) accompOnNotesChanged(heldNotes.notes);
     // 驱动连奏/断奏控制（松键）
     if (articOnNoteOff) articOnNoteOff(m.note, performance.now());
     // 驱动手指独立性（note-off，检测按住音是否滑脱）
@@ -9122,6 +9127,283 @@ function renderRhythmSight() {
   drawStaff();
 }
 
+// ---------- 模块57：伴奏音型（accompaniment patterns）----------
+function renderAccompaniment() {
+  const root = $('#module-accomp');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🪗 伴奏音型练习</h2>
+    <p style="color:var(--muted);margin-bottom:14px">和弦不是干巴巴地按柱式——真实弹琴用<b>伴奏型</b>把同一串和弦弹出流动感。本模块把所选调上的<b>和弦进行</b>用<b>阿尔贝蒂低音 / 华尔兹 / 分解琶音 / 行进低音</b>等展开成一串"该弹的音"，照高亮在键上<b>按顺序弹出</b>即推进。没连琴可点"🔊 试听整条 / 🎹 替我弹当前"。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调</label>
+        <select id="ac-key">${PROG_KEYS.map(k => `<option value="${k.id}">${k.name}</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>进行</label>
+        <select id="ac-prog">${PROGRESSIONS.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>伴奏型</label>
+        <div id="ac-pats" class="ear-chips">${ACCOMP_PATTERNS.map((p, i) => `<button class="ear-chip${i === 0 ? ' on' : ''}" data-p="${p.id}" title="${p.desc}">${p.emoji} ${p.name}</button>`).join('')}</div>
+      </div>
+      <div class="param-row"><label>速度</label>
+        <div class="ear-chips" id="ac-bpm">
+          <button class="ear-chip" data-b="60">60</button>
+          <button class="ear-chip on" data-b="90">90</button>
+          <button class="ear-chip" data-b="120">120</button>
+        </div></div>
+      <div class="param-row"><label>判定</label>
+        <div class="ear-chips" id="ac-oct">
+          <button class="ear-chip on" data-o="1">忽略八度（好上手）</button>
+          <button class="ear-chip" data-o="0">要弹准八度</button>
+        </div></div>
+    </div>
+
+    <div class="card-panel">
+      <div id="ac-patdesc" class="ac-patdesc"></div>
+      <div id="ac-chips" class="cp-chips"></div>
+      <div class="ac-strip-wrap"><div id="ac-strip" class="ac-strip"></div></div>
+      <div id="ac-target" class="cp-target">选好后点"开始"</div>
+      <div id="ac-feedback" class="sight-feedback" style="margin-top:10px">选调 / 进行 / 伴奏型，点开始</div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 把<b>当前该弹的音</b>高亮在 88 键上（单音型带角色标签：低/高/中/根/三/五/八/六），照位置弹出即推进（点键可试听）</div>
+      <div id="ac-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="ac-score" class="sight-stat-num">0</div><div class="sight-stat-lbl">弹对</div></div>
+      <div class="sight-stat"><div id="ac-streak" class="sight-stat-num">0</div><div class="sight-stat-lbl">连击</div></div>
+      <div class="sight-stat"><div id="ac-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳连击</div></div>
+      <div class="sight-stat"><div id="ac-prog2" class="sight-stat-num">0/0</div><div class="sight-stat-lbl">进度</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="ac-start" class="big-btn">▶ 开始练习</button>
+      <button id="ac-listen" class="big-btn" style="background:#667eea" disabled>🔊 试听整条</button>
+      <button id="ac-auto" class="big-btn" style="background:var(--panel2)" disabled>🎹 替我弹当前</button>
+      <span id="ac-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let game = null, ac = null, judging = false, bestCombo = 0, demoTimer = null, patId = 'block', bpm = 90, octAg = true;
+  let demoActive = false, viewIdx = null; // 试听时只改视图，不动 game.cursor
+  const acKb = new PianoKeyboard($('#ac-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  acKb.scrollToShow(40, 76);
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function tone(midi, when, dur) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.2, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function playStep(step, when, dur) { step.notes.forEach((n) => tone(n, when, dur)); }
+
+  const keyObj = () => PROG_KEYS.find(k => k.id === $('#ac-key').value);
+  const progObj = () => PROGRESSIONS.find(p => p.id === $('#ac-prog').value);
+
+  function patDesc() {
+    const p = accompGetPattern(patId);
+    $('#ac-patdesc').textContent = `${p.emoji} ${p.name}：${p.desc}`;
+  }
+
+  function drawChips() {
+    const wrap = $('#ac-chips');
+    if (!game) { wrap.innerHTML = ''; return; }
+    const idx = viewIdx ?? game.cursor;
+    const ci = game.steps[idx] ? game.steps[idx].chordIndex : game.chords.length;
+    wrap.innerHTML = game.chords.map((ch, i) => {
+      let cls = 'cp-chip';
+      if (i < ci) cls += ' done';
+      else if (i === ci) cls += ' current';
+      return `<div class="${cls}"><span class="cp-rom">${ch.roman}</span><span class="cp-sym">${ch.symbol}</span></div>`;
+    }).join('');
+  }
+
+  function drawStrip() {
+    const wrap = $('#ac-strip');
+    const idx = viewIdx ?? (game ? game.cursor : 0);
+    if (!game || idx >= game.steps.length) { wrap.innerHTML = ''; return; }
+    const cur = game.steps[idx];
+    const ci = cur.chordIndex;
+    const cells = game.steps.filter(s => s.chordIndex === ci);
+    wrap.innerHTML = cells.map((s) => {
+      let cls = 'ac-cell';
+      if (s === cur) cls += ' current';
+      else if (s.beat < cur.beat) cls += ' done';
+      const names = s.names.join('+');
+      return `<div class="${cls}"><span class="ac-cell-beat">${s.beatInBar + 1}</span><span class="ac-cell-lbl">${s.label}</span><span class="ac-cell-notes">${names}</span></div>`;
+    }).join('');
+  }
+
+  function showStep() {
+    const idx = viewIdx ?? (game ? game.cursor : 0);
+    const cur = game && game.steps[idx];
+    if (!cur) { $('#ac-target').textContent = '✅ 完成整条！'; acKb.clear(); return; }
+    $('#ac-target').textContent = `🎯 ${cur.symbol}（${cur.roman}）· 第 ${cur.beatInBar + 1} 拍 · ${cur.label}：弹 ${cur.names.join(' + ')}`;
+    const single = cur.notes.length === 1;
+    acKb.highlightMany(cur.notes.map((n, i) => ({
+      midi: n,
+      color: HL_PALETTE[i % HL_PALETTE.length],
+      text: single ? cur.label : String(i + 1),
+    })));
+  }
+
+  function updateStats() {
+    if (!game) return;
+    $('#ac-score').textContent = game.hits;
+    $('#ac-streak').textContent = game.combo;
+    $('#ac-best').textContent = bestCombo;
+    $('#ac-prog2').textContent = `${game.cursor}/${game.steps.length}`;
+  }
+
+  function judge(held) {
+    if (!game || judging || demoActive || game.done()) return;
+    const r = game.press(new Set(held));
+    const fb = $('#ac-feedback');
+    if (r.advanced) {
+      judging = true; // 同一把按住只判一次，松开后复位
+      bestCombo = Math.max(bestCombo, game.combo);
+      const justPlayed = game.steps[game.cursor - 1];
+      playStep(justPlayed, ctx().currentTime + 0.01, 0.4);
+      drawChips(); drawStrip(); showStep(); updateStats();
+      if (r.done) {
+        fb.className = 'sight-feedback ok';
+        const s = game.summary();
+        fb.textContent = `🎉 完成整条！弹对 ${s.hits} · 正确率 ${s.accuracy}% · ${'★'.repeat(s.stars)}${'☆'.repeat(3 - s.stars)}`;
+        finishStop();
+      } else {
+        fb.className = 'sight-feedback ok';
+        fb.textContent = `✓ 对，继续`;
+      }
+    } else if (held.length && game.hasWrong(new Set(held))) {
+      // 按到不属于当前步的音才记一次错（避免和弦按齐过程中误判）
+      if (!judging) { game.fail(); updateStats(); }
+      judging = true;
+      fb.className = 'sight-feedback no';
+      fb.textContent = `❌ 有错音，目标是 ${game.current().names.join(' + ')}`;
+    }
+  }
+
+  function stopDemo() {
+    if (demoTimer) { clearTimeout(demoTimer); demoTimer = null; }
+    demoActive = false; viewIdx = null;
+    if (game) { drawChips(); drawStrip(); showStep(); }
+  }
+
+  function listenAll() {
+    if (!game) return;
+    stopDemo();
+    demoActive = true;
+    const beatMs = 60000 / bpm;
+    const c = ctx(); let t = c.currentTime + 0.1;
+    game.steps.forEach((s, i) => {
+      const beats = (game.steps[i + 1]?.beat ?? s.beat + 1) - s.beat || 1;
+      playStep(s, t, beatMs / 1000 * Math.max(0.5, beats) * 0.95);
+      t += beatMs / 1000 * Math.max(0.5, beats);
+    });
+    // 视觉同步走一遍（只改 viewIdx，不影响判分）
+    let i = 0;
+    const tick = () => {
+      if (!demoActive) return;
+      if (i >= game.steps.length) { stopDemo(); return; }
+      viewIdx = i;
+      drawChips(); drawStrip(); showStep();
+      i++;
+      demoTimer = setTimeout(tick, beatMs);
+    };
+    tick();
+  }
+
+  function autoOne() {
+    if (!game || game.done()) return;
+    stopDemo();
+    judging = false;
+    judge(game.current().notes.slice());
+  }
+
+  function finishStop() {
+    stopDemo();
+    if (game) {
+      const s = game.summary();
+      recordPractice('accomp', '伴奏音型', s.hits + s.misses, s.hits, bestCombo);
+    }
+    game = null; accompOnNotesChanged = null;
+    $('#ac-start').textContent = '▶ 开始练习';
+    $('#ac-start').classList.remove('running');
+    $('#ac-listen').disabled = true;
+    $('#ac-auto').disabled = true;
+    $('#ac-status').textContent = '已停止';
+    acKb.clear();
+  }
+
+  function restart() {
+    stopDemo();
+    bestCombo = 0;
+    game = new Accompaniment({ key: keyObj(), progression: progObj(), pattern: accompGetPattern(patId), bpm, octaveAgnostic: octAg });
+    const [lo, hi] = game.range;
+    acKb.scrollToShow(Math.max(21, lo - 2), Math.min(108, hi + 2));
+    drawChips(); drawStrip(); showStep(); updateStats();
+    accompOnNotesChanged = (notes) => {
+      if (notes.length === 0) judging = false;
+      judge(notes);
+    };
+    $('#ac-feedback').className = 'sight-feedback';
+    $('#ac-feedback').textContent = '🎧 照高亮按顺序弹出每个音';
+    $('#ac-status').textContent = '练习中';
+  }
+
+  // 选择器绑定
+  $('#ac-key').onchange = () => { if (game) restart(); else { previewBuild(); } };
+  $('#ac-prog').onchange = () => { if (game) restart(); else { previewBuild(); } };
+  $('#ac-pats').querySelectorAll('button').forEach(b => b.onclick = () => {
+    $('#ac-pats').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); patId = b.dataset.p; patDesc();
+    if (game) restart(); else previewBuild();
+  });
+  $('#ac-bpm').querySelectorAll('button').forEach(b => b.onclick = () => {
+    $('#ac-bpm').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); bpm = +b.dataset.b;
+  });
+  $('#ac-oct').querySelectorAll('button').forEach(b => b.onclick = () => {
+    $('#ac-oct').querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); octAg = b.dataset.o === '1';
+    if (game) restart();
+  });
+  $('#ac-listen').onclick = listenAll;
+  $('#ac-auto').onclick = autoOne;
+  $('#ac-start').onclick = () => {
+    if (game) { finishStop(); return; }
+    restart();
+    $('#ac-start').textContent = '⏸ 停止练习';
+    $('#ac-start').classList.add('running');
+    $('#ac-listen').disabled = false;
+    $('#ac-auto').disabled = false;
+    setTimeout(listenAll, 250);
+  };
+
+  // 未开始时的静态预览（看到伴奏型样貌）
+  function previewBuild() {
+    const preview = new Accompaniment({ key: keyObj(), progression: progObj(), pattern: accompGetPattern(patId), bpm, octaveAgnostic: octAg });
+    const tmp = game; game = preview;
+    const [lo, hi] = preview.range;
+    acKb.scrollToShow(Math.max(21, lo - 2), Math.min(108, hi + 2));
+    drawChips(); drawStrip(); showStep();
+    $('#ac-prog2').textContent = `0/${preview.steps.length}`;
+    game = tmp;
+  }
+
+  patDesc();
+  previewBuild();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -9262,7 +9544,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

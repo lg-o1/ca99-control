@@ -732,6 +732,30 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 @keyframes cpPulse { 0%,100% { box-shadow: 0 0 0 3px rgba(102,126,234,.2); } 50% { box-shadow: 0 0 14px rgba(102,126,234,.55), 0 0 0 3px rgba(102,126,234,.3); } }
 .cp-target { text-align: center; font-size: 22px; font-weight: 800; margin-top: 16px; color: var(--text); }
 
+/* ---- 模块57：伴奏音型 ---- */
+.ac-patdesc { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.ac-strip-wrap { display: flex; justify-content: center; margin-top: 14px; }
+.ac-strip { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ac-cell {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 56px; padding: 8px 10px; border-radius: 10px;
+  background: var(--panel2); border: 1px solid var(--border);
+  transition: transform .15s, box-shadow .15s, border-color .15s;
+}
+.ac-cell-beat {
+  font-size: 11px; font-weight: 700; color: #fff; background: rgba(124,92,255,.5);
+  width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%;
+}
+.ac-cell-lbl { font-size: 12px; color: var(--muted); font-weight: 600; }
+.ac-cell-notes { font-size: 15px; font-weight: 800; color: var(--text); }
+.ac-cell.done { opacity: .55; border-color: rgba(74,222,128,.4); }
+.ac-cell.done .ac-cell-notes { color: var(--ok); }
+.ac-cell.current {
+  border-color: #667eea; transform: translateY(-3px);
+  box-shadow: 0 0 0 3px rgba(102,126,234,.25); animation: cpPulse 1.2s ease-in-out infinite;
+}
+.ac-cell.current .ac-cell-beat { background: #667eea; }
+
 /* ---- 模块24：节拍稳定度 ---- */
 .bs-score { font-size: 64px; font-weight: 900; line-height: 1; color: var(--text); }
 .bs-trend { margin-top: 12px; font-size: 15px; font-weight: 700; color: var(--muted); }
