@@ -553,6 +553,13 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-mode-btn.primary { background: linear-gradient(135deg, #7c5cff, #5566d6); color: #fff; border-color: transparent; }
 .scf-mode-btn.running { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border-color: transparent; box-shadow: 0 0 14px rgba(245,158,11,.5); }
 .scf-mode-btn:disabled { opacity: .4; cursor: not-allowed; }
+.scf-mode-btn.beginner-pulse { border-color: #34d399; animation: scfWaitPulse 1.3s ease-in-out infinite; }
+@keyframes scfWaitPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,.55); }
+  50% { box-shadow: 0 0 0 7px rgba(52,211,153,0); }
+}
+.ear-chip.beginner { border-color: #34d399; background: rgba(52,211,153,.12); }
+.ear-chip.beginner.on { background: linear-gradient(135deg, #34d399, #10b981); color: #06281d; border-color: transparent; }
 .sight-feedback.err { background: rgba(248,113,113,.14); color: #f87171; }
 .scf-hitline {
   position: absolute; left: 0; right: 0; bottom: 0; height: 4px;

@@ -7767,10 +7767,23 @@ function renderScoreFollow() {
 
   function drawSongChips() {
     $('#scf-songs').innerHTML = allSongs().map((s) =>
-      `<button class="ear-chip ${s.id === songId ? 'on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
+      `<button class="ear-chip ${s.id === songId ? 'on' : ''} ${s.beginner ? 'beginner' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
     $('#scf-songs').querySelectorAll('.ear-chip').forEach((b) => {
-      b.onclick = () => { if (mode) return; songId = b.dataset.id; loopFrom = 1; loopTo = 9999; hideTimingChart(); hideNext(); drawSongChips(); prepare(); };
+      b.onclick = () => { if (mode) return; songId = b.dataset.id; loopFrom = 1; loopTo = 9999; hideTimingChart(); hideNext(); drawSongChips(); prepare(); onSongPicked(); };
     });
+  }
+  // 🐣 选中启蒙关卡时：自动开音名标签 + 引导用等待模式（零基础不计时）
+  function onSongPicked() {
+    const s = getCurrentSong();
+    const wb = $('#scf-wait');
+    if (s.beginner) {
+      if (!labelsOn) { labelsOn = true; const lb = $('#scf-aux-labels'); if (lb) lb.classList.add('on'); if (sf) drawHighway(lastDrawT); }
+      if (wb) wb.classList.add('beginner-pulse');
+      const fb = $('#scf-feedback');
+      if (fb) fb.textContent = '🐣 启蒙关卡：建议点 🐢 等待练习（不计时，弹对才前进）。看键盘上高亮的键，找到就按下——慢慢来！';
+    } else if (wb) {
+      wb.classList.remove('beginner-pulse');
+    }
   }
   function bindChips(sel, attr, apply) {
     $(sel).querySelectorAll('.ear-chip').forEach((b) => {
@@ -7807,9 +7820,11 @@ function renderScoreFollow() {
     const pick = (pool.length ? pool : allSongs())[Math.floor(Math.random() * (pool.length || allSongs().length))];
     if (!pick) return;
     songId = pick.id; loopFrom = 1; loopTo = 9999;
-    hideTimingChart(); hideNext(); drawSongChips(); prepare();
-    $('#scf-feedback').textContent = `🎲 随机选中「${pick.title}」，选一档训练开始～`;
-    $('#scf-feedback').className = 'sight-feedback';
+    hideTimingChart(); hideNext(); drawSongChips(); prepare(); onSongPicked();
+    if (!pick.beginner) {
+      $('#scf-feedback').textContent = `🎲 随机选中「${pick.title}」，选一档训练开始～`;
+      $('#scf-feedback').className = 'sight-feedback';
+    }
   };
 
   // ⑦ 完成后推荐去练「乐句视奏」，形成识谱闭环
@@ -8436,6 +8451,7 @@ function renderScoreFollow() {
   $('#scf-practice').onclick = () => start('practice');
 
   prepare();
+  onSongPicked();    // 🐣 默认即启蒙关卡，初始就给出引导
   renderHistory();   // ⑥ 初始渲染练习足迹
 }
 

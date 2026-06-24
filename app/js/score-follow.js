@@ -25,6 +25,30 @@ function pcOf(m) { return ((m % 12) + 12) % 12; }
  */
 export const SONGS = [
   {
+    id: 'find-c', title: '🐣 中央C 在哪里', clef: 'treble', bpm: 80, beginner: true,
+    seq: [
+      [60, 2], [60, 2], [60, 2], [60, 2], [60, 2], [60, 2],
+    ],
+  },
+  {
+    id: 'three-c', title: '🐣 低·中·高 C（音区）', clef: 'treble', bpm: 80, beginner: true,
+    seq: [
+      [48, 2], [60, 2], [72, 2], [72, 2], [60, 2], [48, 2],
+    ],
+  },
+  {
+    id: 'updown', title: '🐣 高低音方向', clef: 'treble', bpm: 80, beginner: true,
+    seq: [
+      [60, 1], [64, 1], [67, 1], [64, 1], [60, 1], [64, 1], [67, 1], [72, 2],
+    ],
+  },
+  {
+    id: 'five-finger', title: '🐣 五指阶梯 C-D-E-F-G', clef: 'treble', bpm: 84, beginner: true,
+    seq: [
+      [60, 1], [62, 1], [64, 1], [65, 1], [67, 1], [65, 1], [64, 1], [62, 1], [60, 2],
+    ],
+  },
+  {
     id: 'twinkle', title: '小星星 Twinkle Twinkle', clef: 'treble', bpm: 88,
     seq: [
       [60, 1], [60, 1], [67, 1], [67, 1], [69, 1], [69, 1], [67, 2],
