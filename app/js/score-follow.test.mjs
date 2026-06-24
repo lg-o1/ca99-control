@@ -323,3 +323,35 @@ test('每首内置乐曲都能构建出音符', () => {
     assert.ok(lo >= 21 && hi <= 108, `${s.id} 音高应在 88 键内`);
   }
 });
+
+// ---- timings 落点时间对比 ----
+test('timings：按顺序给出每个音的误差与抢/拖/准统计', () => {
+  const song = { id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1], [62, 1], [64, 1], [65, 1]] };
+  const sf = new ScoreFollow(song, { perfectMs: 130, goodMs: 320 });
+  sf.judge(60, -200);  // 抢拍（早 200ms）
+  sf.judge(62, 1000);  // 正中
+  sf.judge(64, 2250);  // 拖拍（晚 250ms）
+  sf.expire(99999);    // 第 4 个 miss
+  const t = sf.timings();
+  assert.equal(t.notes.length, 4);
+  assert.equal(t.notes[0].deltaMs, -200);
+  assert.equal(t.notes[0].grade, GRADE.GOOD);
+  assert.equal(t.notes[1].deltaMs, 0);
+  assert.equal(t.notes[3].grade, GRADE.MISS);
+  assert.equal(t.notes[3].deltaMs, null);
+  assert.equal(t.early, 1);
+  assert.equal(t.late, 1);
+  assert.equal(t.onTime, 1);
+  assert.equal(t.miss, 1);
+  assert.equal(t.avgAbs, Math.round((200 + 0 + 250) / 3));
+  assert.equal(t.maxAbs, 250);
+});
+
+test('timings：未演奏时统计为空、平均误差 0', () => {
+  const song = { id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1], [62, 1]] };
+  const t = new ScoreFollow(song).timings();
+  assert.equal(t.notes.length, 2);
+  assert.equal(t.early + t.late + t.onTime + t.miss, 0);
+  assert.equal(t.avgAbs, 0);
+  assert.equal(t.maxAbs, 0);
+});

@@ -7432,6 +7432,8 @@ function renderScoreFollow() {
       <div class="sight-stat"><span class="sight-stat-num" id="scf-stars">☆☆☆</span><span class="sight-stat-lbl">评星</span></div>
     </div>
 
+    <div id="scf-timing" class="scf-timing" style="display:none"></div>
+
     <div class="scf-ladder">
       <button id="scf-demo" class="scf-mode-btn">🔊 听示范</button>
       <span class="scf-ladder-arrow">→</span>
@@ -7453,7 +7455,7 @@ function renderScoreFollow() {
     $('#scf-songs').innerHTML = allSongs().map((s) =>
       `<button class="ear-chip ${s.id === songId ? 'on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
     $('#scf-songs').querySelectorAll('.ear-chip').forEach((b) => {
-      b.onclick = () => { if (mode) return; songId = b.dataset.id; loopFrom = 1; loopTo = 9999; drawSongChips(); prepare(); };
+      b.onclick = () => { if (mode) return; songId = b.dataset.id; loopFrom = 1; loopTo = 9999; hideTimingChart(); drawSongChips(); prepare(); };
     });
   }
   function bindChips(sel, attr, apply) {
@@ -7461,6 +7463,7 @@ function renderScoreFollow() {
       b.onclick = () => {
         if (mode) return;
         $(sel).querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+        hideTimingChart();
         apply(b.dataset[attr]);
       };
     });
@@ -7542,6 +7545,67 @@ function renderScoreFollow() {
     g.notes.filter((n) => !n.judged).forEach((n) => {
       scfKb.flash(n.midi, '#22d3ee'); playTone(midiToFreq(n.midi), 0, 0.5, 0.16);
     });
+  }
+
+  // ⑦ 完成后落点时间对比图：每个音画在"准点线"上下，抢拍在上、拖拍在下
+  function hideTimingChart() {
+    const el = $('#scf-timing'); if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+  }
+  function drawTimingChart() {
+    const el = $('#scf-timing'); if (!el || !sf) return;
+    const t = sf.timings();
+    const played = t.notes.filter((n) => n.grade);  // 实际判过的音（含 miss）
+    if (!played.length) { hideTimingChart(); return; }
+    const W = 720, H = 188, padX = 30, padTop = 26, padBot = 30;
+    const cy = padTop + (H - padTop - padBot) / 2;          // 准点线（0ms）
+    const amp = (H - padTop - padBot) / 2;                  // 上/下最大振幅
+    const span = sf.goodMs || 320;                          // ±goodMs 映射到 ±amp
+    const n = played.length;
+    const xOf = (i) => padX + (n === 1 ? (W - 2 * padX) / 2 : (i * (W - 2 * padX)) / (n - 1));
+    const yOf = (d) => cy + Math.max(-amp, Math.min(amp, (d / span) * amp));
+    const perfBand = (sf.perfectMs / span) * amp;
+    const col = (g) => (g === 'perfect' ? '#34d399' : g === 'good' ? '#22d3ee' : '#f87171');
+    let body = '';
+    // 判定带：绿=PERFECT 窗，青=GOOD 窗
+    body += `<rect x="${padX}" y="${cy - perfBand}" width="${W - 2 * padX}" height="${perfBand * 2}" fill="#34d39922"/>`;
+    body += `<rect x="${padX}" y="${cy - amp}" width="${W - 2 * padX}" height="${amp - perfBand}" fill="#22d3ee14"/>`;
+    body += `<rect x="${padX}" y="${cy + perfBand}" width="${W - 2 * padX}" height="${amp - perfBand}" fill="#22d3ee14"/>`;
+    // 准点线
+    body += `<line x1="${padX}" y1="${cy}" x2="${W - padX}" y2="${cy}" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    // 折线（仅连命中音）+ 点
+    const hitPts = [];
+    let dots = '';
+    played.forEach((p, i) => {
+      const x = xOf(i);
+      if (p.grade === 'miss' || p.deltaMs == null) {
+        dots += `<g><line x1="${x - 4}" y1="${H - padBot + 6}" x2="${x + 4}" y2="${H - padBot + 14}" stroke="#f87171" stroke-width="2"/><line x1="${x + 4}" y1="${H - padBot + 6}" x2="${x - 4}" y2="${H - padBot + 14}" stroke="#f87171" stroke-width="2"/></g>`;
+      } else {
+        const y = yOf(p.deltaMs);
+        hitPts.push(`${x},${y}`);
+        dots += `<line x1="${x}" y1="${cy}" x2="${x}" y2="${y}" stroke="${col(p.grade)}" stroke-width="1.5" opacity="0.55"/>`;
+        dots += `<circle cx="${x}" cy="${y}" r="4.5" fill="${col(p.grade)}"/>`;
+      }
+    });
+    if (hitPts.length >= 2) body += `<polyline points="${hitPts.join(' ')}" fill="none" stroke="#cbd5e1" stroke-width="1" opacity="0.4"/>`;
+    body += dots;
+    // 轴标注
+    body += `<text x="${padX}" y="${padTop - 10}" fill="#94a3b8" font-size="12">抢拍 EARLY ↑</text>`;
+    body += `<text x="${padX}" y="${H - 8}" fill="#94a3b8" font-size="12">拖拍 LATE ↓</text>`;
+    body += `<text x="${W - padX}" y="${cy - 4}" fill="#94a3b8" font-size="11" text-anchor="end">准点 0ms</text>`;
+    const tendency = t.early > t.late + 1 ? '偏抢拍（提前）' : t.late > t.early + 1 ? '偏拖拍（滞后）' : '基本均衡';
+    el.innerHTML = `
+      <div class="scf-timing-title">⏱️ 落点时间对比</div>
+      <svg viewBox="0 0 ${W} ${H}" class="scf-timing-svg" role="img" aria-label="落点时间对比图">${body}</svg>
+      <div class="scf-timing-legend">
+        <span><b style="color:#22d3ee">⬆ 抢拍</b> ${t.early}</span>
+        <span><b style="color:#34d399">● 准点</b> ${t.onTime}</span>
+        <span><b style="color:#f59e0b">⬇ 拖拍</b> ${t.late}</span>
+        <span><b style="color:#f87171">✕ 漏弹</b> ${t.miss}</span>
+        <span>平均误差 <b>±${t.avgAbs}ms</b></span>
+        <span>最大 <b>${t.maxAbs}ms</b></span>
+        <span>整体 <b>${tendency}</b></span>
+      </div>`;
+    el.style.display = '';
   }
 
   // 上传 MIDI 文件 → 解析 → 转 ScoreFollow 曲目 → 加入选曲
@@ -7825,6 +7889,7 @@ function renderScoreFollow() {
   function start(which) {
     if (mode) { stop(); return; }
     prepare();
+    hideTimingChart();   // ⑦ 新一遍开始，清掉上次的对比图
     mode = which;
     demoPlayed = new Set();
     // ③ 区间循环：屏蔽窗外音符（判 judged+null → 不画/不判/不漏），并把起点对齐段首
@@ -7876,6 +7941,7 @@ function renderScoreFollow() {
       const s = sf.summary();
       recordPractice('scorefollow', '曲谱跟弹', s.judgedCount || s.total, s.perfect + s.good, s.maxCombo);
       $('#scf-feedback').textContent = `🔁 循环练习结束：弹了 ${sf.judgedCount} 个音，正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}。`;
+      drawTimingChart();   // ⑦ 循环练习也画落点对比
     } else {
       $('#scf-feedback').textContent = wasScored ? '已停止。换一档训练或重来。' : '挑一首曲子或上传 MIDI，选一档训练开始';
     }
@@ -7910,6 +7976,7 @@ function renderScoreFollow() {
         $('#scf-feedback').textContent = `🎉 完成！${star}　正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}${bumped}`;
       }
       $('#scf-feedback').className = 'sight-feedback ok';
+      drawTimingChart();       // ⑦ 落点时间对比图
       if (bumped) prepare();   // 用新速度重建，徽章同步刷新
     } else {
       $('#scf-feedback').textContent = '示范结束，按 🐢 等待练习 或 🎯 跟弹判分 自己试试。';

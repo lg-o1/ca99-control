@@ -391,6 +391,17 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   fill: rgba(124,92,255,.13); stroke: rgba(124,92,255,.55);
   stroke-width: 1.4; stroke-dasharray: 5 4;
 }
+/* ⑦ 完成后落点时间对比图 */
+.scf-timing {
+  margin: 14px 0 4px; padding: 12px 14px; border-radius: 14px;
+  border: 1.5px solid var(--line); background: var(--panel2);
+}
+.scf-timing-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.scf-timing-svg { width: 100%; height: auto; display: block; }
+.scf-timing-legend {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px;
+  font-size: 13px; color: var(--muted);
+}
 /* MIDI 上传按钮 */
 .scf-upload-btn {
   display: inline-flex; align-items: center; gap: 6px; cursor: pointer;

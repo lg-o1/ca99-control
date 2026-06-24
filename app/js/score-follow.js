@@ -300,4 +300,35 @@ export class ScoreFollow {
       accuracy: Math.round(this.accuracy * 100), stars: this.stars,
     };
   }
+
+  /**
+   * 落点时间对比数据（演奏后画"抢拍/拖拍"图用）。
+   * 按起音时刻顺序返回每个（当前手别的）音符的判定结果：
+   *   order  从 0 起的演奏顺序
+   *   midi   音高
+   *   grade  'perfect' | 'good' | 'miss' | null（未判到，正常情况下不会出现）
+   *   deltaMs 弹奏相对目标时刻的误差（负=抢拍/早，正=拖拍/晚，miss 为 null）
+   * 同时附带统计：early/late/onTime 计数与平均绝对误差。
+   * @returns {{notes:Array, early:number, late:number, onTime:number, miss:number, avgAbs:number, maxAbs:number}}
+   */
+  timings() {
+    const ordered = this.playNotes.slice().sort((a, b) => a.ms - b.ms);
+    const notes = ordered.map((n, i) => ({
+      order: i, midi: n.midi, grade: n.grade, deltaMs: n.deltaMs,
+    }));
+    let early = 0, late = 0, onTime = 0, miss = 0, sumAbs = 0, hit = 0, maxAbs = 0;
+    for (const n of notes) {
+      if (n.grade === GRADE.MISS || n.deltaMs == null) { if (n.grade === GRADE.MISS) miss++; continue; }
+      const d = n.deltaMs, ad = Math.abs(d);
+      sumAbs += ad; hit++;
+      if (ad > maxAbs) maxAbs = ad;
+      if (d < -this.perfectMs) early++;
+      else if (d > this.perfectMs) late++;
+      else onTime++;
+    }
+    return {
+      notes, early, late, onTime, miss,
+      avgAbs: hit ? Math.round(sumAbs / hit) : 0, maxAbs: Math.round(maxAbs),
+    };
+  }
 }
