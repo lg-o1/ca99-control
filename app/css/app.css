@@ -510,6 +510,16 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .pt-sim-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
 .pt-sim-btn:active { transform: scale(.95); }
 
+/* ---- 模块29：颤音速度 ---- */
+.tr-keys { display: flex; gap: 18px; justify-content: center; margin-bottom: 16px; }
+.tr-key { flex: 0 0 92px; padding: 18px 0; border-radius: 12px; border: 2px solid var(--line); background: var(--panel2); color: var(--text); font-weight: 700; font-size: 13px; line-height: 1.5; cursor: pointer; transition: transform .08s, background .12s, border-color .12s; }
+.tr-key span { font-size: 17px; font-weight: 800; color: var(--accent); }
+.tr-key:hover { border-color: var(--accent); transform: translateY(-2px); }
+.tr-key.lit { background: var(--grad); color: #fff; border-color: var(--accent-hi); transform: scale(1.06); }
+.tr-key.lit span { color: #fff; }
+.tr-meter { height: 14px; border-radius: 7px; background: var(--panel2); border: 1px solid var(--line); overflow: hidden; margin: 4px auto 0; max-width: 320px; }
+.tr-meter-fill { height: 100%; width: 0; background: var(--grad); transition: width .1s linear; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 720px) {
   #sidebar { width: 60px; }

@@ -29,6 +29,7 @@ import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
 import { ArticulationTrainer } from './articulation.js';
 import { PedalTiming, PEDAL_THRESHOLD } from './pedal-timing.js';
+import { TrillTrainer } from './trill.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -57,6 +58,7 @@ let articOnNoteOn = null;   // 连奏/断奏的 note-on 回调（模块27注册�
 let articOnNoteOff = null;  // 连奏/断奏的 note-off 回调（模块27注册）
 let pedalTimeOnNote = null; // 踏板时机的 note-on 回调（模块28注册）
 let pedalTimeOnCC = null;   // 踏板时机的 CC 回调（模块28注册）
+let trillOnNote = null;     // 颤音训练的 note-on 回调（模块29注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -197,6 +199,8 @@ function onMidiIn(bytes) {
     if (articOnNoteOn) articOnNoteOn(m.note, performance.now());
     // 驱动踏板配合时机（新音）
     if (pedalTimeOnNote) pedalTimeOnNote(m.note, performance.now());
+    // 驱动颤音速度训练
+    if (trillOnNote) trillOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -2724,7 +2728,7 @@ function renderArpeggio() {
   const rootSel = $('#arp-root');
   for (let n = 48; n <= 72; n++) {
     const o = document.createElement('option');
-    o.value = String(n); o.textContent = midiName(n);
+    o.value = String(n); o.textContent = chordNoteName(n);
     if (n === 60) o.selected = true;
     rootSel.appendChild(o);
   }
@@ -2738,7 +2742,7 @@ function renderArpeggio() {
     arp.target.forEach((n, i) => {
       const el = document.createElement('button');
       el.className = 'arp-note' + (i < arp.idx ? ' done' : i === arp.idx ? ' cur' : '');
-      el.textContent = midiName(n);
+      el.textContent = chordNoteName(n);
       el.onclick = () => { if (arp && !arp.done) feed(n); };
       seqBox.appendChild(el);
     });
@@ -2845,7 +2849,7 @@ function renderArticulation() {
     const good = r.score >= 80, mid = r.score >= 50;
     d.className = 'ar-dot ' + (good ? 'great' : mid ? 'okk' : 'bad');
     d.textContent = r.score;
-    d.title = `${midiName(r.note)} · ${r.articulation} · 触键比 ${r.ratio.toFixed(2)}`;
+    d.title = `${chordNoteName(r.note)} · ${r.articulation} · 触键比 ${r.ratio.toFixed(2)}`;
     dotsBox.appendChild(d);
   }
 
@@ -2860,9 +2864,9 @@ function renderArticulation() {
     addDot(r);
     refresh();
     const fb = $('#ar-feedback');
-    if (r.score >= 80) { fb.className = 'sight-feedback ok'; fb.textContent = `✅ ${midiName(r.note)} 很${at.target === 'legato' ? '连贯' : '干净'}！触键比 ${r.ratio.toFixed(2)}`; }
-    else if (r.score >= 50) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${midiName(r.note)} 还行，触键比 ${r.ratio.toFixed(2)}`; }
-    else { fb.className = 'sight-feedback no'; fb.textContent = at.target === 'legato' ? `⚠ ${midiName(r.note)} 断了，音之间要更连` : `⚠ ${midiName(r.note)} 太长，要更短促`; }
+    if (r.score >= 80) { fb.className = 'sight-feedback ok'; fb.textContent = `✅ ${chordNoteName(r.note)} 很${at.target === 'legato' ? '连贯' : '干净'}！触键比 ${r.ratio.toFixed(2)}`; }
+    else if (r.score >= 50) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${chordNoteName(r.note)} 还行，触键比 ${r.ratio.toFixed(2)}`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = at.target === 'legato' ? `⚠ ${chordNoteName(r.note)} 断了，音之间要更连` : `⚠ ${chordNoteName(r.note)} 太长，要更短促`; }
   }
 
   function stop() {
@@ -3047,6 +3051,148 @@ function renderPedalTiming() {
   setPedalVisual(true);
 }
 
+// ---------- 模块29：颤音速度训练 ----------
+function renderTrill() {
+  const root = $('#module-trill');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🪶 颤音速度训练</h2>
+    <p style="color:var(--muted);margin-bottom:14px">颤音 = 在两个相邻音之间快速来回交替（如 C–D–C–D…）。选好下方音与音程，尽量<b>又快又匀</b>地交替弹这两个音。引擎测你的颤音速度（次/秒）、均匀度，并检查是否在两音之间正确交替（弹错音或没交替会扣分）。没连琴可点下方两个音键模拟。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>下方音</label>
+        <select id="tr-lower"></select>
+      </div>
+      <div class="param-row"><label>颤音音程</label>
+        <select id="tr-iv"><option value="1">小二度（半音）</option><option value="2" selected>大二度（全音）</option><option value="3">小三度</option></select>
+      </div>
+      <div class="param-row"><label>采集敲击数</label>
+        <select id="tr-taps"><option value="12">12 击</option><option value="16" selected>16 击</option><option value="24">24 击</option></select>
+      </div>
+      <div class="param-row"><label>目标速度</label>
+        <select id="tr-hz"><option value="4">慢（4 次/秒）</option><option value="6" selected>中（6 次/秒）</option><option value="8">快（8 次/秒）</option><option value="10">极快（10 次/秒）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div class="tr-keys">
+        <button id="tr-key-lo" class="tr-key">下<br><span id="tr-lo-lbl">C4</span></button>
+        <button id="tr-key-hi" class="tr-key">上<br><span id="tr-hi-lbl">D4</span></button>
+      </div>
+      <div class="tr-meter"><div id="tr-meter-fill" class="tr-meter-fill"></div></div>
+      <div id="tr-feedback" class="sight-feedback" style="margin-top:12px">点"开始"，然后在两个音之间快速交替</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="tr-speed" class="sight-stat-num">—</div><div class="sight-stat-lbl">速度(次/秒)</div></div>
+      <div class="sight-stat"><div id="tr-even" class="sight-stat-num">—</div><div class="sight-stat-lbl">均匀度</div></div>
+      <div class="sight-stat"><div id="tr-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="tr-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="tr-start" class="big-btn">▶ 开始 / 重来</button>
+      <span id="tr-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  // 下方音下拉 C3..C5
+  const loSel = $('#tr-lower');
+  for (let n = 48; n <= 72; n++) {
+    const o = document.createElement('option');
+    o.value = String(n); o.textContent = chordNoteName(n);
+    if (n === 60) o.selected = true;
+    loSel.appendChild(o);
+  }
+
+  let tr = null;
+  let simT = 0;
+  let simUp = false; // 模拟时下一击是上方音？
+
+  function curNotes() {
+    const lo = +loSel.value;
+    return { lo, hi: lo + (+$('#tr-iv').value) };
+  }
+  function updateKeyLabels() {
+    const { lo, hi } = curNotes();
+    $('#tr-lo-lbl').textContent = chordNoteName(lo);
+    $('#tr-hi-lbl').textContent = chordNoteName(hi);
+  }
+
+  function pulseKey(note) {
+    const { lo, hi } = curNotes();
+    const el = note === lo ? $('#tr-key-lo') : note === hi ? $('#tr-key-hi') : null;
+    if (!el) return;
+    el.classList.add('lit');
+    setTimeout(() => el.classList.remove('lit'), 90);
+    // 速度计随击动一下
+    const fill = $('#tr-meter-fill');
+    fill.style.width = (tr && tr.count ? Math.min(100, tr.count / tr.taps * 100) : 0) + '%';
+  }
+
+  function onTap(info) {
+    if (info.kind === 'wrong') {
+      const fb = $('#tr-feedback'); fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${chordNoteName(info.note)} 不是目标音`;
+      return;
+    }
+    pulseKey(info.note);
+    if (info.kind === 'repeat') {
+      const fb = $('#tr-feedback'); fb.className = 'sight-feedback'; fb.textContent = '↔ 要在两个音之间交替，别连弹同一个';
+    }
+  }
+
+  function showResult(r) {
+    $('#tr-speed').textContent = r.speedHz.toFixed(1);
+    $('#tr-even').textContent = r.evenness;
+    $('#tr-score').textContent = r.score;
+    $('#tr-best').textContent = tr.best;
+    const fb = $('#tr-feedback');
+    const extra = (r.wrongNotes || r.repeats) ? `（错音 ${r.wrongNotes}，没交替 ${r.repeats}）` : '，干净利落';
+    if (r.score >= 85) { fb.className = 'sight-feedback ok'; fb.textContent = `🎉 ${r.score} 分！颤音 ${r.speedHz.toFixed(1)} 次/秒，均匀度 ${r.evenness}${extra}`; }
+    else if (r.score >= 60) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${r.score} 分。${r.speedHz.toFixed(1)} 次/秒，均匀度 ${r.evenness}${extra}`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分。${r.speedHz.toFixed(1)} 次/秒，均匀度 ${r.evenness}${extra}，慢练求匀`; }
+    recordPractice('trill', '颤音训练', r.taps, Math.round(r.score / 100 * r.taps), tr.best);
+    trillOnNote = null;
+    $('#tr-status').textContent = '完成 · 可重来';
+    $('#tr-meter-fill').style.width = '100%';
+  }
+
+  function feed(note) {
+    if (!tr || tr.done) return;
+    tr.feed(note, performance.now());
+  }
+
+  function start() {
+    const { lo, hi } = curNotes();
+    tr = new TrillTrainer({ lower: lo, upper: hi, taps: +$('#tr-taps').value, targetHz: +$('#tr-hz').value });
+    tr.onTap = onTap;
+    tr.onComplete = (r) => showResult(r);
+    trillOnNote = (note) => feed(note);
+    simT = 0; simUp = false;
+    $('#tr-speed').textContent = '—'; $('#tr-even').textContent = '—'; $('#tr-score').textContent = '—';
+    $('#tr-best').textContent = tr.best;
+    $('#tr-meter-fill').style.width = '0%';
+    const fb = $('#tr-feedback'); fb.className = 'sight-feedback'; fb.textContent = '🎧 在两个音之间又快又匀地交替';
+    $('#tr-status').textContent = '进行中…';
+  }
+
+  // 模拟：交替弹两个目标音，每 120ms 一击（约 4.2 次/秒）
+  function simTap() {
+    if (!tr || tr.done) start();
+    const { lo, hi } = curNotes();
+    tr.feed(simUp ? hi : lo, simT);
+    simUp = !simUp;
+    simT += 120;
+  }
+
+  loSel.onchange = updateKeyLabels;
+  $('#tr-iv').onchange = updateKeyLabels;
+  $('#tr-key-lo').onclick = () => { if (!tr || tr.done) start(); feed(curNotes().lo); };
+  $('#tr-key-hi').onclick = () => { if (!tr || tr.done) start(); feed(curNotes().hi); };
+  $('#tr-start').onclick = start;
+
+  updateKeyLabels();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -3178,7 +3324,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;
