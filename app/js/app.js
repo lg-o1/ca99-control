@@ -56,6 +56,7 @@ import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
 import { SightPhrase, KEYS as SP_KEYS, keyById as spKeyById, keySignatureAccidentals as spKeySig, degreeToMidi as spDegToMidi, durGlyph as spDurGlyph } from './sight-phrase.js';
 import { ChordSight, KEYS as CS_KEYS, keyById as csKeyById, keySignatureAccidentals as csKeySig, CHORD_LEVELS as CS_LEVELS, INVERSION_NAMES as CS_INV } from './chord-sight.js';
+import { RhythmSight, rhythmGlyph as rsGlyph } from './rhythm-sight.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
@@ -105,6 +106,7 @@ let ivbOnNote = null;       // 音程构建的 note-on 回调（模块44注册�
 let scfOnNote = null;       // 曲谱跟弹的 note-on 回调（模块45注册，带时间在内部取）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
+let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -279,6 +281,8 @@ function onMidiIn(bytes) {
     if (spOnNote) spOnNote(m.note);
     // 驱动和弦视奏（按下集合）
     if (chordSightOnNotesChanged) chordSightOnNotesChanged(heldNotes.notes);
+    // 驱动节奏视奏（任意键当一次击打）
+    if (rhythmSightTap) rhythmSightTap(performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -8534,6 +8538,315 @@ function renderChordSight() {
   drawStaff();
 }
 
+// ---------- 模块50：节奏视奏（rhythm sight-reading）----------
+function renderRhythmSight() {
+  const root = $('#module-rsight');
+  let game = null;
+  let meter = 4;
+  let measures = 2;
+  let difficulty = 'easy';
+  let bpm = 80;
+  let recording = false;
+  let taps = [];
+  let startMs = 0;
+  let rafId = 0;
+  const timers = [];
+
+  // 休止符字形（高音区音乐符号）
+  const REST_GLYPH = { 2: '𝄼', 1: '𝄽', 0.5: '𝄾', 0.25: '𝄿' };
+  function restGlyphFor(dur) {
+    if (dur >= 2) return '𝄼';
+    if (dur >= 1) return '𝄽';
+    if (dur >= 0.5) return '𝄾';
+    return '𝄿';
+  }
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🥁 节奏视奏（Rhythm Sight-Reading）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">视奏 = 读懂<b>音高</b> + 读懂<b>节奏</b>。"乐句视奏"练音高（按自己节奏弹），这里练另一半——<b>节奏</b>：屏幕随机生成一段<b>标准节奏记谱</b>（四分/八分/十六分/附点/<b>休止符</b>、带小节线、4/4 或 3/4 拍）。先给<b>一小节预备拍</b>，然后你跟着节拍器在每个音符的落点<b>击打任意键</b>（或点大圆按钮），引擎按每次击打与谱面落点的<b>时间误差</b>判 完美/良好/漏击/多击，结束后画一张<b>落点时间图</b>告诉你偏抢还是偏拖。和"节奏跟拍"（只几个<b>预置</b>型、单小节、不画真谱）、"节奏听写"（靠<b>耳朵</b>）都不同——<b>这里看真正的节奏谱、随机多样、含休止符、跟拍击打</b>。可选拍号、小节数、难度、速度。没接 MIDI 也能点屏幕大按钮击打，成绩入仪表盘。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>拍号</label>
+        <div class="ear-chips" id="rs-meter">
+          <button class="ear-chip on" data-m="4">4/4</button>
+          <button class="ear-chip" data-m="3">3/4</button>
+        </div></div>
+      <div class="param-row"><label>小节数</label>
+        <div class="ear-chips" id="rs-measures">
+          <button class="ear-chip" data-x="1">1 小节</button>
+          <button class="ear-chip on" data-x="2">2 小节</button>
+          <button class="ear-chip" data-x="4">4 小节</button>
+        </div></div>
+      <div class="param-row"><label>节奏难度</label>
+        <div class="ear-chips" id="rs-diff">
+          <button class="ear-chip on" data-d="easy">入门（四分/八分/休止）</button>
+          <button class="ear-chip" data-d="medium">进阶（加附点八分）</button>
+          <button class="ear-chip" data-d="hard">挑战（加十六分）</button>
+        </div></div>
+      <div class="param-row"><label>速度 <span id="rs-bpm-val" style="color:var(--accent)">80</span> BPM</label>
+        <input type="range" id="rs-bpm" min="50" max="132" step="2" value="80" style="flex:1"></div>
+    </div>
+
+    <div class="sight-stage">
+      <div class="sight-staff-wrap"><div id="rs-staff" class="sp-staff"></div></div>
+      <div id="rs-feedback" class="sight-feedback">选好设置，按"开始"出一段节奏谱</div>
+      <div id="rs-tip" class="mid-hint"></div>
+      <div id="rs-timing"></div>
+    </div>
+
+    <div class="kb-wrap" style="text-align:center">
+      <div class="kb-cap">🥁 跟着节拍器，在每个音符的落点击打（真琴<b>任意键</b>，或点下面的大按钮）</div>
+      <button id="rs-tap" class="rs-tap-btn" disabled>TAP</button>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="rs-score">0</span><span class="sight-stat-lbl">完成段数</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="rs-streak">0</span><span class="sight-stat-lbl">全对连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="rs-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="rs-acc">—</span><span class="sight-stat-lbl">完成率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="rs-new" class="big-btn">▶ 出新节奏</button>
+      <button id="rs-play" class="scf-mode-btn" disabled>🥁 预备 — 开始击打</button>
+      <span id="rs-status" style="color:var(--muted);margin-left:6px">未开始</span>
+    </div>`;
+
+  function bindChips(sel, attr, apply) {
+    $(sel).querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (recording) return;
+        $(sel).querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+        apply(b.dataset[attr]);
+      };
+    });
+  }
+  bindChips('#rs-meter', 'm', (v) => { meter = parseInt(v, 10); });
+  bindChips('#rs-measures', 'x', (v) => { measures = parseInt(v, 10); });
+  bindChips('#rs-diff', 'd', (v) => { difficulty = v; });
+  $('#rs-bpm').oninput = () => { if (recording) return; bpm = parseInt($('#rs-bpm').value, 10); $('#rs-bpm-val').textContent = bpm; };
+
+  const LEFT = 56, BEAT_PX = 56, MIDY = 70, REST_Y = 70;
+  function staffGeom() {
+    const totalBeats = game ? game.totalBeats : measures * meter;
+    const W = LEFT + totalBeats * BEAT_PX + 30;
+    return { totalBeats, W, H: 150 };
+  }
+
+  function drawStaff(results) {
+    const { totalBeats, W, H } = staffGeom();
+    const xForBeat = (b) => LEFT + b * BEAT_PX;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="sp-staff-svg rs-staff-svg" preserveAspectRatio="xMinYMid meet">`;
+    // 单线节奏谱
+    svg += `<line x1="24" y1="${MIDY}" x2="${W - 12}" y2="${MIDY}" class="staff-line"/>`;
+    // 拍号
+    svg += `<text x="30" y="${MIDY - 6}" class="sp-timesig">${meter}</text>`;
+    svg += `<text x="30" y="${MIDY + 14}" class="sp-timesig">4</text>`;
+    // 小节线
+    for (let b = meter; b < totalBeats - 1e-6; b += meter) {
+      const bx = xForBeat(b);
+      svg += `<line x1="${bx - 6}" y1="${MIDY - 26}" x2="${bx - 6}" y2="${MIDY + 26}" class="sp-barline"/>`;
+    }
+    svg += `<line x1="${W - 14}" y1="${MIDY - 26}" x2="${W - 14}" y2="${MIDY + 26}" class="sp-barline-final"/>`;
+    // 拍子虚线刻度（每整拍淡线）
+    for (let b = 0; b <= totalBeats; b++) {
+      const bx = xForBeat(b);
+      svg += `<line x1="${bx}" y1="${MIDY + 20}" x2="${bx}" y2="${MIDY + 26}" class="rs-beat-tick"/>`;
+    }
+    // 落点序号映射到 results（按 onset 顺序）
+    let onsetIdx = 0;
+    if (game) {
+      game.events.forEach((e) => {
+        const cx = xForBeat(e.beat) + 12;
+        if (e.rest) {
+          svg += `<text x="${cx - 4}" y="${REST_Y + 6}" class="rs-rest">${restGlyphFor(e.dur)}</text>`;
+          return;
+        }
+        const g = rsGlyph(e.dur);
+        // 判定着色
+        let cls = 'rs-head';
+        if (results && results.results[onsetIdx]) {
+          const j = results.results[onsetIdx].judge;
+          cls += j === 'perfect' ? ' rs-perfect' : (j === 'good' ? ' rs-good' : ' rs-miss');
+        }
+        onsetIdx++;
+        const cy = MIDY;
+        svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${cls}" ${g.filled ? '' : 'fill="none" style="stroke-width:1.6"'}/></g>`;
+        if (g.stem) {
+          const sx = cx + 6, sy2 = cy - 32;
+          svg += `<line x1="${sx}" y1="${cy}" x2="${sx}" y2="${sy2}" class="rs-stem"/>`;
+          for (let f = 0; f < g.beams; f++) {
+            const fy = sy2 + f * 7;
+            svg += `<path d="M${sx},${fy} q9,3 7,13" class="rs-flag" fill="none"/>`;
+          }
+        }
+        if (g.dotted) svg += `<circle cx="${cx + 11}" cy="${cy - 3}" r="2" class="rs-head"/>`;
+      });
+    }
+    // 播放光标
+    if (recording) {
+      const t = performance.now();
+      const beatNow = (t - startMs) / game.beatMs;
+      if (beatNow >= 0 && beatNow <= totalBeats) {
+        const cx = xForBeat(beatNow);
+        svg += `<line x1="${cx}" y1="${MIDY - 30}" x2="${cx}" y2="${MIDY + 30}" class="rs-cursor"/>`;
+      }
+    }
+    svg += `</svg>`;
+    $('#rs-staff').innerHTML = svg;
+  }
+
+  function refreshStats() {
+    if (!game) return;
+    $('#rs-score').textContent = game.score;
+    $('#rs-streak').textContent = game.streak;
+    $('#rs-best').textContent = game.best;
+    $('#rs-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function clearTimers() { while (timers.length) clearTimeout(timers.pop()); if (rafId) cancelAnimationFrame(rafId); rafId = 0; }
+
+  function newRhythm() {
+    clearTimers();
+    recording = false;
+    hideTimingChart();
+    if (!game) {
+      game = new RhythmSight({ meter, measures, difficulty, bpm });
+    } else {
+      game.meter = meter; game.measures = measures; game.difficulty = difficulty; game.bpm = bpm;
+    }
+    game.next();
+    $('#rs-play').disabled = false;
+    $('#rs-tap').disabled = true;
+    $('#rs-status').textContent = '已就绪';
+    $('#rs-feedback').className = 'sight-feedback';
+    $('#rs-feedback').textContent = `📖 看谱：${game.onsets.length} 个落点。按"预备—开始击打"，先有一小节预备拍。`;
+    $('#rs-tip').textContent = '';
+    drawStaff();
+  }
+
+  function tap(t) {
+    if (!recording) return;
+    taps.push(t);
+    clickSound(false);
+    const btn = $('#rs-tap');
+    btn.classList.remove('rs-tap-hit'); void btn.offsetWidth; btn.classList.add('rs-tap-hit');
+  }
+
+  function play() {
+    if (!game || recording) return;
+    clearTimers();
+    hideTimingChart();
+    taps = [];
+    const beatMs = game.beatMs;
+    const countIn = meter;
+    const now = performance.now();
+    startMs = now + countIn * beatMs;
+    recording = true;
+    rhythmSightTap = (t) => tap(t);
+    $('#rs-tap').disabled = false;
+    $('#rs-play').disabled = true;
+    $('#rs-new').disabled = true;
+    $('#rs-feedback').className = 'sight-feedback';
+    // 预备拍 + 正式拍 的节拍器
+    for (let b = 0; b < countIn; b++) {
+      timers.push(setTimeout(() => {
+        clickSound(b === 0);
+        $('#rs-status').textContent = `预备 ${countIn - b}…`;
+        $('#rs-feedback').textContent = `🎵 预备拍：${countIn - b}`;
+      }, b * beatMs));
+    }
+    for (let b = 0; b < game.totalBeats; b++) {
+      timers.push(setTimeout(() => {
+        clickSound((b % meter) === 0);
+      }, (countIn + b) * beatMs));
+    }
+    timers.push(setTimeout(() => {
+      $('#rs-status').textContent = '击打中…';
+      $('#rs-feedback').textContent = '🥁 开始！跟着节拍器，在每个音符落点击打。';
+    }, countIn * beatMs));
+    // 收尾：留一个 good 容差的尾巴
+    const endDelay = countIn * beatMs + game.totalBeats * beatMs + (game.tol.good + 120);
+    timers.push(setTimeout(finishPlay, endDelay));
+    // 光标动画
+    const loop = () => { drawStaff(); if (recording) rafId = requestAnimationFrame(loop); };
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function finishPlay() {
+    if (!recording) return;
+    recording = false;
+    rhythmSightTap = null;
+    if (rafId) cancelAnimationFrame(rafId); rafId = 0;
+    $('#rs-tap').disabled = true;
+    $('#rs-play').disabled = false;
+    $('#rs-new').disabled = false;
+    const g = game.submit(taps, startMs);
+    refreshStats();
+    drawStaff(g);
+    drawTimingChart(g);
+    const wrap = $('#rs-staff').closest('.sight-staff-wrap');
+    if (wrap) {
+      wrap.classList.remove('flash-ok', 'flash-no'); void wrap.offsetWidth;
+      wrap.classList.add(g.miss === 0 && g.extra === 0 ? 'flash-ok' : 'flash-no');
+    }
+    const allPerfect = g.miss === 0 && g.extra === 0 && g.good === 0;
+    if (allPerfect) {
+      $('#rs-feedback').className = 'sight-feedback ok';
+      $('#rs-feedback').textContent = `🎉 全部精准命中！连击 ${game.streak}。`;
+    } else if (g.miss === 0 && g.extra === 0) {
+      $('#rs-feedback').className = 'sight-feedback';
+      $('#rs-feedback').textContent = `✅ 全部命中（其中 ${g.good} 个稍偏）。${g.tendency === 'early' ? '你整体偏抢拍' : g.tendency === 'late' ? '你整体偏拖拍' : '节奏很稳'}。`;
+    } else {
+      $('#rs-feedback').className = 'sight-feedback';
+      $('#rs-feedback').textContent = `本段：完美 ${g.perfect} · 良好 ${g.good} · 漏击 ${g.miss} · 多击 ${g.extra}。`;
+    }
+    $('#rs-status').textContent = '完成';
+    recordPractice('rhythmsight', '节奏视奏', g.total, g.perfect + g.good, allPerfect ? game.streak : 0);
+  }
+
+  // ---- 落点时间对比图（复用 Synthesia ⑦ 的设计语言）----
+  function hideTimingChart() { const c = $('#rs-timing'); if (c) c.innerHTML = ''; }
+  function drawTimingChart(g) {
+    const c = $('#rs-timing');
+    if (!c || !g.results.length) { if (c) c.innerHTML = ''; return; }
+    const W = 560, H = 132, padL = 44, padR = 16, padT = 16, padB = 26;
+    const innerW = W - padL - padR, innerH = H - padT - padB;
+    const midY = padT + innerH / 2;
+    const goodMs = game.tol.good, perfMs = game.tol.perfect;
+    const yFor = (d) => midY + Math.max(-1, Math.min(1, d / goodMs)) * (innerH / 2);
+    const n = g.results.length;
+    const xFor = (i) => padL + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" class="rs-timing-svg">`;
+    // 区带
+    svg += `<rect x="${padL}" y="${yFor(-goodMs)}" width="${innerW}" height="${yFor(goodMs) - yFor(-goodMs)}" class="rs-band-good"/>`;
+    svg += `<rect x="${padL}" y="${yFor(-perfMs)}" width="${innerW}" height="${yFor(perfMs) - yFor(-perfMs)}" class="rs-band-perfect"/>`;
+    svg += `<line x1="${padL}" y1="${midY}" x2="${W - padR}" y2="${midY}" class="rs-zero-line"/>`;
+    svg += `<text x="6" y="${padT + 8}" class="rs-axis-lbl">抢拍</text>`;
+    svg += `<text x="6" y="${H - padB + 14}" class="rs-axis-lbl">拖拍</text>`;
+    g.results.forEach((r, i) => {
+      const x = xFor(i);
+      if (r.judge === 'miss') {
+        svg += `<text x="${x - 4}" y="${midY + 4}" class="rs-pt-miss">✕</text>`;
+      } else {
+        const y = yFor(r.deltaMs);
+        const cls = r.judge === 'perfect' ? 'rs-pt-perfect' : 'rs-pt-good';
+        svg += `<circle cx="${x}" cy="${y}" r="4.5" class="${cls}"/>`;
+      }
+    });
+    svg += `</svg>`;
+    const tend = g.tendency === 'early' ? '偏抢拍' : g.tendency === 'late' ? '偏拖拍' : '节奏均衡';
+    svg += `<div class="rs-timing-legend"><span class="rs-lg perfect">完美 ${g.perfect}</span><span class="rs-lg good">良好 ${g.good}</span><span class="rs-lg miss">漏击 ${g.miss}</span>${g.extra ? `<span class="rs-lg extra">多击 ${g.extra}</span>` : ''}<span class="rs-lg">平均误差 ${Math.round(g.avgAbs)}ms</span><span class="rs-lg">最大 ${Math.round(g.maxAbs)}ms</span><span class="rs-lg verdict">${tend}</span></div>`;
+    c.innerHTML = svg;
+  }
+
+  $('#rs-new').onclick = newRhythm;
+  $('#rs-play').onclick = play;
+  $('#rs-tap').onclick = () => tap(performance.now());
+
+  drawStaff();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -8674,7 +8987,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

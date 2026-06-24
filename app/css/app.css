@@ -354,6 +354,41 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sp-staff-svg .sp-flag { stroke: #4a5fc8; stroke-width: 1.6; }
 .sp-staff-svg .sp-done-stroke { stroke: #1f9d6f; }
 .sp-staff-svg .sp-cur-box { fill: rgba(251,191,36,.12); stroke: rgba(251,191,36,.5); stroke-width: 1; }
+/* 节奏视奏 rs */
+.rs-staff-svg .sp-timesig { text-anchor: middle; }
+.rs-staff-svg .rs-head { fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.rs-staff-svg .rs-head.rs-perfect { fill: #34d399; stroke: #1f9d6f; }
+.rs-staff-svg .rs-head.rs-good { fill: #22d3ee; stroke: #0e9cb5; }
+.rs-staff-svg .rs-head.rs-miss { fill: #f87171; stroke: #c84a4a; opacity: .7; }
+.rs-staff-svg .rs-stem, .rs-staff-svg .rs-flag { stroke: #4a5fc8; stroke-width: 1.6; }
+.rs-staff-svg .rs-rest { font-size: 26px; fill: var(--muted); font-family: serif; }
+.rs-staff-svg .rs-beat-tick { stroke: var(--line); stroke-width: 1; }
+.rs-staff-svg .rs-cursor { stroke: #fbbf24; stroke-width: 2; opacity: .9; }
+.rs-tap-btn {
+  width: 128px; height: 128px; border-radius: 50%; font-size: 22px; font-weight: 800;
+  letter-spacing: 2px; color: #fff; border: none; cursor: pointer;
+  background: radial-gradient(circle at 38% 32%, #8b6cff, #6d28d9);
+  box-shadow: 0 8px 22px rgba(124,92,255,.45); transition: transform .06s, box-shadow .12s;
+  user-select: none; -webkit-user-select: none;
+}
+.rs-tap-btn:disabled { filter: grayscale(.6) brightness(.8); cursor: default; box-shadow: none; }
+.rs-tap-btn.rs-tap-hit { animation: rsTapPulse .18s ease; }
+@keyframes rsTapPulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(52,211,153,.7); } 100% { transform: scale(.94); box-shadow: 0 0 0 22px rgba(52,211,153,0); } }
+.rs-timing-svg { background: linear-gradient(#0c1024, #161b34); border-radius: 12px; border: 1px solid var(--line); margin-top: 8px; }
+.rs-timing-svg .rs-band-good { fill: rgba(34,211,238,.10); }
+.rs-timing-svg .rs-band-perfect { fill: rgba(52,211,153,.16); }
+.rs-timing-svg .rs-zero-line { stroke: #fbbf24; stroke-width: 1.4; opacity: .8; stroke-dasharray: 4 3; }
+.rs-timing-svg .rs-axis-lbl { fill: var(--muted); font-size: 11px; }
+.rs-timing-svg .rs-pt-perfect { fill: #34d399; }
+.rs-timing-svg .rs-pt-good { fill: #22d3ee; }
+.rs-timing-svg .rs-pt-miss { fill: #f87171; font-size: 14px; font-weight: 700; }
+.rs-timing-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 12px; }
+.rs-timing-legend .rs-lg { padding: 2px 8px; border-radius: 10px; background: var(--card2, rgba(255,255,255,.05)); color: var(--muted); }
+.rs-timing-legend .rs-lg.perfect { color: #34d399; }
+.rs-timing-legend .rs-lg.good { color: #22d3ee; }
+.rs-timing-legend .rs-lg.miss { color: #f87171; }
+.rs-timing-legend .rs-lg.extra { color: #fbbf24; }
+.rs-timing-legend .rs-lg.verdict { font-weight: 700; color: var(--text); }
 .scf-highway-wrap {
   position: relative; width: 100%; overflow: hidden; height: 196px;
   border-radius: 14px; background: linear-gradient(#0c1024, #161b34);
