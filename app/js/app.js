@@ -382,7 +382,16 @@ function renderSystem() {
     <div class="param-row"><label>混响类型 Reverb</label>
       <select id="sys-reverb"><option value="0">Room</option><option value="1">Lounge</option><option value="2">Small Hall</option><option value="3">Concert Hall</option><option value="4">Live Hall</option><option value="5">Cathedral</option></select></div>
     <div class="param-row"><label>键盘模式</label>
-      <select id="sys-mode"><option value="0">单键盘</option><option value="1">双层(Dual)</option><option value="2">分键(Split)</option><option value="3">四手</option></select></div>`;
+      <select id="sys-mode"><option value="0">单键盘</option><option value="1">双层(Dual)</option><option value="2">分键(Split)</option><option value="3">四手</option></select></div>
+    <p style="color:var(--muted);font-size:0.85em;margin-top:10px;line-height:1.6">
+      <b>键盘模式用法：</b><br>
+      • <b>单键盘</b>：全键盘弹 Main1 音色，正常演奏默认用此模式。<br>
+      • <b>双层(Dual)</b>：全键盘同时发两个音色叠加（Main1 + Layer）。<br>
+        先在「音色浏览器」选 <b>通道→Layer</b> 设好叠加音色，再切到此模式。<br>
+      • <b>分键(Split)</b>：键盘左半区用 Lower 音色，右半区用 Main1 音色。<br>
+        先在「音色浏览器」选 <b>通道→Lower</b> 设好左手音色，再切到此模式。<br>
+      • <b>四手</b>：键盘从中间分成两个独立半区，供两人并排演奏。
+    </p>`;
   const vol = $('#sys-vol');
   vol.oninput = () => vol.nextElementSibling.textContent = vol.value;
   vol.onchange = () => { send(CA99.buildVolume(+vol.value)); log(`音量=${vol.value}`, 'ok'); };
@@ -395,6 +404,11 @@ function renderRhythm() {
   const root = $('#module-rhythm');
   const items = Array.isArray(RHYTHM) ? RHYTHM : Object.values(RHYTHM);
   root.innerHTML = `<h2 style="margin-bottom:12px">鼓点节奏 (${items.length})</h2>
+    <p style="color:var(--muted);font-size:0.85em;margin-bottom:10px;line-height:1.6">
+      点击节奏型只是<b>切换节奏选择</b>，不会自动播放。<br>
+      <b>▶ 启动 / ■ 停止</b>：需要按 CA99 钢琴面板上的物理 START/STOP 按钮。<br>
+      演奏中切换节奏型会<b>立即生效</b>（无需停止再重启）。
+    </p>
     <div class="btn-grid" id="rhythm-grid"></div>`;
   const grid = $('#rhythm-grid');
   grid.innerHTML = items.slice(0, 100).map((r, i) => {
