@@ -280,7 +280,7 @@ function onMidiIn(bytes) {
     // 驱动音程构建
     if (ivbOnNote) ivbOnNote(m.note);
     // 驱动曲谱跟弹
-    if (scfOnNote) scfOnNote(m.note);
+    if (scfOnNote) scfOnNote(m.note, m.velocity);
     // 驱动乐句视奏
     if (spOnNote) spOnNote(m.note);
     // 驱动和弦视奏（按下集合）
@@ -7761,7 +7761,7 @@ function renderScoreFollow() {
 
   const scfKb = new PianoKeyboard($('#scf-kb'), {
     labels: 'c',
-    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (scfOnNote) scfOnNote(m); },
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (scfOnNote) scfOnNote(m, 96); },
   });
 
   function allSongs() { return [...SCF_SONGS, ...customSongs]; }
@@ -7877,42 +7877,57 @@ function renderScoreFollow() {
     }
     return fxLayer;
   }
-  // ✨ 在判定线对应琴键的位置迸发一束彩色火花
-  function burstAt(midi, color, big) {
+  // 力度→热力配色：轻=冷蓝，重=橙红（把 MIDI velocity 直接画成火花颜色）
+  function heatColor(vel) {
+    const v = Math.max(0, Math.min(1, (vel == null ? 90 : vel) / 127));
+    const h = (200 - v * 210 + 360) % 360;          // 200°蓝 → 350°红
+    const l = 55 + v * 12;                            // 越重越亮
+    return `hsl(${h.toFixed(0)},95%,${l.toFixed(0)}%)`;
+  }
+  // ✨ 在判定线对应琴键的位置迸发一束彩色火花（数量/大小/范围随力度 velocity 变化）
+  function burstAt(midi, color, big, vel = 90) {
     if (!fxOn) return;
     const layer = fxHost(); if (!layer) return;
     const cx = centerX.get(midi);
     const x = cx != null ? cx : (layout ? layout.width / 2 : 0);
-    const n = big ? 18 : 11;
+    const v = Math.max(0, Math.min(1, vel / 127));
+    let n = Math.round(6 + v * 14);                  // 力度→火花数：6~20
+    let spread = 22 + v * 34;                          // 力度→飞散范围
+    let sz = 5 + v * 5;                                // 力度→火花大小：5~10px
+    if (big) { n = Math.round(n * 1.7); spread += 18; sz += 2; } // 连击里程碑：更炸裂
     for (let k = 0; k < n; k++) {
       const p = document.createElement('i');
       const ang = (Math.PI * 2 * k) / n + Math.random() * 0.5;
-      const dist = (big ? 46 : 30) + Math.random() * (big ? 36 : 22);
+      const dist = spread + Math.random() * spread * 0.7;
       const dx = Math.cos(ang) * dist;
-      const dy = Math.sin(ang) * dist - (big ? 20 : 12); // 略向上飞
+      const dy = Math.sin(ang) * dist - (big ? 22 : 14); // 略向上飞
       const dur = 0.42 + Math.random() * 0.3;
+      const s = (sz * (0.7 + Math.random() * 0.6)).toFixed(1);
       p.className = 'scf-spark';
-      p.style.cssText = `left:${x}px;background:${color};--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;animation-duration:${dur}s`;
+      p.style.cssText = `left:${x}px;width:${s}px;height:${s}px;margin-left:${(-s / 2).toFixed(1)}px;background:${color};--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;animation-duration:${dur}s`;
       layer.appendChild(p);
       setTimeout(() => p.remove(), dur * 1000 + 80);
     }
   }
-  // ✨ 判定线随命中颜色短暂发光
+  // ✨ 判定线随命中颜色短暂发光（发光强度随力度变化）
   let hitlineEl = null;
-  function pulseHitline(color) {
+  function pulseHitline(color, vel = 90) {
     if (!fxOn) return;
     hitlineEl = hitlineEl || root.querySelector('.scf-hitline');
     if (!hitlineEl) return;
+    const v = Math.max(0, Math.min(1, vel / 127));
     hitlineEl.style.setProperty('--hit', color);
+    hitlineEl.style.setProperty('--hitblur', `${(10 + v * 22).toFixed(0)}px`);
     hitlineEl.classList.remove('hit'); void hitlineEl.offsetWidth; hitlineEl.classList.add('hit');
   }
-  // ✨ 命中反馈合集：火花 + 判定线发光 +（每 5 连）里程碑飘字
-  function hitFx(midi, grade) {
+  // ✨ 命中反馈合集：火花(力度热力配色) + 判定线发光 +（每 5 连）里程碑飘字
+  function hitFx(midi, grade, vel = 90) {
     if (!fxOn || grade === 'miss') return;
-    const col = grade === 'good' ? '#22d3ee' : '#34d399';
+    const lineCol = grade === 'good' ? '#22d3ee' : '#34d399'; // 判定线＝准度色
+    const sparkCol = heatColor(vel);                          // 火花＝力度热力色
     const milestone = sf && sf.combo >= 5 && sf.combo % 5 === 0;
-    burstAt(midi, col, milestone);
-    pulseHitline(col);
+    burstAt(midi, sparkCol, milestone, vel);
+    pulseHitline(lineCol, vel);
     if (milestone) {
       const host = root.querySelector('.scf-highway-wrap'); if (!host) return;
       const f = document.createElement('div');
@@ -8361,16 +8376,16 @@ function renderScoreFollow() {
   }
 
   // 跟弹判分模式的击键处理
-  function practiceOnNote(midi) {
+  function practiceOnNote(midi, vel = 90) {
     if (!sf || mode !== 'practice') return;
     const t = performance.now() - t0;
     const r = sf.judge(midi, t);
-    if (r.grade) { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); hitFx(midi, r.grade); }
+    if (r.grade) { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); hitFx(midi, r.grade, vel); }
     refreshStats();
   }
 
   // 等待模式的击键处理：只接受当前组里还没弹的音，弹齐整组才前进
-  function waitOnNote(midi) {
+  function waitOnNote(midi, vel = 90) {
     if (!sf || mode !== 'wait' || !frozen) return;
     const g = groups[waitIdx];
     if (!g) return;
@@ -8379,7 +8394,7 @@ function renderScoreFollow() {
       sf.judge(midi, g.ms);   // t 冻结在该组时刻 → 判 PERFECT
       scfKb.flash(midi, '#34d399');
       popGrade('perfect');
-      hitFx(midi, 'perfect');
+      hitFx(midi, 'perfect', vel);
       refreshStats();
       if (g.notes.every((x) => x.judged)) { waitIdx++; frozen = false; }
     } else {

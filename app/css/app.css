@@ -591,7 +591,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 }
 .scf-hitline.hit {
   background: linear-gradient(90deg, transparent, var(--hit, #fbbf24), transparent);
-  box-shadow: 0 0 18px 5px var(--hit, #fbbf24);
+  box-shadow: 0 0 var(--hitblur, 18px) 5px var(--hit, #fbbf24);
   animation: scfHitline .42s ease-out;
 }
 @keyframes scfHitline {
