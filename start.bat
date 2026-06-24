@@ -1,8 +1,6 @@
 @echo off
 setlocal
 
-:: CA99 Control — one-click launch: MIDI bridge + web server + Chrome
-:: Requires: pip install -r bridge\requirements-bridge.txt
 set BRIDGE_PORT=8765
 set APP_PORT=8099
 set APP_URL=http://127.0.0.1:%APP_PORT%/?bridge=ws://127.0.0.1:%BRIDGE_PORT%
@@ -26,7 +24,7 @@ for /f "tokens=5" %%p in ('netstat -ano 2^>nul ^| findstr ":%APP_PORT% " ^| find
 echo [2/4] Starting MIDI bridge (ws://127.0.0.1:%BRIDGE_PORT%)...
 start "CA99 MIDI Bridge" cmd /k "cd /d "%~dp0bridge" && "%PYTHON%" ca99_midi_bridge.py --host 127.0.0.1 --port %BRIDGE_PORT%"
 
-echo [3/4] Waiting for bridge...
+echo [3/4] Waiting for bridge to be ready...
 set /a tries=0
 :wait_bridge
 timeout /t 1 /nobreak >nul
@@ -34,7 +32,7 @@ set /a tries+=1
 netstat -ano | findstr ":%BRIDGE_PORT% " | findstr LISTENING >nul 2>&1
 if not errorlevel 1 goto bridge_ready
 if %tries% lss 8 goto wait_bridge
-echo [WARNING] Bridge not ready after 8s. Check:
+echo [WARNING] Bridge not ready after 8s. Run:
 echo   %PYTHON% -m pip install -r bridge\requirements-bridge.txt
 echo.
 :bridge_ready
@@ -44,12 +42,11 @@ start "CA99 Web Server" cmd /k "cd /d "%~dp0app" && "%PYTHON%" -m http.server %A
 timeout /t 2 /nobreak >nul
 
 echo.
-echo Opening Chrome: %APP_URL%
+echo Opening: %APP_URL%
 echo.
 start "" "%APP_URL%"
 
-echo Both background windows started.
-echo Close "CA99 MIDI Bridge" and "CA99 Web Server" windows to stop.
+echo Done. Close CA99 MIDI Bridge and CA99 Web Server windows to stop.
 echo.
 pause
 endlocal
