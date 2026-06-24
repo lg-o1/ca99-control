@@ -27,6 +27,7 @@ import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.j
 import { Accompaniment, PATTERNS as ACCOMP_PATTERNS, getPattern as accompGetPattern } from './accompaniment.js';
 import { analyzeChord, COLOR_KEYS as CCOLOR_KEYS, tonicTriadPcs as ccolorTonicTriad } from './chord-color.js';
 import { heatColor as lsHeatColor, pickColor as lsPickColor, sparkSpec as lsSparkSpec, beamHeight as lsBeamHeight, stageFrac as lsStageFrac, isMilestone as lsIsMilestone, THEMES as LS_THEMES, ComboCounter as LsCombo } from './light-show.js';
+import { ECHO_LEVELS as ME_LEVELS, levelById as meLevelById, MelodyEcho } from './melody-echo.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -114,6 +115,7 @@ let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，�
 let chordColorOnNotesChanged = null; // 和弦色彩板的"按下集合变化"回调（模块58注册）
 let lightShowOnNote = null;  // 自由演奏灯光秀的 note-on 回调（模块59注册，带力度）
 let lightShowOffNote = null; // 自由演奏灯光秀的 note-off 回调（模块59注册）
+let melEchoOnNote = null;    // 旋律回声记忆游戏的 note-on 回调（模块60注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -296,6 +298,8 @@ function onMidiIn(bytes) {
     if (chordColorOnNotesChanged) chordColorOnNotesChanged(heldNotes.notes);
     // 驱动自由演奏灯光秀（带力度）
     if (lightShowOnNote) lightShowOnNote(m.note, m.velocity);
+    // 驱动旋律回声记忆游戏
+    if (melEchoOnNote) melEchoOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -10035,6 +10039,207 @@ function renderLightShow() {
   lightShowOffNote = (midi) => kb.release(midi);
 }
 
+// ---------- 模块60：🔁 旋律回声（Simon 式记忆游戏） ----------
+function renderMelodyEcho() {
+  const root = $('#module-melecho');
+  let levelId = ME_LEVELS[0].id;   // 当前难度
+  let ignoreOctave = true;         // 忽略八度（任意八度复奏都算对）
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🔁 旋律回声</h2>
+    <p style="color:var(--muted);margin-bottom:14px">经典 <b>Simon 记忆游戏</b>：钢琴会<b>亮键 + 发声</b>播放一小段旋律，你照着<b>原样弹回来</b>。每复奏成功一次，序列就在末尾<b>多长一个音</b>——越来越长，同时练<b>耳朵 + 记忆 + 键盘地理</b>。零基础也能玩；接上 CA99 直接弹真琴，没连琴点下面的琴键也行。看你能记到多长！</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>难度（音池）</label>
+        <div id="me-levels" class="ear-chips">${ME_LEVELS.map(l => `<button class="ear-chip${l.id === levelId ? ' on' : ''}" data-l="${l.id}">${l.name}</button>`).join('')}</div>
+      </div>
+      <div class="param-row" style="gap:18px;flex-wrap:wrap">
+        <label class="ls-check"><input type="checkbox" id="me-octave" checked> 🎚️ 忽略八度（任意八度都算对，更友好）</label>
+        <label>速度
+          <input id="me-tempo" type="range" min="60" max="160" value="100" class="trans-slider" style="max-width:180px;vertical-align:middle">
+          <span id="me-tempo-val" style="color:#667eea;font-weight:700">100/分</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="me-banner" class="me-banner">点 <b>▶ 开始</b>，听一段旋律再照着弹回来 🎧</div>
+      <div id="me-track" class="me-track"></div>
+      <div id="me-kb" class="me-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="me-len" class="sight-stat-num">0</div><div class="sight-stat-lbl">当前长度</div></div>
+      <div class="sight-stat"><div id="me-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳长度</div></div>
+      <div class="sight-stat"><div id="me-rounds" class="sight-stat-num">0</div><div class="sight-stat-lbl">完成轮数</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="me-start" class="big-btn">▶ 开始</button>
+      <button id="me-replay" class="big-btn" style="background:#667eea" disabled>🔊 再听一遍</button>
+      <button id="me-giveup" class="big-btn" style="background:var(--panel2)" disabled>👀 放弃看答案</button>
+    </div>`;
+
+  let game = null, kb = null, ac = null, playTimers = [];
+  const bannerEl = $('#me-banner');
+  const trackEl = $('#me-track');
+  const lenEl = $('#me-len'), bestEl = $('#me-best'), roundsEl = $('#me-rounds');
+  const replayBtn = $('#me-replay'), giveupBtn = $('#me-giveup'), startBtn = $('#me-start');
+
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function tone(midi, when, dur) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.26, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function noteDur() { return 60 / (+$('#me-tempo').value); }
+  function clearTimers() { playTimers.forEach(clearTimeout); playTimers = []; }
+  function band(cls, html) { bannerEl.className = 'me-banner' + (cls ? ' ' + cls : ''); bannerEl.innerHTML = html; }
+
+  function ensureKb() {
+    if (kb) return;
+    kb = new PianoKeyboard($('#me-kb'), {
+      labels: 'c',
+      onNoteOn: (m) => { try { playTone(midiToFreq(m), 0, 0.5, 0.2); } catch (_) { /* ignore */ } feed(m); },
+    });
+    const lo = Math.min(...meLevelById(levelId).pool), hi = Math.max(...meLevelById(levelId).pool);
+    if (kb.scrollToShow) kb.scrollToShow(lo - 2, hi + 2);
+  }
+
+  // 画进度点：showing 时全部遮挡为「?」，input 时已对的填绿、当前点高亮
+  function paintTrack(reveal) {
+    if (!game || !game.seq.length) { trackEl.innerHTML = ''; return; }
+    trackEl.innerHTML = game.seq.map((n, i) => {
+      let cls = 'me-dot';
+      const showing = game.state === 'showing';
+      if (!showing && !reveal) {
+        if (i < game.pos) cls += ' filled';
+        else if (i === game.pos) cls += ' current';
+      } else if (reveal) {
+        cls += ' filled';
+      } else {
+        cls += ' masked';
+      }
+      const label = (reveal || (game.state === 'input' && i < game.pos)) ? CA99.noteName(n) : (showing ? '♪' : '?');
+      return `<div class="${cls}" data-i="${i}">${label}</div>`;
+    }).join('');
+  }
+
+  function updateStats() {
+    lenEl.textContent = game ? game.seq.length : 0;
+    bestEl.textContent = game ? game.best : 0;
+    roundsEl.textContent = game ? game.rounds : 0;
+  }
+
+  // 播放当前序列（亮键 + 发声），结束后交给玩家
+  function playSequence() {
+    if (!game || !game.seq.length) return;
+    clearTimers();
+    game.state = 'showing';
+    replayBtn.disabled = true; giveupBtn.disabled = true;
+    band('show', `👀 看好这 <b>${game.seq.length}</b> 个音…`);
+    paintTrack(false);
+    const d = noteDur(); const c = ctx(); const start = c.currentTime + 0.18;
+    game.seq.forEach((n, i) => {
+      tone(n, start + i * d, d * 0.85);
+      playTimers.push(setTimeout(() => {
+        if (kb) kb.flash(n, '#22d3ee');
+        const dot = trackEl.querySelector(`.me-dot[data-i="${i}"]`);
+        if (dot) { dot.classList.add('beat'); setTimeout(() => dot.classList.remove('beat'), 260); }
+      }, 180 + i * d * 1000));
+    });
+    playTimers.push(setTimeout(() => {
+      if (!game) return;
+      game.ready();
+      band('input', '🎹 轮到你！照着<b>原样弹回来</b>');
+      paintTrack(false);
+      replayBtn.disabled = false; giveupBtn.disabled = false;
+    }, 180 + game.seq.length * d * 1000 + 160));
+  }
+
+  function feed(note) {
+    if (!game || game.state !== 'input') return;
+    const r = game.play(note);
+    if (!r) return;
+    if (r.ok) {
+      if (kb) kb.flash(note, '#34d399');
+      paintTrack(false);
+      if (r.done) {
+        updateStats();
+        band('win', `✅ 太棒了！记住了 <b>${r.length}</b> 个音 — 准备下一个…`);
+        replayBtn.disabled = true; giveupBtn.disabled = true;
+        playTimers.push(setTimeout(() => {
+          if (!game) return;
+          game.grow();
+          updateStats();
+          playSequence();
+        }, 950));
+      }
+    } else {
+      if (kb) { kb.flash(note, '#f43f5e'); kb.flash(r.expected, '#fbbf24'); }
+      band('fail', `❌ 第 <b>${r.reached + 1}</b> 个弹错了！应该是 <b>${CA99.noteName(r.expected)}</b>，你弹了 ${CA99.noteName(note)}。记到了长度 <b>${r.length}</b> ✨`);
+      recordPractice('melecho', '🔁 旋律回声', game.rounds + 1, game.rounds, game.best);
+      paintTrack(true);
+      if (kb) kb.highlightMany(game.seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
+      replayBtn.disabled = true; giveupBtn.disabled = false;
+      giveupBtn.textContent = '🔁 再来一局';
+      game.state = 'fail';
+    }
+  }
+
+  function beginRun() {
+    ensureKb();
+    if (!game) game = new MelodyEcho({ pool: meLevelById(levelId).pool, startLen: meLevelById(levelId).startLen, ignoreOctave });
+    game.pool = meLevelById(levelId).pool;
+    game.startLen = meLevelById(levelId).startLen;
+    game.ignoreOctave = ignoreOctave;
+    if (kb) kb.clear();
+    game.start();
+    if (typeof window !== 'undefined') window.__meGame = game;  // 调试钩子：便于排查序列/状态
+    updateStats();
+    startBtn.textContent = '🔄 重新开始';
+    giveupBtn.textContent = '👀 放弃看答案';
+    playSequence();
+  }
+
+  $('#me-levels').querySelectorAll('button').forEach(b => b.onclick = () => {
+    levelId = b.dataset.l;
+    $('#me-levels').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (kb) { const lo = Math.min(...meLevelById(levelId).pool), hi = Math.max(...meLevelById(levelId).pool); if (kb.scrollToShow) kb.scrollToShow(lo - 2, hi + 2); }
+  });
+  $('#me-octave').onchange = (e) => { ignoreOctave = e.target.checked; };
+  $('#me-tempo').oninput = (e) => { $('#me-tempo-val').textContent = e.target.value + '/分'; };
+
+  startBtn.onclick = beginRun;
+  replayBtn.onclick = () => {
+    if (!game || !game.seq.length) return;
+    game.pos = 0;
+    playSequence();
+  };
+  giveupBtn.onclick = () => {
+    if (!game) return;
+    if (game.state === 'fail') { beginRun(); return; }   // 已结束 → 再来一局
+    clearTimers();
+    band('fail', `👀 答案揭晓（长度 ${game.seq.length}）：跟着键上的数字弹一遍记住它`);
+    recordPractice('melecho', '🔁 旋律回声', game.rounds + 1, game.rounds, game.best);
+    paintTrack(true);
+    if (kb) kb.highlightMany(game.seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
+    game.state = 'fail';
+    replayBtn.disabled = true;
+    giveupBtn.textContent = '🔁 再来一局';
+  };
+
+  // 真实 MIDI 驱动（钢琴自己发声，这里只判定）
+  melEchoOnNote = (midi) => feed(midi);
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -10175,7 +10380,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
