@@ -52,6 +52,7 @@ import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, ro
 import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
 import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi } from './score-follow.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
+import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
@@ -6237,6 +6238,202 @@ function renderCadence() {
   };
 }
 
+// ========== 模块 50: 键盘音名认知（note ID）==========
+function renderNoteId() {
+  const root = $('#module-noteid');
+  let game = null;
+  let mode = 'name2key';   // name2key | key2name
+  let whiteOnly = false;
+  let useOctave = true;
+  let range = { min: 48, max: 72 }; // C3..C5
+
+  const RANGES = [
+    { id: 'c3c5', name: '中音区 C3–C5', min: 48, max: 72 },
+    { id: 'c2c6', name: '宽 C2–C6', min: 36, max: 84 },
+    { id: 'full', name: '全 88 键 A0–C8', min: 21, max: 108 },
+  ];
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🔤 键盘音名认知</h2>
+    <p style="color:var(--muted);margin-bottom:14px">最基础的认键基本功：把<b>音名</b>（C4=中央 C、F#3…）和 88 键上的<b>实际键位</b>对应起来。看懂任何练习答案的前提就是知道"哪个键是哪个音"。两种练法：<b>看音名找键</b>（屏幕给音名 → 你在键盘上点对应的键）、<b>看键认音名</b>（键盘点亮一个键 → 你从选项里选出它叫什么）。新手建议先开"只白键 + 中音区 + 看音名找键"。无需连琴，成绩入仪表盘。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>练习方式</label>
+        <select id="ni-mode">
+          <option value="name2key">看音名找键（点键盘）</option>
+          <option value="key2name">看键认音名（选答案）</option>
+        </select></div>
+      <div class="param-row"><label>音域范围</label>
+        <select id="ni-range">
+          ${RANGES.map((r) => `<option value="${r.id}">${r.name}</option>`).join('')}
+        </select></div>
+      <div class="param-row"><label>只考白键</label>
+        <div class="ear-chips" id="ni-white-chips">
+          <button class="ear-chip on" data-w="0">含黑键</button>
+          <button class="ear-chip" data-w="1">只白键</button>
+        </div></div>
+      <div class="param-row"><label>音名带八度</label>
+        <div class="ear-chips" id="ni-oct-chips">
+          <button class="ear-chip on" data-o="1">带八度 (C4)</button>
+          <button class="ear-chip" data-o="0">只音名 (C)</button>
+        </div></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="ni-prompt" class="ni-bigname">—</div>
+      <div id="ni-feedback" class="sight-feedback">选好设置，按"开始"出题</div>
+    </div>
+
+    <div class="ear-answers" id="ni-answers"></div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap" id="ni-kbcap">🎹 在键盘上点出目标音</div>
+      <div id="ni-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="ni-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ni-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ni-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="ni-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="ni-start" class="big-btn">▶ 开始练习</button>
+      <span id="ni-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  $('#ni-mode').onchange = () => { if (!game) mode = $('#ni-mode').value; };
+  $('#ni-range').onchange = () => {
+    if (game) return;
+    const r = RANGES.find((x) => x.id === $('#ni-range').value);
+    if (r) { range = { min: r.min, max: r.max }; niKb.scrollToShow(r.min, Math.min(r.max, r.min + 24)); }
+  };
+  function bindChipGroup(sel, attr, setter) {
+    const wrap = $(sel);
+    wrap.querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        wrap.querySelectorAll('.ear-chip').forEach((x) => x.classList.remove('on'));
+        b.classList.add('on');
+        setter(b.dataset[attr]);
+      };
+    });
+  }
+  bindChipGroup('#ni-white-chips', 'w', (v) => { whiteOnly = v === '1'; });
+  bindChipGroup('#ni-oct-chips', 'o', (v) => { useOctave = v === '1'; });
+  const niKb = new PianoKeyboard($('#ni-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => {
+      // 试听
+      playTone(midiToFreq(m), 0, 0.6);
+      // name2key 模式下点击即作答
+      if (game && game.current && mode === 'name2key' && !answering) answerKey(m);
+    },
+  });
+  niKb.scrollToShow(48, 72);
+
+  function refreshStats() {
+    $('#ni-score').textContent = game.score;
+    $('#ni-streak').textContent = game.streak;
+    $('#ni-best').textContent = game.best;
+    $('#ni-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  let answering = false;
+
+  function answerKey(m) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correct = game.check(m);
+    refreshStats();
+    const tgt = game.current.midi;
+    const fb = $('#ni-feedback');
+    // 画出正确键（绿），若点错也标出点错的键（红）
+    const items = [{ midi: tgt, color: '#34d399', text: game.current.name }];
+    if (!correct && m !== tgt) items.push({ midi: m, color: '#f87171', text: '✗' });
+    niKb.highlightMany(items);
+    if (correct) { fb.textContent = `✅ 对了！这就是 ${game.current.name} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，${game.current.name} 在这里（绿色）`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1600);
+  }
+
+  function answerName(name, btn) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctName = game.current.name;
+    const correct = game.check(name);
+    refreshStats();
+    $('#ni-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      if (b.dataset.n === correctName) b.classList.add('correct');
+      else if (b.dataset.n === name) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    // 点亮被考的键
+    niKb.highlightMany([{ midi: game.current.midi, color: '#34d399', text: correctName }]);
+    const fb = $('#ni-feedback');
+    if (correct) { fb.textContent = `✅ 对了！连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${correctName}`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1600);
+  }
+
+  function drawAnswers() {
+    const wrap = $('#ni-answers');
+    if (mode !== 'key2name') { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = game.choices().map((c) =>
+      `<button class="ear-ans" data-n="${c.name}">${c.name}</button>`).join('');
+    wrap.querySelectorAll('.ear-ans').forEach((b) => { b.onclick = () => answerName(b.dataset.n, b); });
+  }
+
+  function nextQuestion() {
+    answering = false;
+    game.next();
+    niKb.clear();
+    const q = game.current;
+    if (mode === 'name2key') {
+      // 把目标音名显示出来，键盘上不预先点亮（让用户找）
+      $('#ni-prompt').textContent = q.name;
+      $('#ni-prompt').style.display = '';
+      $('#ni-kbcap').textContent = '🎹 在键盘上点出目标音' + (useOctave ? '' : '（任意八度的同名键都行）');
+      $('#ni-feedback').textContent = '🔍 这个音在键盘的哪里？点出来';
+    } else {
+      // key2name：点亮被考的键（不显示名字），用户选答案
+      $('#ni-prompt').textContent = '❓';
+      $('#ni-prompt').style.display = '';
+      niKb.highlightMany([{ midi: q.midi, color: '#a78bfa', text: '?' }]);
+      $('#ni-kbcap').textContent = '🎹 这个亮起来的键叫什么？';
+      $('#ni-feedback').textContent = '👇 从下面选出它的音名';
+    }
+    $('#ni-feedback').className = 'sight-feedback';
+    drawAnswers();
+  }
+
+  $('#ni-start').onclick = () => {
+    if (game) {
+      recordPractice('noteid', '键盘音名认知', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#ni-start').textContent = '▶ 开始练习';
+      $('#ni-start').classList.remove('running');
+      $('#ni-status').textContent = '已停止';
+      $('#ni-answers').innerHTML = '';
+      $('#ni-prompt').textContent = '—';
+      niKb.clear();
+      $('#ni-feedback').textContent = '选好设置，按"开始"出题';
+      $('#ni-feedback').className = 'sight-feedback';
+      ['ni-mode', 'ni-range'].forEach((id) => { const e = document.getElementById(id); if (e) e.disabled = false; });
+      return;
+    }
+    game = new NoteIdGame({ mode, midiMin: range.min, midiMax: range.max, whiteOnly, useOctave, choiceCount: 4 });
+    niKb.scrollToShow(range.min, Math.min(range.max, range.min + 24));
+    $('#ni-start').textContent = '⏸ 停止练习';
+    $('#ni-start').classList.add('running');
+    $('#ni-status').textContent = '进行中…';
+    ['ni-mode', 'ni-range'].forEach((id) => { const e = document.getElementById(id); if (e) e.disabled = true; });
+    refreshStats();
+    nextQuestion();
+  };
+}
+
 // ========== 模块 46: 唱名/音级听辨（solfège）==========
 function renderSolfege() {
   const root = $('#module-solfege');
@@ -7483,7 +7680,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

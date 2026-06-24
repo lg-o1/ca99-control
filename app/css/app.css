@@ -295,6 +295,14 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 
 /* ---- 视奏闪卡 ---- */
 .sight-stage { display: flex; flex-direction: column; align-items: center; gap: 14px; margin: 18px 0; }
+.ni-bigname {
+  font-size: 56px; font-weight: 900; letter-spacing: 2px; line-height: 1;
+  padding: 14px 28px; border-radius: 18px; min-width: 120px; text-align: center;
+  background: linear-gradient(135deg, rgba(102,126,234,.18), rgba(167,139,250,.18));
+  border: 2px solid var(--line); color: var(--text);
+  text-shadow: 0 2px 14px rgba(102,126,234,.4);
+  font-variant-numeric: tabular-nums;
+}
 .sight-staff-wrap {
   width: 100%; max-width: 420px; border-radius: 16px; padding: 8px;
   background: var(--panel2); border: 2px solid var(--line);
