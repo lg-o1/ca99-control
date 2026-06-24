@@ -39,6 +39,7 @@ import { PolyrhythmTrainer, POLY_RATIOS, combinedGrid } from './polyrhythm.js';
 import { EvennessTrainer } from './evenness.js';
 import { FingerIndependenceTrainer, FINGER_PRESETS } from './finger-independence.js';
 import { ScaleSpanTrainer, SCALE_TYPES as SPAN_SCALE_TYPES, SPAN_OCTAVES, SPAN_DIRECTIONS } from './scale-span.js';
+import { RhythmDictationTrainer, DICTATION_LEVELS, patternToOnsets as dictOnsets } from './rhythm-dictation.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -78,6 +79,7 @@ let evenOnNote = null;      // 颗粒性的 note-on 回调（模块36注册，�
 let fingerOnNote = null;    // 手指独立性的 note-on 回调（模块37注册）
 let fingerOffNote = null;   // 手指独立性的 note-off 回调（模块37注册）
 let spanOnNote = null;      // 音阶八度跨度的 note-on 回调（模块38注册，带时间）
+let dictOnNote = null;      // 节奏听写的 note-on 回调（模块39注册，带时间）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -238,6 +240,8 @@ function onMidiIn(bytes) {
     if (fingerOnNote) fingerOnNote(m.note, performance.now());
     // 驱动音阶八度跨度（带时间）
     if (spanOnNote) spanOnNote(m.note, performance.now());
+    // 驱动节奏听写（带时间）
+    if (dictOnNote) dictOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -4654,6 +4658,185 @@ function renderScaleSpan() {
   drawKeys();
 }
 
+function renderRhythmDictation() {
+  const root = $('#module-dict');
+  const TEMPOS = [{ name: '慢', bpm: 70 }, { name: '中', bpm: 95 }, { name: '快', bpm: 120 }];
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">👂 节奏听写</h2>
+    <p style="color:var(--muted);margin-bottom:14px">练<b>耳朵</b>：先<b>听</b>一段节奏（屏幕<b>不显示</b>长短），再在<b>任意一个键</b>上把它<b>敲回来</b>。评分<b>与速度无关</b>——只看你敲出的<b>长短比例</b>对不对（如 短短长 vs 长短短），所以你敲快敲慢都行。综合分 = 节奏比例准确度 × 敲击个数匹配度。和"节奏跟拍"（看着谱跟节拍器）不同，这里全凭听。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>难度</label>
+        <select id="rd-level">${DICTATION_LEVELS.map((l, i) => `<option value="${i}" ${i === 0 ? 'selected' : ''}>${l.name} · ${l.desc}</option>`).join('')}</select></div>
+      <div class="param-row"><label>播放速度</label>
+        <select id="rd-tempo">${TEMPOS.map((t, i) => `<option value="${t.bpm}" ${i === 1 ? 'selected' : ''}>${t.name}（${t.bpm} BPM）</option>`).join('')}</select></div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div class="rd-pulse" id="rd-pulse">●</div>
+      <div id="rd-taps" class="rd-taps"></div>
+      <div id="rd-bars" class="rd-bars" style="margin-top:12px"></div>
+      <div id="rd-feedback" class="sight-feedback" style="margin-top:14px">点"👂 听一遍"，听完后在任意键上把节奏敲回来</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="rd-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="rd-rhythm" class="sight-stat-num">—</div><div class="sight-stat-lbl">节奏准确</div></div>
+      <div class="sight-stat"><div id="rd-count" class="sight-stat-num">—</div><div class="sight-stat-lbl">个数</div></div>
+      <div class="sight-stat"><div id="rd-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="rd-listen" class="big-btn">👂 听一遍</button>
+      <button id="rd-replay" class="big-btn" style="background:#475569" disabled>🔁 再听</button>
+      <button id="rd-done" class="big-btn" style="background:#475569" disabled>✓ 结束打分</button>
+      <button id="rd-new" class="big-btn" style="background:#667eea">🎲 换一条</button>
+      <button id="rd-sim" class="big-btn" style="background:#667eea">🎲 模拟一遍</button>
+      <span id="rd-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let trainer = null;
+  let phase = 'idle';   // idle | playing | tapping | done
+  let timers = [];
+
+  function newTrainer() {
+    const li = +$('#rd-level').value;
+    trainer = new RhythmDictationTrainer({ level: DICTATION_LEVELS[li], bpm: +$('#rd-tempo').value });
+  }
+
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+
+  function resetTapDots() {
+    const wrap = $('#rd-taps'); wrap.innerHTML = '';
+    for (let i = 0; i < trainer.expectedTaps; i++) {
+      const d = document.createElement('span');
+      d.className = 'rd-dot'; wrap.appendChild(d);
+    }
+  }
+
+  function fillTap(i) {
+    const dots = document.querySelectorAll('#rd-taps .rd-dot');
+    if (dots[i]) dots[i].classList.add('on');
+  }
+
+  function pulse() {
+    const p = $('#rd-pulse');
+    p.classList.add('beat');
+    setTimeout(() => p.classList.remove('beat'), 110);
+  }
+
+  function playPattern(then) {
+    clearTimers();
+    phase = 'playing';
+    $('#rd-status').textContent = '播放中…';
+    $('#rd-bars').innerHTML = '';
+    resetTapDots();
+    const onsets = trainer.onsets(0);
+    onsets.forEach((t, i) => {
+      timers.push(setTimeout(() => { clickSound(i === 0); pulse(); }, t));
+    });
+    const endAt = onsets[onsets.length - 1] + 350;
+    timers.push(setTimeout(() => { if (then) then(); }, endAt));
+  }
+
+  function startTapping() {
+    phase = 'tapping';
+    dictOnNote = (note, time) => { if (phase === 'tapping') onTap(time); };
+    $('#rd-status').textContent = `轮到你：敲回来（0/${trainer.expectedTaps}）`;
+    $('#rd-replay').disabled = false;
+    $('#rd-done').disabled = false;
+    const fb = $('#rd-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = '在任意键上把刚听到的节奏敲出来——长短比例对就行，速度随你';
+  }
+
+  function onTap(time) {
+    const res = trainer.feed(0, time);
+    pulse();
+    const done = res && res.done;
+    const n = trainer.taps.length;
+    fillTap(n - 1);
+    $('#rd-status').textContent = `轮到你：敲回来（${n}/${trainer.expectedTaps}）`;
+    if (done) finishRound(res);
+  }
+
+  function bar(iois, scoreArr, scale = 1, label = '') {
+    const max = Math.max(...iois.map((v) => v * scale), 1);
+    const cells = iois.map((v, i) => {
+      const w = Math.max(8, Math.round((v * scale) / max * 120));
+      const cls = scoreArr ? (scoreArr[i] >= 0.5 ? 'rd-good' : 'rd-off') : 'rd-tgt';
+      return `<span class="rd-seg ${cls}" style="width:${w}px"></span>`;
+    }).join('');
+    return `<div class="rd-barrow"><span class="rd-barlbl">${label}</span>${cells}</div>`;
+  }
+
+  function finishRound(r) {
+    phase = 'done';
+    dictOnNote = null;
+    clearTimers();
+    $('#rd-replay').disabled = true;
+    $('#rd-done').disabled = true;
+    $('#rd-score').textContent = r.score;
+    $('#rd-rhythm').textContent = Math.round(r.rhythmAccuracy * 100) + '%';
+    $('#rd-count').textContent = `${r.taps}/${r.expected}`;
+    $('#rd-best').textContent = trainer.best;
+    recordPractice('dict', '节奏听写', r.total, r.correct, r.score);
+    // 对比条：上=目标，下=你的（缩放对齐）
+    const scoreArr = r.perInterval.map((p) => p.score);
+    const userScaled = r.perInterval.map((p) => p.scaledUser);
+    let bars = bar(trainer.targetIois, null, 1, '目标');
+    if (userScaled.length) bars += bar(userScaled, scoreArr, 1, '你的');
+    $('#rd-bars').innerHTML = bars;
+    const fb = $('#rd-feedback');
+    fb.className = 'sight-feedback ok';
+    let tip;
+    if (r.extra > 0) tip = `多敲了 ${r.extra} 下`;
+    else if (r.extra < 0) tip = `少敲了 ${-r.extra} 下`;
+    else if (r.rhythmAccuracy >= 0.85) tip = '长短关系抓得很准！';
+    else tip = '注意长音和短音的比例';
+    fb.textContent = `综合 ${r.score} 分 · 节奏准确 ${Math.round(r.rhythmAccuracy * 100)}% · 对 ${r.correct}/${r.total} 个间隔 —— ${tip}`;
+    $('#rd-status').textContent = '完成（换一条再来）';
+  }
+
+  function listen() {
+    if (phase === 'playing') return;
+    newTrainer();
+    $('#rd-score').textContent = '—'; $('#rd-rhythm').textContent = '—'; $('#rd-count').textContent = '—';
+    playPattern(startTapping);
+  }
+
+  function replay() {
+    if (phase !== 'tapping') return;
+    // 重听不清空已敲（其实清空重来更直观）：重置本条采集
+    const li = +$('#rd-level').value;
+    const saved = { durations: trainer.durations, targetIois: trainer.targetIois };
+    trainer.taps = []; trainer.finished = false; trainer.lastResult = null;
+    playPattern(startTapping);
+  }
+
+  function simulate() {
+    if (phase === 'playing') return;
+    newTrainer();
+    resetTapDots();
+    // 模拟近乎完美的敲回：按目标比例 + 少量噪声，随机偶尔多/少一下
+    const base = 260;
+    let t = 1000; const times = [t];
+    trainer.targetIois.forEach((u) => { t += u * base + (Math.random() - 0.5) * base * 0.18; times.push(t); });
+    phase = 'tapping';
+    times.forEach((tm) => { onTap(tm); });
+  }
+
+  $('#rd-listen').onclick = listen;
+  $('#rd-replay').onclick = replay;
+  $('#rd-done').onclick = () => { if (phase === 'tapping') finishRound(trainer.finish()); };
+  $('#rd-new').onclick = () => { clearTimers(); dictOnNote = null; phase = 'idle'; newTrainer(); resetTapDots(); $('#rd-bars').innerHTML = ''; $('#rd-score').textContent = '—'; $('#rd-rhythm').textContent = '—'; $('#rd-count').textContent = '—'; $('#rd-replay').disabled = true; $('#rd-done').disabled = true; $('#rd-status').textContent = '已换一条，点"听一遍"'; $('#rd-feedback').className = 'sight-feedback'; $('#rd-feedback').textContent = '点"👂 听一遍"，听完后在任意键上把节奏敲回来'; };
+  $('#rd-sim').onclick = simulate;
+  $('#rd-level').onchange = () => { if (phase !== 'playing') { newTrainer(); resetTapDots(); } };
+  $('#rd-tempo').onchange = () => { if (trainer) trainer.bpm = +$('#rd-tempo').value; };
+
+  newTrainer();
+  resetTapDots();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -4790,7 +4973,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
