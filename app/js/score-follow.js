@@ -27,7 +27,7 @@ export const SONGS = [
   {
     id: 'find-c', title: '🐣 中央C 在哪里', clef: 'treble', bpm: 80, beginner: true,
     seq: [
-      [60, 2], [60, 2], [60, 2], [60, 2], [60, 2], [60, 2],
+      [60, 2, 1], [60, 2, 1], [60, 2, 1], [60, 2, 1], [60, 2, 1], [60, 2, 1],
     ],
   },
   {
@@ -45,7 +45,7 @@ export const SONGS = [
   {
     id: 'five-finger', title: '🐣 五指阶梯 C-D-E-F-G', clef: 'treble', bpm: 84, beginner: true,
     seq: [
-      [60, 1], [62, 1], [64, 1], [65, 1], [67, 1], [65, 1], [64, 1], [62, 1], [60, 2],
+      [60, 1, 1], [62, 1, 2], [64, 1, 3], [65, 1, 4], [67, 1, 5], [65, 1, 4], [64, 1, 3], [62, 1, 2], [60, 2, 1],
     ],
   },
   {
@@ -185,12 +185,12 @@ export class ScoreFollow {
       }
       this.totalBeats = this.song.notes.reduce((mx, n) => Math.max(mx, (n.beat || 0) + (n.dur || 0)), 0);
     } else {
-      // 顺序记谱：[midi, durBeats]，midi=null 为休止
+      // 顺序记谱：[midi, durBeats]（可选第三项 finger=1..5 指法），midi=null 为休止
       let beat = 0; let i = 0;
-      for (const [midi, dur] of this.song.seq) {
+      for (const [midi, dur, finger] of this.song.seq) {
         if (midi != null) {
           this.notes.push({
-            i: i++, midi, beat, dur, hand: 'r',
+            i: i++, midi, beat, dur, hand: 'r', finger: finger ?? null,
             ms: beatToMs(beat, this.bpm) * sc, durMs: beatToMs(dur, this.bpm) * sc,
             judged: false, grade: null, deltaMs: null,
           });

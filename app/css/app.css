@@ -577,6 +577,46 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   30% { opacity: 1; transform: translateX(-50%) scale(1.15); }
   100% { opacity: 0; transform: translateX(-50%) scale(1) translateY(-18px); }
 }
+/* ✨ 击中特效层：火花 / 判定线发光 / 连击飘字 / 手指号 */
+.scf-fx { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 4; }
+.scf-spark {
+  position: absolute; bottom: 4px; width: 7px; height: 7px; border-radius: 50%;
+  margin-left: -3.5px; opacity: 1; pointer-events: none;
+  box-shadow: 0 0 7px 1px currentColor;
+  animation: scfSpark ease-out forwards;
+}
+@keyframes scfSpark {
+  0% { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.35); }
+}
+.scf-hitline.hit {
+  background: linear-gradient(90deg, transparent, var(--hit, #fbbf24), transparent);
+  box-shadow: 0 0 18px 5px var(--hit, #fbbf24);
+  animation: scfHitline .42s ease-out;
+}
+@keyframes scfHitline {
+  0% { filter: brightness(2.4); height: 7px; }
+  100% { filter: brightness(1); height: 4px; }
+}
+.scf-combo-flair {
+  position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+  font-weight: 900; font-size: 22px; color: #fb923c; letter-spacing: 1px;
+  text-shadow: 0 0 12px rgba(251,146,60,.85), 0 2px 6px rgba(0,0,0,.6);
+  pointer-events: none; z-index: 6; animation: scfComboFlair .95s ease-out forwards;
+}
+@keyframes scfComboFlair {
+  0% { opacity: 0; transform: translateX(-50%) scale(.5); }
+  25% { opacity: 1; transform: translateX(-50%) scale(1.2); }
+  100% { opacity: 0; transform: translateX(-50%) scale(1) translateY(-26px); }
+}
+/* 🐣 落块上的手指号圆点（启蒙曲目） */
+.scf-note-fgr {
+  position: absolute; left: 50%; top: 1px; transform: translateX(-50%);
+  min-width: 13px; height: 13px; line-height: 13px; padding: 0 1px;
+  border-radius: 50%; background: #fff; color: #5566d6;
+  font-size: 9px; font-weight: 900; text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.4); pointer-events: none;
+}
 .sight-stats { display: flex; gap: 10px; justify-content: center; margin: 16px 0; flex-wrap: wrap; }
 .sight-stat {
   display: flex; flex-direction: column; align-items: center; min-width: 72px;

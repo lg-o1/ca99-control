@@ -7520,6 +7520,7 @@ function renderScoreFollow() {
   let lastDrawT = 0;        // 最近一次绘制的播放头时间（标签切换时重绘用）
   let loopOn = false;       // ③ 区间循环开关
   let velViz = true;        // ② 力度可视化（上传 MIDI 的 velocity → 音符块亮度）
+  let fxOn = true;          // ✨ 击中特效（粒子迸发 / 判定线发光 / 连击闪光）
   let realPiano = false;    // ④ 示范/提示在 CA99 真琴发声
   const realOn = new Set(); // ④ 已发 Note On 待关闭的音（防漏关）
   let loopFrom = 1, loopTo = 1;        // 循环起止小节（1-based，含）
@@ -7698,6 +7699,7 @@ function renderScoreFollow() {
           <button class="ear-chip" id="scf-aux-metro">🥁 节拍器</button>
           <button class="ear-chip" id="scf-aux-prog">🐢→🐇 渐进提速</button>
           <button class="ear-chip on" id="scf-aux-velviz">💪 力度可视化</button>
+          <button class="ear-chip on" id="scf-aux-fx">✨ 击中特效</button>
           <button class="ear-chip" id="scf-aux-real">🎹 真琴发声</button>
         </div></div>
       <div class="param-row" id="scf-loop-row"><label>区间循环</label>
@@ -7780,7 +7782,10 @@ function renderScoreFollow() {
       if (!labelsOn) { labelsOn = true; const lb = $('#scf-aux-labels'); if (lb) lb.classList.add('on'); if (sf) drawHighway(lastDrawT); }
       if (wb) wb.classList.add('beginner-pulse');
       const fb = $('#scf-feedback');
-      if (fb) fb.textContent = '🐣 启蒙关卡：建议点 🐢 等待练习（不计时，弹对才前进）。看键盘上高亮的键，找到就按下——慢慢来！';
+      const hasFgr = Array.isArray(s.seq) && s.seq.some((e) => e[2] != null);
+      if (fb) fb.textContent = hasFgr
+        ? '🐣 启蒙关卡：建议点 🐢 等待练习（不计时）。键盘上高亮的键写着该用第几根手指（1=拇指…5=小指），照着按——慢慢来！'
+        : '🐣 启蒙关卡：建议点 🐢 等待练习（不计时，弹对才前进）。看键盘上高亮的键，找到就按下——慢慢来！';
     } else if (wb) {
       wb.classList.remove('beginner-pulse');
     }
@@ -7810,6 +7815,7 @@ function renderScoreFollow() {
   bindToggle('#scf-aux-metro', () => metroOn, (v) => { metroOn = v; });
   bindToggle('#scf-aux-prog', () => progSpeed, (v) => { progSpeed = v; updateMeta(); });
   bindToggle('#scf-aux-velviz', () => velViz, (v) => { velViz = v; if (sf) drawHighway(lastDrawT); });
+  bindToggle('#scf-aux-fx', () => fxOn, (v) => { fxOn = v; });
   bindToggle('#scf-aux-real', () => realPiano, (v) => { realPiano = v; if (!v) allRealOff(); });
   $('#scf-hint').onclick = doHint;
 
@@ -7857,6 +7863,64 @@ function renderScoreFollow() {
     }
     host.appendChild(layer);
     setTimeout(() => layer.remove(), 2600);
+  }
+
+  // ✨ 击中特效层（覆盖在判定线上方，单独一层，不随高速路每帧重建）
+  let fxLayer = null;
+  function fxHost() {
+    const host = root.querySelector('.scf-highway-wrap');
+    if (!host) return null;
+    if (!fxLayer || fxLayer.parentElement !== host) {
+      fxLayer = document.createElement('div');
+      fxLayer.className = 'scf-fx';
+      host.appendChild(fxLayer);
+    }
+    return fxLayer;
+  }
+  // ✨ 在判定线对应琴键的位置迸发一束彩色火花
+  function burstAt(midi, color, big) {
+    if (!fxOn) return;
+    const layer = fxHost(); if (!layer) return;
+    const cx = centerX.get(midi);
+    const x = cx != null ? cx : (layout ? layout.width / 2 : 0);
+    const n = big ? 18 : 11;
+    for (let k = 0; k < n; k++) {
+      const p = document.createElement('i');
+      const ang = (Math.PI * 2 * k) / n + Math.random() * 0.5;
+      const dist = (big ? 46 : 30) + Math.random() * (big ? 36 : 22);
+      const dx = Math.cos(ang) * dist;
+      const dy = Math.sin(ang) * dist - (big ? 20 : 12); // 略向上飞
+      const dur = 0.42 + Math.random() * 0.3;
+      p.className = 'scf-spark';
+      p.style.cssText = `left:${x}px;background:${color};--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;animation-duration:${dur}s`;
+      layer.appendChild(p);
+      setTimeout(() => p.remove(), dur * 1000 + 80);
+    }
+  }
+  // ✨ 判定线随命中颜色短暂发光
+  let hitlineEl = null;
+  function pulseHitline(color) {
+    if (!fxOn) return;
+    hitlineEl = hitlineEl || root.querySelector('.scf-hitline');
+    if (!hitlineEl) return;
+    hitlineEl.style.setProperty('--hit', color);
+    hitlineEl.classList.remove('hit'); void hitlineEl.offsetWidth; hitlineEl.classList.add('hit');
+  }
+  // ✨ 命中反馈合集：火花 + 判定线发光 +（每 5 连）里程碑飘字
+  function hitFx(midi, grade) {
+    if (!fxOn || grade === 'miss') return;
+    const col = grade === 'good' ? '#22d3ee' : '#34d399';
+    const milestone = sf && sf.combo >= 5 && sf.combo % 5 === 0;
+    burstAt(midi, col, milestone);
+    pulseHitline(col);
+    if (milestone) {
+      const host = root.querySelector('.scf-highway-wrap'); if (!host) return;
+      const f = document.createElement('div');
+      f.className = 'scf-combo-flair';
+      f.textContent = `🔥 连击 ${sf.combo}！`;
+      host.appendChild(f);
+      setTimeout(() => f.remove(), 950);
+    }
   }
 
   // ③ 区间循环：小节 → 拍 → 毫秒
@@ -8176,6 +8240,9 @@ function renderScoreFollow() {
       // ① 音名标签：块够高且开关打开时，把音名写在音符上
       const lbl = (labelsOn && sf._handOk(n) && h >= 15)
         ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
+      // 🐣 手指号：启蒙曲目带 finger（1=拇指…5=小指）时，在块顶画一个指法圆点
+      const fgr = (labelsOn && sf._handOk(n) && n.finger != null && h >= 15 && n.grade == null)
+        ? `<span class="scf-note-fgr">${n.finger}</span>` : '';
       // ② 力度→亮度：上传 MIDI 自带 velocity 时，强音更亮、弱音更暗（仅未判定的音）
       let vstyle = '';
       if (velViz && n.velocity != null && n.grade == null && sf._handOk(n)) {
@@ -8183,7 +8250,7 @@ function renderScoreFollow() {
         const sat = (0.85 + (n.velocity / 127) * 0.5).toFixed(2);
         vstyle = `filter:brightness(${br}) saturate(${sat});`;
       }
-      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px;${vstyle}">${lbl}</div>`;
+      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px;${vstyle}">${fgr}${lbl}</div>`;
     }
     $('#scf-highway').innerHTML = html;
     // 键盘高亮：等待模式高亮"当前该弹的整组"，其余模式高亮判定窗内的音
@@ -8197,7 +8264,11 @@ function renderScoreFollow() {
     if (cue.length) {
       const col = hint ? '#22d3ee' : '#fbbf24';
       const tx = hint ? '💡' : '▶';
-      scfKb.highlightMany(cue.map((n) => ({ midi: n.midi, color: col, text: tx })), { scroll: false });
+      // 🐣 启蒙曲目带指法时，键上直接显示该用第几根手指（比 ▶ 更有指导性）
+      scfKb.highlightMany(cue.map((n) => ({
+        midi: n.midi, color: col,
+        text: (!hint && n.finger != null) ? String(n.finger) : tx,
+      })), { scroll: false });
     } else scfKb.clear();
   }
 
@@ -8294,7 +8365,7 @@ function renderScoreFollow() {
     if (!sf || mode !== 'practice') return;
     const t = performance.now() - t0;
     const r = sf.judge(midi, t);
-    if (r.grade) { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); }
+    if (r.grade) { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); hitFx(midi, r.grade); }
     refreshStats();
   }
 
@@ -8308,6 +8379,7 @@ function renderScoreFollow() {
       sf.judge(midi, g.ms);   // t 冻结在该组时刻 → 判 PERFECT
       scfKb.flash(midi, '#34d399');
       popGrade('perfect');
+      hitFx(midi, 'perfect');
       refreshStats();
       if (g.notes.every((x) => x.judged)) { waitIdx++; frozen = false; }
     } else {
