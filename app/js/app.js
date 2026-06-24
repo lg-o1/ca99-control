@@ -41,6 +41,7 @@ import { FingerIndependenceTrainer, FINGER_PRESETS } from './finger-independence
 import { ScaleSpanTrainer, SCALE_TYPES as SPAN_SCALE_TYPES, SPAN_OCTAVES, SPAN_DIRECTIONS } from './scale-span.js';
 import { RhythmDictationTrainer, DICTATION_LEVELS, patternToOnsets as dictOnsets } from './rhythm-dictation.js';
 import { SightTransposeTrainer, MELODIES as TRANS_MELODIES, TARGET_KEYS as TRANS_KEYS, SOURCE_ROOT as TRANS_SOURCE } from './sight-transpose.js';
+import { ChordInversionGame, INVERSIONS as INV_OPTIONS, QUALITIES as INV_QUALITIES, inversionName, stackIntervals as invStack } from './chord-inversion.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -5014,6 +5015,168 @@ function renderSightTranspose() {
   newRound();
 }
 
+// ========== 模块 41: 和弦转位听辨 ==========
+function playChordNotes(notes, arpeggio) {
+  if (!notes || !notes.length) return;
+  if (arpeggio) {
+    notes.forEach((n, i) => playTone(midiToFreq(n), i * 0.28, 0.5));
+    // 琶音后再整体响一下，方便整体感受
+    notes.forEach((n) => playTone(midiToFreq(n), notes.length * 0.28 + 0.1, 1.0, 0.18));
+  } else {
+    notes.forEach((n) => playTone(midiToFreq(n), 0, 1.2, 0.18));
+  }
+}
+
+function renderChordInversion() {
+  const root = $('#module-inv');
+  let game = null;
+  const qEnabled = new Set(INV_QUALITIES.map((q) => q.id));
+  const invEnabled = new Set([0, 1, 2]);
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 和弦转位听辨</h2>
+    <p style="color:var(--muted);margin-bottom:14px">听电脑播放一个三和弦，辨认它是<b>原位</b>、<b>第一转位</b>还是<b>第二转位</b>。和"和弦练习"（弹出某个和弦名、忽略转位）不同——这里专练耳朵分辨同一个和弦的<b>不同排列</b>（低音是根音/三音/五音）。诀窍：原位是两个三度叠起来；<b>第一转位</b>上方有纯四度；<b>第二转位</b>底部就是纯四度。无需连琴（电脑发声）。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>和弦类型</label>
+        <div class="ear-chips" id="inv-qchips"></div></div>
+      <div class="param-row" style="align-items:flex-start"><label>转位范围</label>
+        <div class="ear-chips" id="inv-ichips"></div></div>
+      <div class="param-row"><label>播放方式</label>
+        <select id="inv-mode">
+          <option value="block">柱式（同时响）</option>
+          <option value="arp">琶音+柱式</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <button id="inv-replay" class="big-btn" disabled>🔊 再听一次</button>
+      <div id="inv-feedback" class="sight-feedback">选好范围，按"开始"出题</div>
+      <div id="inv-notes" class="inv-notes"></div>
+    </div>
+
+    <div class="ear-answers" id="inv-answers"></div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="inv-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="inv-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="inv-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="inv-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="inv-start" class="big-btn">▶ 开始练习</button>
+      <span id="inv-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawQChips() {
+    $('#inv-qchips').innerHTML = INV_QUALITIES.map((q) =>
+      `<button class="ear-chip ${qEnabled.has(q.id) ? 'on' : ''}" data-q="${q.id}">${q.name}</button>`).join('');
+    $('#inv-qchips').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        const q = b.dataset.q;
+        if (qEnabled.has(q)) { if (qEnabled.size > 1) qEnabled.delete(q); } else qEnabled.add(q);
+        drawQChips();
+      };
+    });
+  }
+  function drawIChips() {
+    $('#inv-ichips').innerHTML = INV_OPTIONS.map((iv) =>
+      `<button class="ear-chip ${invEnabled.has(iv.id) ? 'on' : ''}" data-i="${iv.id}">${iv.name}</button>`).join('');
+    $('#inv-ichips').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        const iv = +b.dataset.i;
+        if (invEnabled.has(iv)) { if (invEnabled.size > 1) invEnabled.delete(iv); } else invEnabled.add(iv);
+        drawIChips(); drawAnswers();
+      };
+    });
+  }
+  drawQChips(); drawIChips();
+
+  function drawAnswers() {
+    const list = INV_OPTIONS.filter((iv) => invEnabled.has(iv.id));
+    $('#inv-answers').innerHTML = list.map((iv) =>
+      `<button class="ear-ans" data-i="${iv.id}" disabled>${iv.name}<small>${iv.desc}</small></button>`).join('');
+    $('#inv-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      b.onclick = () => answer(+b.dataset.i, b);
+    });
+  }
+  drawAnswers();
+
+  function refreshStats() {
+    $('#inv-score').textContent = game.score;
+    $('#inv-streak').textContent = game.streak;
+    $('#inv-best').textContent = game.best;
+    $('#inv-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function playCurrent() {
+    if (game && game.current) playChordNotes(game.notes(), $('#inv-mode').value === 'arp');
+  }
+
+  let answering = false;
+  function answer(inv, btn) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctInv = game.current.inv;
+    const q = game.current.quality;
+    const notes = game.notes();
+    const ok = game.check(inv);
+    refreshStats();
+    $('#inv-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      const i = +b.dataset.i;
+      if (i === correctInv) b.classList.add('correct');
+      else if (i === inv) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    // 揭示具体音符 + 低音
+    $('#inv-notes').innerHTML = `<span class="inv-tag">${q.name} ${inversionName(correctInv)}</span>` +
+      notes.map((n, idx) => `<span class="inv-chip${idx === 0 ? ' inv-bass' : ''}">${CA99.noteName(n)}</span>`).join('');
+    const fb = $('#inv-feedback');
+    if (ok) { fb.textContent = `✅ 对了！是${q.name}${inversionName(correctInv)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${q.name}${inversionName(correctInv)}`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1400);
+  }
+
+  function nextQuestion() {
+    answering = false;
+    const notes = game.next();
+    $('#inv-answers').querySelectorAll('.ear-ans').forEach((b) => { b.disabled = false; b.classList.remove('correct', 'wrong'); });
+    $('#inv-notes').innerHTML = '';
+    $('#inv-feedback').textContent = '🎧 听一听，这是第几转位？';
+    $('#inv-feedback').className = 'sight-feedback';
+    playChordNotes(notes, $('#inv-mode').value === 'arp');
+  }
+
+  $('#inv-replay').onclick = playCurrent;
+
+  $('#inv-start').onclick = () => {
+    if (game) {
+      recordPractice('inv', '和弦转位听辨', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#inv-start').textContent = '▶ 开始练习';
+      $('#inv-start').classList.remove('running');
+      $('#inv-status').textContent = '已停止';
+      $('#inv-replay').disabled = true;
+      $('#inv-notes').innerHTML = '';
+      $('#inv-feedback').textContent = '选好范围，按"开始"出题';
+      $('#inv-feedback').className = 'sight-feedback';
+      drawQChips(); drawIChips(); drawAnswers();
+      return;
+    }
+    game = new ChordInversionGame({ qualities: [...qEnabled], inversions: [...invEnabled] });
+    $('#inv-start').textContent = '⏸ 停止练习';
+    $('#inv-start').classList.add('running');
+    $('#inv-status').textContent = '进行中…';
+    $('#inv-replay').disabled = false;
+    drawAnswers();
+    refreshStats();
+    nextQuestion();
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -5150,7 +5313,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
