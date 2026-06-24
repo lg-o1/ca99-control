@@ -592,6 +592,16 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .ev-bar.ev-good { background: linear-gradient(180deg, #5fd49a, #2fae73); }
 .ev-bar.ev-off { background: linear-gradient(180deg, #f0a36a, #e8794a); }
 
+/* 手指独立性（模块37） */
+.fi-keys { display: flex; flex-wrap: wrap; gap: 8px; }
+.fi-key { min-width: 46px; padding: 10px 12px; border-radius: 10px; text-align: center;
+  font-weight: 700; font-size: 14px; border: 2px solid transparent;
+  background: var(--panel2, rgba(127,127,127,.1)); color: var(--text, #eee); transition: all .15s ease; }
+.fi-key-hold { border-color: #e8794a; color: #e8794a; }
+.fi-key-hold.active { background: #e8794a; color: #fff; box-shadow: 0 0 14px rgba(232,121,74,.55); transform: translateY(-2px); }
+.fi-key-move { border-color: #4a7de8; color: #4a7de8; }
+.fi-key-move.done { background: #4a7de8; color: #fff; box-shadow: 0 0 14px rgba(74,125,232,.55); transform: translateY(-2px); }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }

@@ -37,6 +37,7 @@ import { CrescendoTrainer, CRESC_DIRECTIONS, idealRamp } from './crescendo.js';
 import { TempoRampTrainer, TEMPO_DIRECTIONS, ioiToBpm } from './tempo-ramp.js';
 import { PolyrhythmTrainer, POLY_RATIOS, combinedGrid } from './polyrhythm.js';
 import { EvennessTrainer } from './evenness.js';
+import { FingerIndependenceTrainer, FINGER_PRESETS } from './finger-independence.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -73,6 +74,8 @@ let crescOnNote = null;     // 力度渐变曲线的 note-on 回调（模块33�
 let tempoRampOnNote = null; // 速度渐变的 note-on 回调（模块34注册，带时间）
 let polyOnNote = null;      // 复节奏的 note-on 回调（模块35注册，带音高+时间，按音高分左右手）
 let evenOnNote = null;      // 颗粒性的 note-on 回调（模块36注册，带力度+时间）
+let fingerOnNote = null;    // 手指独立性的 note-on 回调（模块37注册）
+let fingerOffNote = null;   // 手指独立性的 note-off 回调（模块37注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -229,6 +232,8 @@ function onMidiIn(bytes) {
     if (polyOnNote) polyOnNote(m.note, performance.now());
     // 驱动颗粒性（带力度+时间）
     if (evenOnNote) evenOnNote(m.note, m.velocity, performance.now());
+    // 驱动手指独立性（note-on）
+    if (fingerOnNote) fingerOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -237,6 +242,8 @@ function onMidiIn(bytes) {
     if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
     // 驱动连奏/断奏控制（松键）
     if (articOnNoteOff) articOnNoteOff(m.note, performance.now());
+    // 驱动手指独立性（note-off，检测按住音是否滑脱）
+    if (fingerOffNote) fingerOffNote(m.note, performance.now());
   }
   else if (m.type === 'cc') {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -4356,6 +4363,159 @@ function renderEvenness() {
   });
 }
 
+// ---------- 模块37：手指独立性 ----------
+function renderFingerInd() {
+  const root = $('#module-finger');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🖐️ 手指独立性</h2>
+    <p style="color:var(--muted);margin-bottom:14px">钢琴基本功"手指独立"：用部分手指<b>按住几个键不放</b>，同时用其他手指反复敲一段移动音型。关键——敲移动音时被按住的键<b>不能跟着抬起来</b>。引擎边记 note-on/off，每敲一个移动音就检查"该按住的音是否都还按着"，统计独立保持率 + 音型正确率。<b>需要连琴</b>才能练（要检测按住与松开）；没连琴可用"模拟一遍"看评分逻辑。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>练习</label>
+        <select id="fi-preset">${FINGER_PRESETS.map((p, i) => `<option value="${i}">${p.name}</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>重复遍数</label>
+        <select id="fi-reps"><option value="2">2 遍</option><option value="3">3 遍</option><option value="4">4 遍</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="ev-row-lbl"><span class="pl-tag pl-tag-a">按住 hold</span><span id="fi-held" style="color:var(--muted)">—</span></div>
+      <div id="fi-held-keys" class="fi-keys"></div>
+      <div class="ev-row-lbl" style="margin-top:14px"><span class="pl-tag pl-tag-b">移动 move</span><span id="fi-move" style="color:var(--muted)">—</span></div>
+      <div id="fi-move-keys" class="fi-keys"></div>
+      <div id="fi-feedback" class="sight-feedback" style="margin-top:14px">按"开始"，先按住 hold 的键，再用其他手指敲 move 音型</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="fi-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="fi-sustain" class="sight-stat-num">—</div><div class="sight-stat-lbl">独立保持</div></div>
+      <div class="sight-stat"><div id="fi-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">音型正确</div></div>
+      <div class="sight-stat"><div id="fi-slips" class="sight-stat-num">0</div><div class="sight-stat-lbl">滑脱次数</div></div>
+      <div class="sight-stat"><div id="fi-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="fi-start" class="big-btn">▶ 开始</button>
+      <button id="fi-sim" class="big-btn" style="background:#667eea">🎲 模拟一遍</button>
+      <span id="fi-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let trainer = null, playing = false;
+  const preset = () => FINGER_PRESETS[+$('#fi-preset').value];
+  const reps = () => +$('#fi-reps').value;
+
+  function renderKeys() {
+    const p = preset();
+    $('#fi-held').textContent = p.held.map(n => CA99.noteName(n)).join(' + ') || '（无）';
+    $('#fi-move').textContent = p.pattern.map(n => CA99.noteName(n)).join(' → ');
+    const drawHeld = $('#fi-held-keys'); drawHeld.innerHTML = '';
+    p.held.forEach(n => {
+      const k = document.createElement('div'); k.className = 'fi-key fi-key-hold';
+      k.dataset.note = n; k.textContent = CA99.noteName(n); drawHeld.appendChild(k);
+    });
+    const drawMove = $('#fi-move-keys'); drawMove.innerHTML = '';
+    p.pattern.forEach((n, i) => {
+      const k = document.createElement('div'); k.className = 'fi-key fi-key-move';
+      k.dataset.idx = i; k.textContent = CA99.noteName(n); drawMove.appendChild(k);
+    });
+  }
+
+  function lightHeld(note, on) {
+    document.querySelectorAll(`#fi-held-keys .fi-key[data-note="${note}"]`).forEach(k => k.classList.toggle('active', on));
+  }
+
+  function finishRound(r) {
+    playing = false;
+    fingerOnNote = null; fingerOffNote = null;
+    $('#fi-score').textContent = r.score;
+    $('#fi-sustain').textContent = Math.round(r.sustainRate * 100) + '%';
+    $('#fi-acc').textContent = Math.round(r.patternAccuracy * 100) + '%';
+    $('#fi-slips').textContent = r.slips;
+    $('#fi-best').textContent = trainer.best;
+    recordPractice('finger', '手指独立性', r.taps, Math.round(r.taps * r.score / 100), r.score);
+    const fb = $('#fi-feedback');
+    fb.className = 'sight-feedback ok';
+    const tip = r.sustainRate < r.patternAccuracy ? '注意别让按住的手指跟着抬起' : '注意移动音型的准确度';
+    fb.textContent = `综合 ${r.score} 分 · 独立保持 ${Math.round(r.sustainRate * 100)}% · 音型正确 ${Math.round(r.patternAccuracy * 100)}% · 滑脱 ${r.slips} 次 —— ${tip}`;
+    $('#fi-start').textContent = '▶ 开始';
+    $('#fi-start').classList.remove('running');
+    $('#fi-status').textContent = '完成';
+    document.querySelectorAll('#fi-held-keys .fi-key').forEach(k => k.classList.remove('active'));
+    document.querySelectorAll('#fi-move-keys .fi-key').forEach(k => k.classList.remove('done'));
+  }
+
+  function startOne() {
+    const p = preset();
+    renderKeys();
+    trainer = new FingerIndependenceTrainer({ held: p.held, pattern: p.pattern, reps: reps() });
+    let moveIdx = 0;
+    trainer.onEvent = (ev) => {
+      if (ev.type === 'on') {
+        if (p.held.includes(ev.note)) { lightHeld(ev.note, true); }
+        else {
+          const keys = document.querySelectorAll('#fi-move-keys .fi-key');
+          const k = keys[moveIdx % keys.length]; if (k) { k.classList.add('done'); setTimeout(() => k.classList.remove('done'), 200); }
+          moveIdx++;
+        }
+      } else { if (p.held.includes(ev.note)) lightHeld(ev.note, false); }
+      $('#fi-status').textContent = `移动 ${trainer.progress}/${trainer.targetTaps}`;
+    };
+    trainer.onComplete = (r) => finishRound(r);
+    playing = true;
+    fingerOnNote = (note, time) => { if (playing) trainer.noteOn(note, time); };
+    fingerOffNote = (note, time) => { if (playing) trainer.noteOff(note, time); };
+    $('#fi-start').textContent = '⏸ 停止';
+    $('#fi-start').classList.add('running');
+    $('#fi-score').textContent = '—'; $('#fi-sustain').textContent = '—';
+    $('#fi-acc').textContent = '—'; $('#fi-slips').textContent = '0';
+    $('#fi-status').textContent = `移动 0/${trainer.targetTaps}`;
+    const fb = $('#fi-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = `先按住 ${p.held.map(n => CA99.noteName(n)).join('+') || '（无）'}，再敲 ${p.pattern.map(n => CA99.noteName(n)).join('→')}（×${reps()}）`;
+  }
+
+  function stopAll() {
+    playing = false; fingerOnNote = null; fingerOffNote = null;
+    $('#fi-start').textContent = '▶ 开始';
+    $('#fi-start').classList.remove('running');
+    $('#fi-status').textContent = '已停止';
+    document.querySelectorAll('#fi-held-keys .fi-key').forEach(k => k.classList.remove('active'));
+  }
+
+  function simulate() {
+    if (playing) return;
+    const p = preset();
+    renderKeys();
+    trainer = new FingerIndependenceTrainer({ held: p.held, pattern: p.pattern, reps: reps() });
+    trainer.onComplete = (r) => finishRound(r);
+    let t = 0;
+    // 按住 held
+    p.held.forEach(n => { trainer.noteOn(n, t); t += 8; });
+    // 移动音型，90% 概率弹对，5% 概率中途松开一个 held（滑脱）
+    const full = []; for (let r = 0; r < reps(); r++) full.push(...p.pattern);
+    full.forEach((n, i) => {
+      t += 150;
+      const note = Math.random() < 0.9 ? n : n + 1; // 偶尔弹错相邻键
+      trainer.noteOn(note, t);
+      // 偶尔松开一个 held 再按回（模拟滑脱）
+      if (p.held.length && Math.random() < 0.12 && i < full.length - 1) {
+        const h = p.held[0];
+        trainer.noteOff(h, t + 30);
+        trainer.noteOn(h, t + 60);
+      }
+      trainer.noteOff(note, t + 80);
+    });
+    // 收尾松开 held（不算滑脱）
+    p.held.forEach(n => { t += 20; trainer.noteOff(n, t); });
+  }
+
+  $('#fi-preset').onchange = renderKeys;
+  $('#fi-sim').onclick = simulate;
+  $('#fi-start').onclick = () => { if (playing) { stopAll(); } else { startOne(); } };
+
+  renderKeys();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -4492,7 +4652,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
