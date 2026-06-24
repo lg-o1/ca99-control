@@ -577,6 +577,12 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   border: 1px solid var(--line); border-radius: 12px; display: block;
 }
 
+/* ---- 复节奏 ---- */
+.pl-voice-lbl { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+.pl-tag { font-weight: 700; padding: 2px 10px; border-radius: 999px; color: #fff; font-size: 12px; }
+.pl-tag-a { background: #e8794a; }
+.pl-tag-b { background: #4a7de8; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }

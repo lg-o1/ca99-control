@@ -35,6 +35,7 @@ import { LeapTrainer } from './leap.js';
 import { VoicingTrainer } from './voicing.js';
 import { CrescendoTrainer, CRESC_DIRECTIONS, idealRamp } from './crescendo.js';
 import { TempoRampTrainer, TEMPO_DIRECTIONS, ioiToBpm } from './tempo-ramp.js';
+import { PolyrhythmTrainer, POLY_RATIOS, combinedGrid } from './polyrhythm.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -69,6 +70,7 @@ let leapOnNote = null;      // 大跳准确度的 note-on 回调（模块31注�
 let voicingOnNote = null;   // 旋律声部突出的 note-on 回调（模块32注册，带力度）
 let crescOnNote = null;     // 力度渐变曲线的 note-on 回调（模块33注册，带力度）
 let tempoRampOnNote = null; // 速度渐变的 note-on 回调（模块34注册，带时间）
+let polyOnNote = null;      // 复节奏的 note-on 回调（模块35注册，带音高+时间，按音高分左右手）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -221,6 +223,8 @@ function onMidiIn(bytes) {
     if (crescOnNote) crescOnNote(m.velocity);
     // 驱动速度渐变（带时间）
     if (tempoRampOnNote) tempoRampOnNote(performance.now());
+    // 驱动复节奏（按音高分左右手）
+    if (polyOnNote) polyOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -3970,6 +3974,228 @@ function renderTempoRamp() {
   drawCurve([], null);
 }
 
+// ---------- 模块35：复节奏（polyrhythm） ----------
+function renderPolyrhythm() {
+  const root = $('#module-poly');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🥁 复节奏</h2>
+    <p style="color:var(--muted);margin-bottom:14px">两个声部在同一周期里平分成不同份数（如 3:2 = 一手 3 下、一手 2 下）。先听一遍预览，然后跟着两条轨道敲：连琴时<b>中央 C 以下</b>算左手（声部 A）、<b>中央 C 及以上</b>算右手（声部 B）；没连琴可用按钮或键盘 <b>F</b>（左手）/<b>J</b>（右手）。引擎按声部分别判 完美 / 良好 / 漏 / 多。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>比例</label>
+        <select id="pl-ratio">${POLY_RATIOS.map(r => `<option value="${r.id}">${r.name}（${r.desc}）</option>`).join('')}</select>
+      </div>
+      <div class="param-row"><label>周期时长</label>
+        <input id="pl-cycle" type="range" min="1500" max="4000" step="250" value="2500" class="trans-slider" style="max-width:240px">
+        <span id="pl-cycle-val" style="color:#667eea;font-weight:700;min-width:64px">2.5s</span>
+      </div>
+      <div class="param-row"><label>周期数</label>
+        <select id="pl-cycles"><option value="2">2 个周期</option><option value="3">3 个周期</option><option value="4">4 个周期</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="pl-voice-lbl"><span class="pl-tag pl-tag-a">A 左手</span><span id="pl-a-ratio" style="color:var(--muted)">3 下/周期</span></div>
+      <div class="rt-track-wrap"><div id="pl-track-a" class="rt-track"></div></div>
+      <div class="pl-voice-lbl" style="margin-top:12px"><span class="pl-tag pl-tag-b">B 右手</span><span id="pl-b-ratio" style="color:var(--muted)">2 下/周期</span></div>
+      <div class="rt-track-wrap"><div id="pl-track-b" class="rt-track"></div><div id="pl-playhead" class="rt-playhead"></div></div>
+      <div id="pl-feedback" class="sight-feedback" style="margin-top:14px">按"开始"：先听一遍预览，再跟着敲两条轨道</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="pl-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="pl-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">命中率</div></div>
+      <div class="sight-stat"><div id="pl-ahits" class="sight-stat-num">0</div><div class="sight-stat-lbl">A 命中</div></div>
+      <div class="sight-stat"><div id="pl-bhits" class="sight-stat-num">0</div><div class="sight-stat-lbl">B 命中</div></div>
+      <div class="sight-stat"><div id="pl-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="pl-start" class="big-btn">▶ 开始练习</button>
+      <button id="pl-tap-a" class="big-btn" style="background:#e8794a" disabled>👈 左手 A（F）</button>
+      <button id="pl-tap-b" class="big-btn" style="background:#4a7de8" disabled>右手 B 👉（J）</button>
+      <button id="pl-sim" class="big-btn" style="background:#667eea">🎲 模拟一遍</button>
+      <span id="pl-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let trainer = null, raf = 0, ac = null, playing = false;
+  let aEls = [], bEls = [], previewClicks = [], clickIdx = 0;
+  let barStart = 0, playEnd = 0, totalMs = 0, leadMs = 0;
+
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function click(freq, vol = 0.25) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.frequency.value = freq; o.connect(g); g.connect(c.destination);
+      const t = c.currentTime;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+      o.start(t); o.stop(t + 0.06);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function ratioObj() { return POLY_RATIOS.find(r => r.id === $('#pl-ratio').value); }
+  function cycleMs() { return +$('#pl-cycle').value; }
+  function cycles() { return +$('#pl-cycles').value; }
+
+  function drawTracks(r, nCycles) {
+    $('#pl-a-ratio').textContent = r.a + ' 下/周期';
+    $('#pl-b-ratio').textContent = r.b + ' 下/周期';
+    const draw = (wrapId, taps) => {
+      const wrap = $(wrapId); wrap.innerHTML = '';
+      for (let c = 0; c <= nCycles; c++) {
+        const ln = document.createElement('div');
+        ln.className = 'rt-beatline strong';
+        ln.style.left = (c / nCycles * 100) + '%';
+        wrap.appendChild(ln);
+      }
+      const els = [];
+      for (let c = 0; c < nCycles; c++) {
+        for (let i = 0; i < taps; i++) {
+          const pos = (c + i / taps) / nCycles;
+          const el = document.createElement('div');
+          el.className = 'rt-dot';
+          el.style.left = (pos * 100) + '%';
+          wrap.appendChild(el);
+          els.push(el);
+        }
+      }
+      return els;
+    };
+    aEls = draw('#pl-track-a', r.a);
+    bEls = draw('#pl-track-b', r.b);
+  }
+
+  function updateStats() {
+    if (!trainer) return;
+    const s = trainer.summary();
+    $('#pl-acc').textContent = trainer.totalHits ? Math.round(s.accuracy * 100) + '%' : '—';
+    $('#pl-ahits').textContent = s.A.hits;
+    $('#pl-bhits').textContent = s.B.hits;
+  }
+
+  function doTap(voice) {
+    if (!playing || !trainer) return;
+    const r = trainer.tap(voice, performance.now());
+    const els = voice === 'B' ? bEls : aEls;
+    if (r.index >= 0 && els[r.index]) els[r.index].classList.add(r.rating);
+    const fb = $('#pl-feedback');
+    if (r.rating === 'perfect') { fb.textContent = `✨ ${voice} 完美！`; fb.className = 'sight-feedback ok'; }
+    else if (r.rating === 'good') { fb.textContent = `👍 ${voice} 良好（${r.errMs > 0 ? '偏晚' : '偏早'} ${Math.abs(Math.round(r.errMs))}ms）`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `✋ ${voice} 多敲/太偏`; fb.className = 'sight-feedback no'; }
+    updateStats();
+  }
+
+  function startOne() {
+    const r = ratioObj(), cm = cycleMs(), nC = cycles();
+    drawTracks(r, nC);
+    trainer = new PolyrhythmTrainer({ ratio: r, cycleMs: cm, cycles: nC });
+    totalMs = cm * nC; leadMs = cm;
+    const t0 = performance.now();
+    barStart = t0 + leadMs;            // 预览一个周期后正式开始
+    trainer.start(barStart);
+    playEnd = barStart + totalMs + trainer.tol.good;
+    // 预览：在第一个周期里把两声部都按真实音高点出来（A 低 B 高），让玩家先听一遍
+    previewClicks = [];
+    for (let i = 0; i < r.a; i++) previewClicks.push({ t: t0 + (i * cm) / r.a, freq: 760 });
+    for (let i = 0; i < r.b; i++) previewClicks.push({ t: t0 + (i * cm) / r.b, freq: 1320 });
+    // 正式段每个周期起点给一个强拍引导
+    for (let c = 0; c < nC; c++) previewClicks.push({ t: barStart + c * cm, freq: 1600, strong: true });
+    previewClicks.sort((x, y) => x.t - y.t);
+    clickIdx = 0;
+    playing = true;
+    $('#pl-tap-a').disabled = false; $('#pl-tap-b').disabled = false;
+    loop();
+  }
+
+  function loop() {
+    const now = performance.now();
+    while (clickIdx < previewClicks.length && now >= previewClicks[clickIdx].t) {
+      click(previewClicks[clickIdx].freq, previewClicks[clickIdx].strong ? 0.3 : 0.22);
+      clickIdx++;
+    }
+    const ph = $('#pl-playhead');
+    if (now < barStart) {
+      ph.style.left = '0%'; ph.style.opacity = '0.35';
+      $('#pl-status').textContent = '预览…' + Math.max(1, Math.ceil((barStart - now) / 500));
+    } else {
+      const f = Math.min(1, (now - barStart) / totalMs);
+      ph.style.left = (f * 100) + '%'; ph.style.opacity = '1';
+      $('#pl-status').textContent = '跟着敲两条轨道！';
+    }
+    if (now >= playEnd) { endOne(); return; }
+    raf = requestAnimationFrame(loop);
+  }
+
+  function endOne() {
+    playing = false;
+    cancelAnimationFrame(raf);
+    const s = trainer.finish();
+    $('#pl-score').textContent = s.score;
+    $('#pl-best').textContent = trainer.best;
+    updateStats();
+    recordPractice('poly', '复节奏', s.totalOnsets, s.totalHits, s.score);
+    const fb = $('#pl-feedback');
+    fb.className = 'sight-feedback ok';
+    fb.textContent = `本遍 ${s.ratio}：综合 ${s.score} 分 · 命中率 ${Math.round(s.accuracy * 100)}% · A ${s.A.hits}/${s.A.total} · B ${s.B.hits}/${s.B.total} · 平均误差 ${Math.round(s.avgError)}ms`;
+    stopAll();
+  }
+
+  function stopAll() {
+    playing = false;
+    cancelAnimationFrame(raf);
+    polyOnNote = null;
+    $('#pl-start').textContent = '▶ 开始练习';
+    $('#pl-start').classList.remove('running');
+    $('#pl-tap-a').disabled = true; $('#pl-tap-b').disabled = true;
+    $('#pl-status').textContent = '已停止';
+    $('#pl-playhead').style.opacity = '0';
+  }
+
+  function simulate() {
+    if (playing) return;
+    const r = ratioObj(), cm = cycleMs(), nC = cycles();
+    drawTracks(r, nC);
+    trainer = new PolyrhythmTrainer({ ratio: r, cycleMs: cm, cycles: nC });
+    trainer.start(0);
+    // 模拟玩家：在每个理想落点附近加 ±35ms 抖动敲击
+    const jitter = () => (Math.random() - 0.5) * 70;
+    trainer.A.onsets.forEach((t, i) => { const res = trainer.tap('A', t + jitter()); if (res.index >= 0 && aEls[res.index]) aEls[res.index].classList.add(res.rating); });
+    trainer.B.onsets.forEach((t, i) => { const res = trainer.tap('B', t + jitter()); if (res.index >= 0 && bEls[res.index]) bEls[res.index].classList.add(res.rating); });
+    const s = trainer.finish();
+    $('#pl-score').textContent = s.score;
+    $('#pl-best').textContent = trainer.best;
+    updateStats();
+    recordPractice('poly', '复节奏', s.totalOnsets, s.totalHits, s.score);
+    const fb = $('#pl-feedback');
+    fb.className = 'sight-feedback ok';
+    fb.textContent = `🎲 模拟 ${s.ratio}：综合 ${s.score} 分 · 命中率 ${Math.round(s.accuracy * 100)}% · A ${s.A.hits}/${s.A.total} · B ${s.B.hits}/${s.B.total}`;
+  }
+
+  $('#pl-cycle').oninput = () => { $('#pl-cycle-val').textContent = (cycleMs() / 1000).toFixed(2) + 's'; };
+  $('#pl-ratio').onchange = () => { if (!playing) drawTracks(ratioObj(), cycles()); };
+  $('#pl-cycles').onchange = () => { if (!playing) drawTracks(ratioObj(), cycles()); };
+  $('#pl-tap-a').onclick = () => doTap('A');
+  $('#pl-tap-b').onclick = () => doTap('B');
+  $('#pl-sim').onclick = simulate;
+  $('#pl-start').onclick = () => {
+    if (playing) { stopAll(); return; }
+    polyOnNote = (note) => doTap(note < 60 ? 'A' : 'B');
+    $('#pl-start').textContent = '⏸ 停止练习';
+    $('#pl-start').classList.add('running');
+    $('#pl-score').textContent = '—'; $('#pl-acc').textContent = '—';
+    $('#pl-ahits').textContent = '0'; $('#pl-bhits').textContent = '0';
+    startOne();
+  };
+
+  document.addEventListener('keydown', (e) => {
+    if (!$('#module-poly').classList.contains('active') || !playing || e.repeat) return;
+    if (e.code === 'KeyF') { e.preventDefault(); doTap('A'); }
+    else if (e.code === 'KeyJ') { e.preventDefault(); doTap('B'); }
+  });
+
+  drawTracks(ratioObj(), cycles());
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -4106,7 +4332,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
