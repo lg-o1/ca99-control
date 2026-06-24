@@ -47,6 +47,7 @@ app/
     polyrhythm.js     ← 复节奏（两声部 a:b 平分周期，按音高/按钮分左右手分别判命中，纯逻辑，66 单元测试）
     evenness.js       ← 颗粒性（一串跑动音的力度/时值是否均匀，用变异系数 CV 打分，纯逻辑，57 单元测试）
     finger-independence.js ← 手指独立性（按住几个键不放、动其他手指，测按住音是否滑脱+音型对错，纯逻辑，44 单元测试）
+    scale-span.js     ← 音阶八度跨度（音阶连跑 2~3 个八度，测音符正确+速度均匀+穿指衔接，纯逻辑，62 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -96,7 +97,8 @@ app/
 | 🥁 复节奏 | ✅ | 练 polyrhythm（2:3 / 3:2 / 3:4 / 4:3）：两声部在同一周期里平分成不同份数，先听一遍预览再跟着两条轨道敲——连琴时中央 C 以下=左手声部 A、及以上=右手声部 B，没连琴用按钮或键盘 F/J；引擎为两声部各建理想落点网格，按声部把每次敲击匹配到最近未命中落点判 完美/良好/漏/多，综合分=命中率 70%+时间精度 30%，双轨道实时高亮命中、模拟一遍，成绩入仪表盘 |
 | 💧 颗粒性 | ✅ | 练 evenness（颗粒感）：连弹一串跑动音（8/12/16 个），让每个音的力度与每两音的间隔都尽量均匀；引擎用变异系数 CV（标准差÷均值）量化离散度，力度均匀分+时值均匀分按可调权重综合（默认各 50%），双排柱状图按相对均值偏差着色（绿=齐、橙=偏），连琴练力度+时值、按钮/空格只练时值，模拟一遍，成绩入仪表盘。与"力度控制"（打目标档）、"节拍稳定度"（跟匀速拍）互补 |
 | 🖐️ 手指独立性 | ✅ | 练 finger independence：用部分手指按住几个键不放，同时用其他手指反复敲移动音型（5 套预设，如按 C+E 动 G、按 C+E+G 动 B↔D），可选重复 2/3/4 遍；引擎边记 note-on/off，每敲一个移动音就快照"该按住的音是否都还按着"，统计独立保持率 + 音型正确率（顺序对不对），综合分=独立保持 60%+音型 40%，并计滑脱次数（按住音在收尾前被抬起）；按住键/移动键实时高亮，需连琴检测按住与松开、模拟一遍演示评分，成绩入仪表盘 |
-| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏/踏板时机/颤音速度/装饰音/音程大跳/旋律突出/力度渐变/速度渐变/复节奏/颗粒性/手指独立性各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
+| 🎹 音阶八度跨度 | ✅ | 练 scale span：把音阶连续跑过 2~3 个八度（上行/上下行，任意调+8 种音阶），重点不只是音对不对——综合分=音符正确 50%+速度均匀 30%（整串 IOI 的变异系数）+穿指衔接 20%（跨八度根音处间隔是否明显慢于中位=卡顿）；琴键条按八度铺开、穿指点标橙边、跟弹时实时高亮命中/错音，需连琴依次弹、模拟一遍演示评分，成绩入仪表盘。与"音阶练习"（只判音准/进度）互补 |
+| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏/踏板时机/颤音速度/装饰音/音程大跳/旋律突出/力度渐变/速度渐变/复节奏/颗粒性/手指独立性/音阶八度跨度各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） |
 | 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
@@ -141,6 +143,7 @@ app/
 - 复节奏用 `polyrhythm.js`（纯逻辑，66 单元测试）：`buildVoiceOnsets(taps,period,cycles,start)` 为一个声部生成理想落点时间戳、`combinedGrid(a,b,period)` 把 a:b 两声部在一周期内的落点合并成排序网格（教学/可视化用）；`PolyrhythmTrainer` 持两个 `VoiceState`（A/B），`tap(voice,time)` 只在该声部内把敲击匹配到最近未命中落点（声部隔离——左手敲击不消耗右手落点），按 `rateError` 判 完美(≤55ms)/良好(≤120ms)/多敲；`summary()` 综合分=命中率 70%+时间精度 30%（时间精度=1−平均误差÷good 窗口）；UI 双横向轨道按比例铺落点、播放头随预览+正式段推进、命中点实时高亮，连琴按中央 C 分左右手（note<60→A）、无琴用按钮或键盘 F/J，先听一遍预览再跟敲，模拟一遍写入成就仪表盘。与"节奏跟拍"（单声部）互补
 - 颗粒性用 `evenness.js`（纯逻辑，57 单元测试）：核心是变异系数 `cv(arr)=stddev/mean`（越小越均匀）；`evennessScore(events,{velTol,ioiTol,velWeight})` 取一串音的力度数组与相邻间隔 IOI 数组各算 CV，再 `cvToScore(cv,tol)=clamp(1−cv/tol)` 线性映射成力度均匀分/时值均匀分（默认 tol=0.22 即 22% 离散为 0 分），综合分=力度分×velWeight+时值分×(1−velWeight)；同时给出每个音相对均值的"相对偏差"数组（velDev/ioiDev）供 UI 柱状着色（绿=齐、橙=偏）。`EvennessTrainer.feed(note,vel,time)` 累积 count 个音后自动结算，记 best/rounds；UI 双排柱（力度高度∝velocity、间隔高度∝IOI）实时生成、力度权重可调，连琴喂真实力度+时间、按钮/空格只喂固定力度（只练时值），模拟一遍写入成就仪表盘。与"力度控制"（打目标档）、"节拍稳定度"（跟匀速拍）互补——这里只看"一串音内部是否一致"，与绝对速度无关
 - 手指独立性用 `finger-independence.js`（纯逻辑，44 单元测试）：`evaluateIndependence(events,{held,pattern})` 在 note-on/off 事件流上重放并维护"当前按下键集合"，每遇到一个移动音（非 held 的 on）就快照 `held.every(h=>down.has(h))` 记入 `heldDownAtTap`，独立保持率=全按住的敲击数÷移动敲击数；音型正确率=移动音逐位与 pattern（循环展开）相符的比例；综合分=独立保持×0.6+音型×0.4；另统计 `slips`（held 音在最后一个移动音之前被松开的次数，收尾正常松开不计——靠预扫描的 `lastMovingTime` 区分）。`FingerIndependenceTrainer.noteOn/noteOff(note,time)` 累积到 `targetTaps=pattern.length*reps` 个移动敲击后自动结算，记 best/rounds；UI 5 套预设（按 C+E 动 G 等）、按住键/移动键实时高亮，连琴检测按住与松开、模拟一遍演示评分（含偶发滑脱），成绩入仪表盘。与"双手协调""琶音跑动"互补——这里专练"按住的不动、该动的动"
+- 音阶八度跨度用 `scale-span.js`（纯逻辑，62 单元测试，复用 evenness 的 `cv`/`toIois`、scale-trainer 的 `SCALE_TYPES`/`rootPitchClass`）：`buildSpan(root,type,octave,octaves,direction)` 生成跨 N 个八度的音阶 MIDI 序列（上行/上下行不重复顶点），`crossingIndices(seq,rootPc)` 找出每次跨入新八度根音的下标（穿指点）；`evaluateSpan(events,{expected,crossings})` 三段打分——音符正确率（逐位对，0.5）+速度均匀度（整串 IOI 的 `cv` 经 `1−cv/evenTol` 映射，0.3）+穿指衔接（穿指点进入音的 IOI 是否 > 中位 IOI×hitchRatio=卡顿，按未卡顿比例，0.2）。`ScaleSpanTrainer.feed(note,time)` 累积到 total 个音自动结算，记 best/rounds；UI 琴键条按八度铺开、穿指点橙边、跟弹实时高亮命中/错音，连琴依次弹、模拟一遍（含偶发穿指卡顿与错音）演示评分，成绩入仪表盘。与"音阶练习"（只判音准/进度）互补——这里多看"跨八度的连贯与均匀"
 - **调试钩子**：无真机时控制台调 `window.__feedMidi(note, velocity)` 模拟弹奏、`window.__feedNoteOff(note)` 模拟松键、`window.__feedCC(controller, value)` 模拟踏板/控制器，测试依赖 MIDI 输入的模块
 
 ## 连接方式（默认双支持）
@@ -184,7 +187,7 @@ npx http-server -p 8099           # 用 Node
 
 ## 测试
 
-**一键跑全部 34 套测试**：
+**一键跑全部 35 套测试**：
 
 ```bash
 cd app
@@ -261,6 +264,7 @@ node js/tempo-ramp.test.mjs
 node js/polyrhythm.test.mjs
 node js/evenness.test.mjs
 node js/finger-independence.test.mjs
+node js/scale-span.test.mjs
 ```
 
 ## 数据生成（如需重建）

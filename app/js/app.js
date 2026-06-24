@@ -38,6 +38,7 @@ import { TempoRampTrainer, TEMPO_DIRECTIONS, ioiToBpm } from './tempo-ramp.js';
 import { PolyrhythmTrainer, POLY_RATIOS, combinedGrid } from './polyrhythm.js';
 import { EvennessTrainer } from './evenness.js';
 import { FingerIndependenceTrainer, FINGER_PRESETS } from './finger-independence.js';
+import { ScaleSpanTrainer, SCALE_TYPES as SPAN_SCALE_TYPES, SPAN_OCTAVES, SPAN_DIRECTIONS } from './scale-span.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -76,6 +77,7 @@ let polyOnNote = null;      // 复节奏的 note-on 回调（模块35注册，�
 let evenOnNote = null;      // 颗粒性的 note-on 回调（模块36注册，带力度+时间）
 let fingerOnNote = null;    // 手指独立性的 note-on 回调（模块37注册）
 let fingerOffNote = null;   // 手指独立性的 note-off 回调（模块37注册）
+let spanOnNote = null;      // 音阶八度跨度的 note-on 回调（模块38注册，带时间）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -234,6 +236,8 @@ function onMidiIn(bytes) {
     if (evenOnNote) evenOnNote(m.note, m.velocity, performance.now());
     // 驱动手指独立性（note-on）
     if (fingerOnNote) fingerOnNote(m.note, performance.now());
+    // 驱动音阶八度跨度（带时间）
+    if (spanOnNote) spanOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -4516,6 +4520,140 @@ function renderFingerInd() {
   renderKeys();
 }
 
+// ---------- 模块38：音阶八度跨度 ----------
+function renderScaleSpan() {
+  const root = $('#module-span');
+  const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 音阶八度跨度</h2>
+    <p style="color:var(--muted);margin-bottom:14px">把音阶连续跑过 2~3 个八度（上行或上下行）。和单八度练习不同，这里重点考核<b>跨八度穿指衔接是否平顺</b>、整串<b>速度是否均匀</b>，而不只是"音对不对"。综合分 = 音符正确 50% + 速度均匀 30% + 穿指衔接 20%。<b>需连琴</b>按高亮提示依次弹；没连琴可"模拟一遍"看评分逻辑。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>根音（调）</label>
+        <select id="sp-root">${roots.map(r => `<option value="${r}" ${r === 'C' ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+      <div class="param-row"><label>音阶类型</label>
+        <select id="sp-type">${Object.entries(SPAN_SCALE_TYPES).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select></div>
+      <div class="param-row"><label>跨几个八度</label>
+        <select id="sp-oct">${SPAN_OCTAVES.map(o => `<option value="${o}" ${o === 2 ? 'selected' : ''}>${o} 个八度</option>`).join('')}</select></div>
+      <div class="param-row"><label>方向</label>
+        <select id="sp-dir">${Object.values(SPAN_DIRECTIONS).map(d => `<option value="${d.key}">${d.name}</option>`).join('')}</select></div>
+    </div>
+
+    <div class="card-panel">
+      <div class="sp-keys" id="sp-keys"></div>
+      <div id="sp-feedback" class="sight-feedback" style="margin-top:14px">按"开始"，跟着高亮依次把音阶跑过多个八度（穿指点会标橙边）</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="sp-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="sp-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">音符正确</div></div>
+      <div class="sight-stat"><div id="sp-even" class="sight-stat-num">—</div><div class="sight-stat-lbl">速度均匀</div></div>
+      <div class="sight-stat"><div id="sp-cross" class="sight-stat-num">—</div><div class="sight-stat-lbl">穿指衔接</div></div>
+      <div class="sight-stat"><div id="sp-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="sp-start" class="big-btn">▶ 开始</button>
+      <button id="sp-sim" class="big-btn" style="background:#667eea">🎲 模拟一遍</button>
+      <span id="sp-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let trainer = null, playing = false;
+  const cfg = () => ({
+    root: $('#sp-root').value, type: $('#sp-type').value,
+    octave: 4, octaves: +$('#sp-oct').value, direction: $('#sp-dir').value,
+  });
+
+  function drawKeys() {
+    const t = new ScaleSpanTrainer(cfg());
+    const crossSet = new Set(t.crossings);
+    const wrap = $('#sp-keys'); wrap.innerHTML = '';
+    t.expected.forEach((n, i) => {
+      const k = document.createElement('div');
+      k.className = 'sp-key' + (crossSet.has(i) ? ' sp-cross' : '');
+      k.dataset.idx = i;
+      k.textContent = CA99.noteName(n);
+      wrap.appendChild(k);
+    });
+    return t;
+  }
+
+  function lightUpTo(idx, correct) {
+    const keys = document.querySelectorAll('#sp-keys .sp-key');
+    keys.forEach((k, i) => {
+      k.classList.toggle('next', i === idx);
+      if (i === idx - 1) k.classList.add(correct ? 'hit' : 'miss');
+    });
+  }
+
+  function finishRound(r) {
+    playing = false; spanOnNote = null;
+    $('#sp-score').textContent = r.score;
+    $('#sp-acc').textContent = Math.round(r.noteAccuracy * 100) + '%';
+    $('#sp-even').textContent = Math.round(r.evenScore * 100);
+    $('#sp-cross').textContent = Math.round(r.crossingScore * 100);
+    $('#sp-best').textContent = trainer.best;
+    recordPractice('span', '音阶八度跨度', r.total, r.correctNotes, r.score);
+    const fb = $('#sp-feedback');
+    fb.className = 'sight-feedback ok';
+    const lo = Math.min(r.noteAccuracy, r.evenScore, r.crossingScore);
+    const tip = lo === r.noteAccuracy ? '先把音弹准' : (lo === r.evenScore ? '保持每个音间隔均匀' : '穿指处别卡顿');
+    fb.textContent = `综合 ${r.score} 分 · 正确 ${Math.round(r.noteAccuracy * 100)}% · 均匀 ${Math.round(r.evenScore * 100)} · 穿指 ${Math.round(r.crossingScore * 100)}（卡顿 ${r.hitches}/${r.crossingCount}） · ${Math.round(r.bpm)} BPM —— ${tip}`;
+    $('#sp-start').textContent = '▶ 开始';
+    $('#sp-start').classList.remove('running');
+    $('#sp-status').textContent = '完成';
+  }
+
+  function startOne() {
+    trainer = new ScaleSpanTrainer(cfg());
+    drawKeys();
+    trainer.onNote = (note, idx, total, correct) => {
+      lightUpTo(idx, correct);
+      $('#sp-status').textContent = `${idx}/${total}`;
+    };
+    trainer.onComplete = (r) => finishRound(r);
+    playing = true;
+    spanOnNote = (note, time) => { if (playing) trainer.feed(note, time); };
+    lightUpTo(0, true);
+    $('#sp-start').textContent = '⏸ 停止';
+    $('#sp-start').classList.add('running');
+    $('#sp-score').textContent = '—'; $('#sp-acc').textContent = '—';
+    $('#sp-even').textContent = '—'; $('#sp-cross').textContent = '—';
+    $('#sp-status').textContent = `0/${trainer.total}`;
+    const fb = $('#sp-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = '跟着高亮依次弹，跨八度（橙边）处尽量平顺不卡顿';
+  }
+
+  function stopAll() {
+    playing = false; spanOnNote = null;
+    $('#sp-start').textContent = '▶ 开始';
+    $('#sp-start').classList.remove('running');
+    $('#sp-status').textContent = '已停止';
+    document.querySelectorAll('#sp-keys .sp-key').forEach(k => k.classList.remove('next'));
+  }
+
+  function simulate() {
+    if (playing) return;
+    trainer = new ScaleSpanTrainer(cfg());
+    drawKeys();
+    trainer.onComplete = (r) => finishRound(r);
+    const crossSet = new Set(trainer.crossings);
+    let t = 0;
+    trainer.expected.forEach((n, i) => {
+      // 均匀 150ms，穿指点偶尔卡顿、偶尔弹错相邻音
+      t += i === 0 ? 0 : (150 + (Math.random() - 0.5) * 40 + (crossSet.has(i) && Math.random() < 0.4 ? 160 : 0));
+      const note = Math.random() < 0.92 ? n : n + 1;
+      trainer.feed(note, t);
+    });
+  }
+
+  ['#sp-root', '#sp-type', '#sp-oct', '#sp-dir'].forEach(id => { $(id).onchange = () => { if (!playing) drawKeys(); }; });
+  $('#sp-sim').onclick = simulate;
+  $('#sp-start').onclick = () => { if (playing) { stopAll(); } else { startOne(); } };
+
+  drawKeys();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -4652,7 +4790,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

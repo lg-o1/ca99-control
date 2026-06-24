@@ -602,6 +602,16 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .fi-key-move { border-color: #4a7de8; color: #4a7de8; }
 .fi-key-move.done { background: #4a7de8; color: #fff; box-shadow: 0 0 14px rgba(74,125,232,.55); transform: translateY(-2px); }
 
+/* 音阶八度跨度（模块38） */
+.sp-keys { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-key { min-width: 40px; padding: 8px 8px; border-radius: 8px; text-align: center;
+  font-weight: 700; font-size: 13px; border: 2px solid transparent;
+  background: var(--panel2, rgba(127,127,127,.1)); color: var(--text, #eee); transition: all .12s ease; }
+.sp-key.sp-cross { border-color: #e8794a; }
+.sp-key.next { background: #667eea; color: #fff; box-shadow: 0 0 12px rgba(102,126,234,.6); transform: translateY(-2px); }
+.sp-key.hit { background: #2fae73; color: #fff; border-color: transparent; }
+.sp-key.miss { background: #e85a5a; color: #fff; border-color: transparent; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }
