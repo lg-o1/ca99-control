@@ -405,18 +405,61 @@ function renderRhythm() {
   const items = Array.isArray(RHYTHM) ? RHYTHM : Object.values(RHYTHM);
   root.innerHTML = `<h2 style="margin-bottom:12px">鼓点节奏 (${items.length})</h2>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:10px;line-height:1.6">
-      点击节奏型只是<b>切换节奏选择</b>，不会自动播放。<br>
-      <b>▶ 启动 / ■ 停止</b>：需要按 CA99 钢琴面板上的物理 START/STOP 按钮。<br>
-      演奏中切换节奏型会<b>立即生效</b>（无需停止再重启）。
+      点击节奏型会自动执行：<b>停止 → 切换节奏 → 重新启动</b>（如果当前在播放中）。<br>
+      也可用下方按钮手动控制启停。CA99 需先进入节奏模式（▶ 启动后生效）。
     </p>
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+      <button id="rhythm-start" class="big-btn" style="min-width:90px">▶ 启动</button>
+      <button id="rhythm-stop"  class="big-btn" style="min-width:90px;background:#e53e3e">■ 停止</button>
+      <span id="rhythm-status" style="color:var(--muted);font-size:0.85em">未播放</span>
+    </div>
     <div class="btn-grid" id="rhythm-grid"></div>`;
+
+  let playing = false;
+
+  function setPlaying(v) {
+    playing = v;
+    $('#rhythm-status').textContent = v ? '▶ 播放中…' : '■ 已停止';
+    $('#rhythm-start').disabled = v;
+    $('#rhythm-stop').disabled = !v;
+  }
+  setPlaying(false);
+
+  $('#rhythm-start').onclick = () => {
+    send(CA99.buildMetronomeMode(1));          // 切到 Rhythm 模式
+    send(CA99.buildMetronomeRun(true));         // Start
+    setPlaying(true);
+    log('节奏启动', 'ok');
+  };
+  $('#rhythm-stop').onclick = () => {
+    send(CA99.buildMetronomeRun(false));        // Stop
+    setPlaying(false);
+    log('节奏停止', 'ok');
+  };
+
   const grid = $('#rhythm-grid');
   grid.innerHTML = items.slice(0, 100).map((r, i) => {
     const name = (r && (r.name || r.nameEn || r.value)) || `节奏 ${i}`;
     return `<button class="grid-btn" data-idx="${i}">${i}: ${name}</button>`;
   }).join('');
   grid.querySelectorAll('.grid-btn').forEach(b => {
-    b.onclick = () => { send(CA99.buildRhythmSelect(+b.dataset.idx)); log(`节奏 ${b.dataset.idx}`, 'ok'); };
+    b.onclick = () => {
+      const idx = +b.dataset.idx;
+      if (playing) {
+        // Stop → Select → Start
+        send(CA99.buildMetronomeRun(false));
+        send(CA99.buildMetronomeMode(1));
+        send(CA99.buildRhythmSelect(idx));
+        send(CA99.buildMetronomeRun(true));
+      } else {
+        send(CA99.buildMetronomeMode(1));
+        send(CA99.buildRhythmSelect(idx));
+      }
+      log(`节奏 ${idx}`, 'ok');
+      // highlight selected
+      grid.querySelectorAll('.grid-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    };
   });
 }
 

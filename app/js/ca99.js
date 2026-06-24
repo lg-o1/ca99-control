@@ -84,6 +84,22 @@ export function buildRhythmSelect(index) {
   return buildSysEx(0x10, 0x56, 0x09, PART.System, [index & 0x7F]);
 }
 
+/**
+ * 节拍器/节奏模式切换 (v1=0x56 v2=0x0A)
+ * mode: 0=Metronome（普通节拍）, 1=Rhythm（鼓点节奏）
+ */
+export function buildMetronomeMode(mode) {
+  return buildSysEx(0x10, 0x56, 0x0A, PART.System, [mode & 0x01]);
+}
+
+/**
+ * 节拍器/节奏 启动/停止 (v1=0x56 v2=0x08)
+ * running: true=Run, false=Stop
+ */
+export function buildMetronomeRun(running) {
+  return buildSysEx(0x10, 0x56, 0x08, PART.System, [running ? 0x01 : 0x00]);
+}
+
 /** 把字节数组转可读 hex 字符串（调试/测试用） */
 export function toHex(bytes) {
   return bytes.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
