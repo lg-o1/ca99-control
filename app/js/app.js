@@ -7341,10 +7341,18 @@ function renderScoreFollow() {
   let kbFirst = 60, kbLast = 72;
   let layout = null, centerX = new Map();
   let demoPlayed = new Set();
+  let labelsOn = true;      // ① 下落音符上显示音名标签
+  let metroOn = false;      // ④ 节拍器（跟随播放头）
+  let progSpeed = false;    // ⑨ 渐进提速
+  let lastBeat = -1;        // 节拍器：上一次触发的整拍
+  let hintUntil = 0;        // ⑥ 等待模式提示高亮的截止时刻
+  let lastDrawT = 0;        // 最近一次绘制的播放头时间（标签切换时重绘用）
+  const SCF_PC = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const midiName = (m) => SCF_PC[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
 
   root.innerHTML = `
     <h2 style="margin-bottom:6px">🎹 曲谱跟弹（Synthesia 式）</h2>
-    <p style="color:var(--muted);margin-bottom:14px">音符像 <b>Synthesia</b> 一样从上往下<b>落到对应琴键</b>，上方 <b>五线谱</b>同步走光标——既练<b>识谱</b>又练<b>跟弹</b>。三档训练<b>由易到难</b>：🔊 听示范 → 🐢 等待练习（弹对才前进，最适合入门）→ 🎯 跟弹判分（按音高+时机给 <span style="color:#34d399">PERFECT</span>/<span style="color:#22d3ee">GOOD</span>/<span style="color:#f87171">MISS</span>，连对累计 Combo）。可选内置曲目，也能<b>上传任意 .mid/.midi 文件</b>（自动识别左右手、和弦、变速）。没接 MIDI 也能点屏幕琴键作答。</p>
+    <p style="color:var(--muted);margin-bottom:14px">音符像 <b>Synthesia</b> 一样从上往下<b>落到对应琴键</b>（块上直接标<b>音名</b>），上方 <b>五线谱</b>同步走光标——既练<b>识谱</b>又练<b>跟弹</b>。三档训练<b>由易到难</b>：🔊 听示范 → 🐢 等待练习（弹对才前进，卡住可按 💡 提示）→ 🎯 跟弹判分（按音高+时机给 <span style="color:#34d399">PERFECT</span>/<span style="color:#22d3ee">GOOD</span>/<span style="color:#f87171">MISS</span>，连对累计 Combo）。可开 🥁 <b>节拍器</b>、🐇 <b>渐进提速</b>，左右手分色显示。内置 7 首（含巴赫小步舞曲/致爱丽丝/肖邦夜曲），也能<b>上传任意 .mid/.midi 文件</b>。没接 MIDI 也能点屏幕琴键作答。</p>
 
     <div class="card-panel">
       <div class="param-row" style="align-items:flex-start"><label>选曲</label>
@@ -7373,9 +7381,22 @@ function renderScoreFollow() {
           <button class="ear-chip on" data-e="1">简单（忽略八度）</button>
           <button class="ear-chip" data-e="0">标准（要弹准八度）</button>
         </div></div>
+      <div class="param-row"><label>辅助</label>
+        <div class="ear-chips" id="scf-aux">
+          <button class="ear-chip on" id="scf-aux-labels">🔤 音名标签</button>
+          <button class="ear-chip" id="scf-aux-metro">🥁 节拍器</button>
+          <button class="ear-chip" id="scf-aux-prog">🐢→🐇 渐进提速</button>
+        </div></div>
     </div>
 
     <div class="scf-stage">
+      <div class="scf-meta">
+        <span class="scf-bpm-badge" id="scf-bpm">♩ = — BPM</span>
+        <span class="scf-hand-legend" id="scf-legend" style="display:none">
+          <span class="scf-leg-r">●</span> 右手　<span class="scf-leg-l">●</span> 左手
+        </span>
+        <button class="scf-hint-btn" id="scf-hint" disabled title="等待练习卡住时，按一下让该弹的键闪 3 秒">💡 提示</button>
+      </div>
       <div class="scf-staff-wrap"><div id="scf-staff"></div></div>
       <div class="scf-highway-wrap">
         <div id="scf-highway" class="scf-highway"></div>
@@ -7437,6 +7458,37 @@ function renderScoreFollow() {
   bindChips('#scf-easy', 'e', (v) => { easy = (v === '1'); });
   bindChips('#scf-hand', 'h', (v) => { hand = v; prepare(); });
 
+  // 辅助开关（独立布尔，点一下切换 .on）
+  function bindToggle(sel, get, set) {
+    const b = $(sel);
+    b.classList.toggle('on', get());
+    b.onclick = () => { set(!get()); b.classList.toggle('on', get()); };
+  }
+  bindToggle('#scf-aux-labels', () => labelsOn, (v) => { labelsOn = v; if (sf) drawHighway(lastDrawT); });
+  bindToggle('#scf-aux-metro', () => metroOn, (v) => { metroOn = v; });
+  bindToggle('#scf-aux-prog', () => progSpeed, (v) => { progSpeed = v; updateMeta(); });
+  $('#scf-hint').onclick = doHint;
+
+  // BPM 徽章（随选曲/速度更新）+ 左右手图例
+  function updateMeta() {
+    const song = getCurrentSong();
+    const eff = Math.round((song.bpm || 90) * speed);
+    let txt = `♩ = ${eff} BPM`;
+    if (speed !== 1) txt += `　(${speed}×${progSpeed ? ' 渐进' : ''})`;
+    const bpmEl = $('#scf-bpm'); if (bpmEl) bpmEl.textContent = txt;
+    const leg = $('#scf-legend'); if (leg) leg.style.display = song.hands ? '' : 'none';
+  }
+
+  // ⑥ 等待练习提示：让当前该弹的整组键高亮闪 3 秒并发声
+  function doHint() {
+    if (mode !== 'wait' || !frozen) return;
+    const g = groups[waitIdx]; if (!g) return;
+    hintUntil = performance.now() + 3000;
+    g.notes.filter((n) => !n.judged).forEach((n) => {
+      scfKb.flash(n.midi, '#22d3ee'); playTone(midiToFreq(n.midi), 0, 0.5, 0.16);
+    });
+  }
+
   // 上传 MIDI 文件 → 解析 → 转 ScoreFollow 曲目 → 加入选曲
   $('#scf-midi-file').onchange = async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -7485,6 +7537,8 @@ function renderScoreFollow() {
     layout.keys.forEach((k) => centerX.set(k.midi, k.x + k.w / 2));
     $('#scf-highway').style.width = layout.width + 'px';
     demoPlayed = new Set();
+    lastBeat = -1;
+    updateMeta();
     drawStaff(-LEAD_MS);
     drawHighway(-LEAD_MS);
     refreshStats();
@@ -7535,6 +7589,7 @@ function renderScoreFollow() {
   // ---- 下落高速路（Synthesia）----
   function drawHighway(t) {
     if (!sf) return;
+    lastDrawT = t;
     const pxPerMs = HW_H / LOOK_MS;
     let html = '';
     for (const n of sf.notes) {
@@ -7553,7 +7608,10 @@ function renderScoreFollow() {
       else if (n.grade === SCF_GRADE.GOOD) cls += ' n-good';
       else if (n.grade === SCF_GRADE.MISS) cls += ' n-miss';
       else if (sf._handOk(n) && Math.abs(dt) <= sf.goodMs) cls += ' n-due';
-      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px"></div>`;
+      // ① 音名标签：块够高且开关打开时，把音名写在音符上
+      const lbl = (labelsOn && sf._handOk(n) && h >= 15)
+        ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
+      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px">${lbl}</div>`;
     }
     $('#scf-highway').innerHTML = html;
     // 键盘高亮：等待模式高亮"当前该弹的整组"，其余模式高亮判定窗内的音
@@ -7563,8 +7621,12 @@ function renderScoreFollow() {
     } else {
       cue = sf.active(t);
     }
-    if (cue.length) scfKb.highlightMany(cue.map((n) => ({ midi: n.midi, color: '#fbbf24', text: '▶' })), { scroll: false });
-    else scfKb.clear();
+    const hint = performance.now() < hintUntil;   // ⑥ 提示中：换更醒目的色与图标
+    if (cue.length) {
+      const col = hint ? '#22d3ee' : '#fbbf24';
+      const tx = hint ? '💡' : '▶';
+      scfKb.highlightMany(cue.map((n) => ({ midi: n.midi, color: col, text: tx })), { scroll: false });
+    } else scfKb.clear();
   }
 
   function refreshStats() {
@@ -7590,6 +7652,16 @@ function renderScoreFollow() {
     clearTimeout(popTimer); popTimer = setTimeout(() => pop.classList.remove('show'), 520);
   }
 
+  // 节拍器：按播放头时间在每个整拍触发一次（重拍加重音）
+  function tickMetro(t) {
+    if (!metroOn || !sf) return;
+    const b = Math.floor(sf.beatAt(t));
+    if (b > lastBeat && b >= 0) {
+      lastBeat = b;
+      clickSound((b % (getCurrentSong().meter || 4)) === 0);
+    } else if (b < lastBeat) { lastBeat = b; }
+  }
+
   function frame() {
     const now = performance.now();
     if (mode === 'wait') {
@@ -7601,12 +7673,14 @@ function renderScoreFollow() {
       }
       lastNow = now;
       const t = waitClock;
+      tickMetro(t);
       drawHighway(t); drawStaff(t); refreshStats();
       if (waitIdx >= groups.length) { finish(); return; }
       raf = requestAnimationFrame(frame);
       return;
     }
     const t = now - t0;
+    tickMetro(t);
     if (mode === 'practice') {
       sf.expire(t).forEach(() => { popGrade('miss'); });
     } else if (mode === 'demo') {
@@ -7690,6 +7764,8 @@ function renderScoreFollow() {
       $('#scf-feedback').className = 'sight-feedback';
     }
     setRunningUI(which);
+    $('#scf-hint').disabled = (which !== 'wait');   // ⑥ 仅等待模式可用提示
+    hintUntil = 0;
     $('#scf-status').textContent = { demo: '示范中…', wait: '等待练习中…', practice: '跟弹中…' }[which];
     raf = requestAnimationFrame(frame);
   }
@@ -7700,6 +7776,7 @@ function renderScoreFollow() {
     const wasScored = mode === 'practice' || mode === 'wait';
     mode = null; scfOnNote = null;
     resetButtons();
+    $('#scf-hint').disabled = true;
     $('#scf-status').textContent = '已停止';
     $('#scf-feedback').textContent = wasScored ? '已停止。换一档训练或重来。' : '挑一首曲子或上传 MIDI，选一档训练开始';
     $('#scf-feedback').className = 'sight-feedback';
@@ -7714,18 +7791,26 @@ function renderScoreFollow() {
     const wasWait = mode === 'wait';
     mode = null; scfOnNote = null;
     resetButtons();
+    $('#scf-hint').disabled = true;
     $('#scf-status').textContent = '完成';
     scfKb.clear();
     if (wasScored && sf) {
       const s = sf.summary();
       recordPractice('scorefollow', '曲谱跟弹', s.total, s.perfect + s.good, s.maxCombo);
+      // ⑨ 渐进提速：本遍正确率高就把下一遍速度 +0.05×（上限 1.5×）
+      let bumped = '';
+      if (progSpeed && s.accuracy >= 80 && speed < 1.5) {
+        speed = Math.round((speed + 0.05) * 100) / 100;
+        bumped = `　🐇 下一遍提速到 ${speed}×`;
+      }
       if (wasWait) {
-        $('#scf-feedback').textContent = `🎉 等待练习完成！全曲 ${s.total} 个音都弹对了，再上 🎯 跟弹判分挑战计时评分吧。`;
+        $('#scf-feedback').textContent = `🎉 等待练习完成！全曲 ${s.total} 个音都弹对了，再上 🎯 跟弹判分挑战计时评分吧。${bumped}`;
       } else {
         const star = '★'.repeat(s.stars) + '☆'.repeat(3 - s.stars);
-        $('#scf-feedback').textContent = `🎉 完成！${star}　正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}`;
+        $('#scf-feedback').textContent = `🎉 完成！${star}　正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}${bumped}`;
       }
       $('#scf-feedback').className = 'sight-feedback ok';
+      if (bumped) prepare();   // 用新速度重建，徽章同步刷新
     } else {
       $('#scf-feedback').textContent = '示范结束，按 🐢 等待练习 或 🎯 跟弹判分 自己试试。';
       $('#scf-feedback').className = 'sight-feedback';
