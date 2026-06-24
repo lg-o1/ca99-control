@@ -56,6 +56,7 @@ app/
     scale-fingering.js ← 音阶指法提示（显示标准音阶指法、跟弹高亮、穿指点，纯逻辑，113 单元测试）
     interval-build.js  ← 音程构建（给根音+音程名，弹出目标音，纯逻辑，48 单元测试）
     mode-id.js         ← 调式识别（听教会调式音阶多选辨认，纯逻辑，146 单元测试）
+    solfege.js         ← 唱名/音级听辨（建立调性后辨认音级 Do-Re-Mi，纯逻辑，196 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -112,10 +113,12 @@ app/
 | 🎼 调号识别 | ✅ | 练<b>调号</b>读谱：屏幕显示一个调号（1~7 个升号 ♯ 或降号 ♭，可限定 ±2/±4/±7），你判断它是哪个<b>大调/小调</b>（多选按钮，纯乐理无需连琴）。基于<b>五度圈</b>：升号顺序 F C G D A E B、降号顺序 B E A D G C F。诀窍——升号调看<b>最后一个升号上方半音</b>是大调主音；降号调看<b>倒数第二个降号</b>是大调主音（仅 1 降号固定 F 大调）；小调再下小三度取关系调。答完显示诀窍提示并🔊播放该调音阶。和"音阶练习"（弹音阶）、"和弦识别"都不同——这里专练<b>看调号秒认调名</b>
 - 音程构建用 `interval-build.js`（纯逻辑，48 单元测试）：`INTERVALS` 列出 12 个音程（m2..P8 对应半音 1..12，含名称/简写/半音数）、`DIRECTIONS` 上行(+1)/下行(-1)。`intervalBySemitones(st)`/`intervalById(id)`/`noteName(midi)`/`targetMidi(root,st,dir)` 是纯工具函数。`IntervalBuildGame({rng,intervals,directions,rootMin,rootMax})`：`next()` 随机出题（根音范围按方向+音程收紧，保证目标音落在 0..127）、`check(playedMidi)` 须精确等于目标音才判对、`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。UI 显示"从 X 根音 向上/下 某音程"，🔊 播根音参考，note-on 接 `ivbOnNote` 钩子判分，弹对 700ms 后自动出下一题、弹错提示差几个半音，成绩入仪表盘。和"听音训练"相反——练<b>反向构建</b>能力 |
 - 调式识别用 `mode-id.js`（纯逻辑，146 单元测试）：`MODES` 列出 7 个教会调式（各含 `offsets[7]` 相对主音半音、`degree` 在大调中的级数、`hint` 特征提示）、`scaleMidi(root,modeId)` 生成 8 音音阶（含八度）、`stepPattern(modeId)` 返回全/半音步进指纹（如 Ionian=[2,2,1,2,2,2,1]、Dorian 是回文）。`ModeIdGame({rng,modes,rootMin,rootMax,choiceCount})`：`next()` 随机出题并构建打乱的多选干扰项、`notes()`/`choices()`/`check(answerId)`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。这是<b>纯听辨多选</b>（像调号识别/和弦转位），用 `playTone` 播音阶、点选项判分，无 note-on 钩子。答完显示调式特征提示，可🔊再听，成绩入仪表盘 |
+- 唱名听辨用 `solfege.js`（纯逻辑，196 单元测试）：`SCALES`（大调/小调的半音步进 + 可动唱名，小调用 Me/Le/Te）、`DEGREES` 七级功能名+诀窍、`degreeMidi(tonic,degree,scaleType)`/`tonicTriad(tonic,scaleType)`/`syllable(degree,scaleType)` 是纯工具函数。`SolfegeGame({rng,scaleType,degrees,tonicMin,tonicMax,choiceCount})`：`next()` 随机选主音+音级（启用音级里取干扰项打乱）、`triad()`/`target()`/`tonic()`/`choices()`/`check(answerDegree)`/`score/streak/best/accuracy/reset()`，`onNew`/`onResult` 回调。<b>纯听辨多选</b>，UI 先用 `playTone` 播主和弦建立调性、隔 750ms 再播目标音，点选项判分（无 note-on 钩子），主和弦与目标音可分别重听，成绩入仪表盘 |
 | 🖐️ 音阶指法提示 | ✅ | 学标准钢琴<b>音阶指法</b>：屏幕给一个八度音阶（9 个调：C/G/D/A/E/F 大调 + A/E/D 自然小调），每个音上方标注<b>该用几号手指</b>（右手 1=拇指…5=小指，左手相反），可切左/右手、上行/上下行。<b>跟着弹</b>——弹对当前音就高亮下一个，红框标出<b>穿指/跨指点</b>（右手拇指穿过、左手手指跨过）。诀窍：C/G/D/A/E 大调右手都是 <b>1 2 3 1 2 3 4 5</b>、F 大调例外 <b>1 2 3 4 1 2 3 4</b>；左手都是 <b>5 4 3 2 1 3 2 1</b>。可🔊听一遍，需连琴弹，成绩入仪表盘。和"音阶练习"（练音准/速度）、"音阶八度跨度"（练跨多个八度）都不同——这里专练<b>正确指法与穿指动作</b> |
 | 🎯 音程构建 | ✅ | "听音训练"的<b>反向能力</b>：屏幕给一个<b>根音</b>+一个<b>音程名</b>（如"从 C4 往上弹纯五度"），你在键盘上<b>弹出目标音</b>。可选基础 6 种（M2/m3/M3/P4/P5/P8）或全部 12 种音程，方向可选向上/向下/双向。🔊 先听根音找位置，弹对自动判分并播下一题，弹错显示差几个半音。练即兴/移调/和声的核心手上功夫，需连琴弹，成绩入仪表盘。和"听音训练"（听两音辨音程）相反——这里练<b>知道音程名就在键盘上秒构建</b> |
 | 🎶 调式识别 | ✅ | 🔊 听一段<b>调式音阶</b>（7 个教会调式 Ionian/Dorian/Phrygian/Lydian/Mixolydian/Aeolian/Locrian 之一），从多个选项中<b>辨认是哪个调式</b>。可自选调式范围与选项数量（3/4/7 选 1）。答完显示调式特征提示（如利底亚=升四度、混合利底亚=降七度、弗里几亚=降二度），可🔊再听。无需连琴（纯听辨多选），成绩入仪表盘。补足"音阶训练"（练手）和"听音训练"（辨音程）之外的<b>调式色彩听辨</b>能力 |
-| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏/踏板时机/颤音速度/装饰音/音程大跳/旋律突出/力度渐变/速度渐变/复节奏/颗粒性/手指独立性/音阶八度跨度/节奏听写/移调视奏/和弦转位听辨/调号识别/音阶指法提示/音程构建/调式识别各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） || 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
+| 🎵 唱名听辨 | ✅ | 视唱练耳的<b>地基</b>：先🔊听一个<b>主和弦</b>建立调性，再听一个音，判断它是音阶里的<b>第几级</b>（唱名 Do Re Mi Fa Sol La Ti / 1-7）。支持大调/小调（小调用 Me/Le/Te 唱名）、自选音级范围与选项数量（3/4/7 选 1），可分别🔊再听主和弦或目标音。答完显示该音级的功能名与诀窍（如 Ti→Do、Fa→Mi）。无需连琴（纯听辨多选），成绩入仪表盘。和"音程听辨"（听两音距离、不依赖调性）不同——这里练<b>调性感/相对音高</b>，是即兴扒谱视唱的核心 |
+| 🏆 成就仪表盘 | ✅ | 汇总视奏/听辨/力度/音阶/节奏/旋律/和弦进行/节拍稳定度/双手协调/琶音跑动/连奏断奏/踏板时机/颤音速度/装饰音/音程大跳/旋律突出/力度渐变/速度渐变/复节奏/颗粒性/手指独立性/音阶八度跨度/节奏听写/移调视奏/和弦转位听辨/调号识别/音阶指法提示/音程构建/调式识别/唱名听辨各训练成绩，统计总练习次数/正确率/连续天数/最佳连击，最近 7 天柱状图、模块细分表、10 枚成就徽章墙（已解锁/即将解锁/锁定） || 📡 MIDI 监视器 | ✅ | 实时显示钢琴发来的音符/CC/SysEx |
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
 
@@ -211,7 +214,7 @@ npx http-server -p 8099           # 用 Node
 
 ## 测试
 
-**一键跑全部 43 套测试**：
+**一键跑全部 44 套测试**：
 
 ```bash
 cd app
@@ -296,6 +299,7 @@ node js/key-signature.test.mjs
 node js/scale-fingering.test.mjs
 node js/interval-build.test.mjs
 node js/mode-id.test.mjs
+node js/solfege.test.mjs
 node js/bridge-protocol.test.mjs
 ```
 

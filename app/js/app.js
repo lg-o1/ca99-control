@@ -46,6 +46,7 @@ import { KeySignatureGame, accidentalList as ksAccidentals, scaleMidi as ksScale
 import { ScaleFingeringSession, FINGERINGS as SF_FINGERINGS, listScales as sfList, scaleNotes as sfNotes, defaultRootMidi as sfRoot, fingers as sfFingers, crossingPoints as sfCross } from './scale-fingering.js';
 import { IntervalBuildGame, INTERVALS as IB_INTERVALS, DIRECTIONS as IB_DIRECTIONS, noteName as ibNoteName } from './interval-build.js';
 import { ModeIdGame, MODES as MID_MODES, modeName as midModeName } from './mode-id.js';
+import { SolfegeGame, DEGREES as SOL_DEGREES, syllable as solSyllable, noteName as solNoteName } from './solfege.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -5773,6 +5774,171 @@ function renderModeId() {
   };
 }
 
+// ========== 模块 46: 唱名/音级听辨（solfège）==========
+function renderSolfege() {
+  const root = $('#module-solfege');
+  let game = null;
+  let scaleType = 'major';
+  const enabled = new Set([1, 2, 3, 4, 5, 6, 7]);
+  let choiceCount = 4;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎵 唱名听辨</h2>
+    <p style="color:var(--muted);margin-bottom:14px">视唱练耳的<b>地基</b>：先听一个<b>主和弦</b>建立调性（这是"Do"在哪），再听一个音，判断它是音阶里的<b>第几级</b>（唱名 Do Re Mi Fa Sol La Ti / 1-7）。诀窍：<b>Ti（7）强烈想往 Do 走</b>、<b>Fa（4）想解决到 Mi（3）</b>、<b>Sol（5）和 Do（1）最稳</b>。和"音程听辨"（听两音距离）不同——这里练<b>调性感/相对音高</b>，是即兴扒谱视唱的核心。无需连琴（纯听辨多选）。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调式</label>
+        <div class="ear-chips" id="sol-scale">
+          <button class="ear-chip on" data-s="major">大调</button>
+          <button class="ear-chip" data-s="minor">小调</button>
+        </div></div>
+      <div class="param-row" style="align-items:flex-start"><label>音级范围</label>
+        <div class="ear-chips" id="sol-degs"></div></div>
+      <div class="param-row"><label>选项数量</label>
+        <select id="sol-cc">
+          <option value="3">3 选 1（入门）</option>
+          <option value="4" selected>4 选 1（进阶）</option>
+          <option value="7">7 选 1（全部）</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="sol-feedback" class="sight-feedback">选好范围，按"开始"出题</div>
+      <div id="sol-hint" class="sol-hint"></div>
+    </div>
+
+    <div class="rotate-bar" style="justify-content:center;gap:10px;margin-bottom:8px">
+      <button id="sol-key" class="big-btn" disabled>🎹 再听主和弦</button>
+      <button id="sol-replay" class="big-btn" disabled>🔊 再听这个音</button>
+    </div>
+
+    <div class="ear-answers" id="sol-answers"></div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="sol-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sol-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sol-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sol-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="sol-start" class="big-btn">▶ 开始练习</button>
+      <span id="sol-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawDegs() {
+    $('#sol-degs').innerHTML = SOL_DEGREES.map((d) =>
+      `<button class="ear-chip ${enabled.has(d.degree) ? 'on' : ''}" data-d="${d.degree}">${d.degree} ${solSyllable(d.degree, scaleType)}</button>`).join('');
+    $('#sol-degs').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        const d = +b.dataset.d;
+        if (enabled.has(d)) { if (enabled.size > 2) enabled.delete(d); } else enabled.add(d);
+        drawDegs();
+      };
+    });
+  }
+  function drawScale() {
+    $('#sol-scale').querySelectorAll('.ear-chip').forEach((b) => {
+      b.classList.toggle('on', b.dataset.s === scaleType);
+      b.onclick = () => { if (game) return; scaleType = b.dataset.s; drawScale(); drawDegs(); };
+    });
+  }
+  drawScale();
+  drawDegs();
+  $('#sol-cc').onchange = () => { if (!game) choiceCount = +$('#sol-cc').value; };
+
+  function refreshStats() {
+    $('#sol-score').textContent = game.score;
+    $('#sol-streak').textContent = game.streak;
+    $('#sol-best').textContent = game.best;
+    $('#sol-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function playKey() {
+    const tri = game.triad();
+    tri.forEach((n, i) => playTone(midiToFreq(n), i * 0.16, 0.5, 0.16));
+  }
+  function playTarget() {
+    const t = game.target();
+    if (t != null) playTone(midiToFreq(t), 0, 0.7, 0.22);
+  }
+  function playBoth() {
+    playKey();
+    setTimeout(() => { if (game && game.current) playTarget(); }, 750);
+  }
+
+  function drawAnswers() {
+    $('#sol-answers').innerHTML = game.choices().map((c) =>
+      `<button class="ear-ans" data-d="${c.degree}">${c.syllable}<small>${c.degree} · ${c.fn}</small></button>`).join('');
+    $('#sol-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      b.onclick = () => answer(+b.dataset.d, b);
+    });
+  }
+
+  let answering = false;
+  function answer(deg, btn) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctDeg = game.current.degree;
+    const correct = game.check(deg);
+    refreshStats();
+    $('#sol-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      const d = +b.dataset.d;
+      if (d === correctDeg) b.classList.add('correct');
+      else if (d === deg) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    const info = SOL_DEGREES.find((x) => x.degree === correctDeg);
+    $('#sol-hint').textContent = '💡 ' + solSyllable(correctDeg, scaleType) + '（' + info.fn + '）：' + info.hint;
+    const fb = $('#sol-feedback');
+    const label = correctDeg + ' ' + solSyllable(correctDeg, scaleType);
+    if (correct) { fb.textContent = `✅ 对了！是 ${label} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${label}`; fb.className = 'sight-feedback no'; }
+    playTarget();
+    setTimeout(() => { if (game) nextQuestion(); }, 1900);
+  }
+
+  function nextQuestion() {
+    answering = false;
+    game.next();
+    drawAnswers();
+    $('#sol-hint').textContent = '';
+    $('#sol-feedback').textContent = '🤔 这是第几级（哪个唱名）？';
+    $('#sol-feedback').className = 'sight-feedback';
+    $('#sol-key').disabled = false;
+    $('#sol-replay').disabled = false;
+    playBoth();
+  }
+
+  $('#sol-key').onclick = () => { if (game && game.current) playKey(); };
+  $('#sol-replay').onclick = () => { if (game && game.current) playTarget(); };
+
+  $('#sol-start').onclick = () => {
+    if (game) {
+      recordPractice('solfege', '唱名听辨', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#sol-start').textContent = '▶ 开始练习';
+      $('#sol-start').classList.remove('running');
+      $('#sol-status').textContent = '已停止';
+      $('#sol-answers').innerHTML = '';
+      $('#sol-hint').textContent = '';
+      $('#sol-key').disabled = true;
+      $('#sol-replay').disabled = true;
+      $('#sol-feedback').textContent = '选好范围，按"开始"出题';
+      $('#sol-feedback').className = 'sight-feedback';
+      drawScale(); drawDegs();
+      return;
+    }
+    game = new SolfegeGame({ scaleType, degrees: [...enabled], choiceCount });
+    $('#sol-start').textContent = '⏸ 停止练习';
+    $('#sol-start').classList.add('running');
+    $('#sol-status').textContent = '进行中…';
+    refreshStats();
+    nextQuestion();
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -5909,7 +6075,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
