@@ -50,7 +50,7 @@ import { SolfegeGame, DEGREES as SOL_DEGREES, syllable as solSyllable, noteName 
 import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } from './chord-quality.js';
 import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
 import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
-import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi } from './score-follow.js';
+import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi, beatToMs as scfBeatToMs } from './score-follow.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
@@ -7347,6 +7347,10 @@ function renderScoreFollow() {
   let lastBeat = -1;        // 节拍器：上一次触发的整拍
   let hintUntil = 0;        // ⑥ 等待模式提示高亮的截止时刻
   let lastDrawT = 0;        // 最近一次绘制的播放头时间（标签切换时重绘用）
+  let loopOn = false;       // ③ 区间循环开关
+  let loopFrom = 1, loopTo = 1;        // 循环起止小节（1-based，含）
+  let loopStartBeat = 0, loopEndBeat = 0, loopStartMs = 0, loopEndMs = 0;
+  let winNotes = [];        // 循环窗口内的音符（重置 judged 用）
   const SCF_PC = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
   const midiName = (m) => SCF_PC[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
 
@@ -7386,6 +7390,14 @@ function renderScoreFollow() {
           <button class="ear-chip on" id="scf-aux-labels">🔤 音名标签</button>
           <button class="ear-chip" id="scf-aux-metro">🥁 节拍器</button>
           <button class="ear-chip" id="scf-aux-prog">🐢→🐇 渐进提速</button>
+        </div></div>
+      <div class="param-row" id="scf-loop-row"><label>区间循环</label>
+        <div class="scf-loop-ctl">
+          <button class="ear-chip" id="scf-loop-on">🔁 循环此段</button>
+          <span class="scf-loop-range">第
+            <input type="number" id="scf-loop-from" min="1" value="1" class="scf-num"> –
+            <input type="number" id="scf-loop-to" min="1" value="1" class="scf-num"> 小节</span>
+          <span id="scf-loop-info" class="scf-loop-info"></span>
         </div></div>
     </div>
 
@@ -7441,7 +7453,7 @@ function renderScoreFollow() {
     $('#scf-songs').innerHTML = allSongs().map((s) =>
       `<button class="ear-chip ${s.id === songId ? 'on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
     $('#scf-songs').querySelectorAll('.ear-chip').forEach((b) => {
-      b.onclick = () => { if (mode) return; songId = b.dataset.id; drawSongChips(); prepare(); };
+      b.onclick = () => { if (mode) return; songId = b.dataset.id; loopFrom = 1; loopTo = 9999; drawSongChips(); prepare(); };
     });
   }
   function bindChips(sel, attr, apply) {
@@ -7468,6 +7480,49 @@ function renderScoreFollow() {
   bindToggle('#scf-aux-metro', () => metroOn, (v) => { metroOn = v; });
   bindToggle('#scf-aux-prog', () => progSpeed, (v) => { progSpeed = v; updateMeta(); });
   $('#scf-hint').onclick = doHint;
+
+  // ③ 区间循环：小节 → 拍 → 毫秒
+  function meterOf() { return getCurrentSong().meter || 4; }
+  function totalMeasures() { return sf ? Math.max(1, Math.ceil((sf.totalBeats - 1e-6) / meterOf())) : 1; }
+  function msForBeat(beat) { return scfBeatToMs(beat, sf.bpm) * sf.timeScale; }
+  function computeLoop() {
+    const m = meterOf();
+    loopStartBeat = (loopFrom - 1) * m;
+    loopEndBeat = loopTo * m;
+    loopStartMs = msForBeat(loopStartBeat);
+    loopEndMs = msForBeat(loopEndBeat);
+    winNotes = sf ? sf.notes.filter((n) => n.beat >= loopStartBeat - 1e-6 && n.beat < loopEndBeat - 1e-6) : [];
+  }
+  // 刷新循环控件（夹取范围、信息、禁用态），并在预览上画出循环区
+  function drawLoopControls() {
+    const tm = totalMeasures();
+    if (loopTo > tm || loopTo < 1) loopTo = tm;
+    if (loopFrom < 1) loopFrom = 1;
+    if (loopFrom > tm) loopFrom = tm;
+    if (loopFrom > loopTo) loopFrom = loopTo;
+    const fEl = $('#scf-loop-from'), tEl = $('#scf-loop-to');
+    if (fEl) { fEl.max = tm; fEl.value = loopFrom; fEl.disabled = !loopOn; }
+    if (tEl) { tEl.max = tm; tEl.value = loopTo; tEl.disabled = !loopOn; }
+    const info = $('#scf-loop-info');
+    if (info) info.textContent = loopOn ? `循环第 ${loopFrom}–${loopTo} / 共 ${tm} 小节` : `共 ${tm} 小节`;
+    $('#scf-loop-on')?.classList.toggle('on', loopOn);
+    computeLoop();
+  }
+  $('#scf-loop-on').onclick = () => {
+    if (mode) return;
+    loopOn = !loopOn;
+    drawLoopControls();
+    drawStaff(-LEAD_MS);
+  };
+  function onLoopInput() {
+    if (mode) return;
+    loopFrom = parseInt($('#scf-loop-from').value, 10) || 1;
+    loopTo = parseInt($('#scf-loop-to').value, 10) || 1;
+    drawLoopControls();
+    drawStaff(-LEAD_MS);
+  }
+  $('#scf-loop-from').onchange = onLoopInput;
+  $('#scf-loop-to').onchange = onLoopInput;
 
   // BPM 徽章（随选曲/速度更新）+ 左右手图例
   function updateMeta() {
@@ -7502,6 +7557,7 @@ function renderScoreFollow() {
       const song = scfFromMidi(parsed, { id, title });
       customSongs.push(song);
       songId = id;
+      loopFrom = 1; loopTo = 9999;
       drawSongChips();
       prepare();
       const rc = countHand(parsed, 'r'), lc = countHand(parsed, 'l');
@@ -7539,6 +7595,7 @@ function renderScoreFollow() {
     demoPlayed = new Set();
     lastBeat = -1;
     updateMeta();
+    drawLoopControls();
     drawStaff(-LEAD_MS);
     drawHighway(-LEAD_MS);
     refreshStats();
@@ -7554,6 +7611,11 @@ function renderScoreFollow() {
     const yForPos = (pos) => topY + (8 - pos) * stepPx;
     const xForBeat = (beat) => leftPad + beat * beatPx;
     let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="scf-staff-svg" preserveAspectRatio="xMinYMid meet">`;
+    // ③ 循环区高亮（画在五线谱之下）
+    if (loopOn) {
+      const lx0 = xForBeat(loopStartBeat), lx1 = xForBeat(loopEndBeat);
+      svg += `<rect x="${lx0}" y="10" width="${Math.max(0, lx1 - lx0)}" height="${H - 20}" class="scf-loop-region"/>`;
+    }
     for (let p = 0; p <= 8; p += 2) {
       const y = yForPos(p);
       svg += `<line x1="${leftPad - 14}" y1="${y}" x2="${W - 8}" y2="${y}" class="staff-line"/>`;
@@ -7593,6 +7655,7 @@ function renderScoreFollow() {
     const pxPerMs = HW_H / LOOK_MS;
     let html = '';
     for (const n of sf.notes) {
+      if (loopOn && mode && n.judged && n.grade == null) continue;   // ③ 循环：隐藏窗外被屏蔽的音
       const dt = n.ms - t;            // >0 在上方未到，=0 到判定线
       if (dt > LOOK_MS || dt < -260) continue;
       const cx = centerX.get(n.midi);
@@ -7662,6 +7725,11 @@ function renderScoreFollow() {
     } else if (b < lastBeat) { lastBeat = b; }
   }
 
+  // ③ 把循环窗口内的音符判定状态重置，供下一遍循环重弹
+  function resetWindow() {
+    winNotes.forEach((n) => { n.judged = false; n.grade = null; n.deltaMs = null; });
+  }
+
   function frame() {
     const now = performance.now();
     if (mode === 'wait') {
@@ -7675,7 +7743,14 @@ function renderScoreFollow() {
       const t = waitClock;
       tickMetro(t);
       drawHighway(t); drawStaff(t); refreshStats();
-      if (waitIdx >= groups.length) { finish(); return; }
+      if (waitIdx >= groups.length) {
+        if (loopOn) {                       // ③ 循环：重置窗口、回到首组
+          resetWindow(); waitIdx = 0; frozen = false;
+          waitClock = loopStartMs - LEAD_MS; lastNow = now; lastBeat = -1;
+          raf = requestAnimationFrame(frame); return;
+        }
+        finish(); return;
+      }
       raf = requestAnimationFrame(frame);
       return;
     }
@@ -7685,7 +7760,7 @@ function renderScoreFollow() {
       sf.expire(t).forEach(() => { popGrade('miss'); });
     } else if (mode === 'demo') {
       for (const n of sf.notes) {
-        if (!demoPlayed.has(n.i) && t >= n.ms) {
+        if (!demoPlayed.has(n.i) && !(loopOn && n.judged && n.grade == null) && t >= n.ms) {
           demoPlayed.add(n.i);
           playTone(midiToFreq(n.midi), 0, Math.min(0.9, n.durMs / 1000), 0.2);
           scfKb.flash(n.midi, n.hand === 'l' ? '#a78bfa' : '#22d3ee');
@@ -7695,7 +7770,12 @@ function renderScoreFollow() {
     drawHighway(t);
     drawStaff(t);
     refreshStats();
-    if (t > sf.durationMs + sf.goodMs + 700) { finish(); return; }
+    if (loopOn) {                            // ③ 循环：到段尾跳回段首，不自动结束
+      if (t >= loopEndMs + sf.goodMs) {
+        resetWindow(); demoPlayed = new Set(); lastBeat = -1;
+        t0 = performance.now() + LEAD_MS - loopStartMs;
+      }
+    } else if (t > sf.durationMs + sf.goodMs + 700) { finish(); return; }
     raf = requestAnimationFrame(frame);
   }
 
@@ -7747,21 +7827,34 @@ function renderScoreFollow() {
     prepare();
     mode = which;
     demoPlayed = new Set();
+    // ③ 区间循环：屏蔽窗外音符（判 judged+null → 不画/不判/不漏），并把起点对齐段首
+    const lead0 = loopOn ? (loopStartMs - LEAD_MS) : -LEAD_MS;
+    if (loopOn) {
+      computeLoop();
+      sf.notes.forEach((n) => {
+        const inWin = n.beat >= loopStartBeat - 1e-6 && n.beat < loopEndBeat - 1e-6;
+        if (!inWin) { n.judged = true; n.grade = null; }
+      });
+    }
     if (which === 'wait') {
-      waitIdx = 0; frozen = false; waitClock = -LEAD_MS; lastNow = performance.now();
+      groups = loopOn ? sf.groups().filter((g) => g.ms >= loopStartMs - 1 && g.ms < loopEndMs) : sf.groups();
+      waitIdx = 0; frozen = false; waitClock = lead0; lastNow = performance.now();
       scfOnNote = waitOnNote;
       $('#scf-feedback').textContent = '🐢 等待模式：弹出键盘上高亮的键，弹齐当前这一组才会继续——慢慢来，不计时。';
       $('#scf-feedback').className = 'sight-feedback';
     } else if (which === 'practice') {
-      t0 = performance.now() + LEAD_MS;
+      t0 = performance.now() - lead0;
       scfOnNote = practiceOnNote;
       $('#scf-feedback').textContent = '🎯 音符落到判定线就弹对应键！';
       $('#scf-feedback').className = 'sight-feedback';
     } else { // demo
-      t0 = performance.now() + LEAD_MS;
+      t0 = performance.now() - lead0;
       scfOnNote = null;
       $('#scf-feedback').textContent = '🔊 示范播放中，看音符怎么落、听旋律…';
       $('#scf-feedback').className = 'sight-feedback';
+    }
+    if (loopOn) {
+      $('#scf-feedback').textContent += `（🔁 循环第 ${loopFrom}–${loopTo} 小节，按对应按钮停止）`;
     }
     setRunningUI(which);
     $('#scf-hint').disabled = (which !== 'wait');   // ⑥ 仅等待模式可用提示
@@ -7778,8 +7871,15 @@ function renderScoreFollow() {
     resetButtons();
     $('#scf-hint').disabled = true;
     $('#scf-status').textContent = '已停止';
-    $('#scf-feedback').textContent = wasScored ? '已停止。换一档训练或重来。' : '挑一首曲子或上传 MIDI，选一档训练开始';
-    $('#scf-feedback').className = 'sight-feedback';
+    // ③ 循环练习靠手动停止结束，这里补记成绩
+    if (loopOn && wasScored && sf && sf.judgedCount > 0) {
+      const s = sf.summary();
+      recordPractice('scorefollow', '曲谱跟弹', s.judgedCount || s.total, s.perfect + s.good, s.maxCombo);
+      $('#scf-feedback').textContent = `🔁 循环练习结束：弹了 ${sf.judgedCount} 个音，正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}。`;
+    } else {
+      $('#scf-feedback').textContent = wasScored ? '已停止。换一档训练或重来。' : '挑一首曲子或上传 MIDI，选一档训练开始';
+    }
+    $('#scf-feedback').className = wasScored ? 'sight-feedback ok' : 'sight-feedback';
     drawSongChips();
     prepare();
   }
