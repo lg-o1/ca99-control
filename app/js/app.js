@@ -34,6 +34,7 @@ import { OrnamentTrainer, ORNAMENT_LABELS } from './ornament.js';
 import { LeapTrainer } from './leap.js';
 import { VoicingTrainer } from './voicing.js';
 import { CrescendoTrainer, CRESC_DIRECTIONS, idealRamp } from './crescendo.js';
+import { TempoRampTrainer, TEMPO_DIRECTIONS, ioiToBpm } from './tempo-ramp.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -67,6 +68,7 @@ let ornamentOnNote = null;  // 装饰音训练的 note-on 回调（模块30注�
 let leapOnNote = null;      // 大跳准确度的 note-on 回调（模块31注册）
 let voicingOnNote = null;   // 旋律声部突出的 note-on 回调（模块32注册，带力度）
 let crescOnNote = null;     // 力度渐变曲线的 note-on 回调（模块33注册，带力度）
+let tempoRampOnNote = null; // 速度渐变的 note-on 回调（模块34注册，带时间）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -217,6 +219,8 @@ function onMidiIn(bytes) {
     if (voicingOnNote) voicingOnNote(m.note, m.velocity, performance.now());
     // 驱动力度渐变曲线（带力度）
     if (crescOnNote) crescOnNote(m.velocity);
+    // 驱动速度渐变（带时间）
+    if (tempoRampOnNote) tempoRampOnNote(performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -3801,6 +3805,171 @@ function renderCrescendo() {
   drawCurve([], null);
 }
 
+// ---------- 模块34：速度渐变（accelerando / ritardando） ----------
+function renderTempoRamp() {
+  const root = $('#module-temporamp');
+  if (!root) return;
+  root.innerHTML = `
+    <h2>🚀 速度渐变（Accelerando / Ritardando）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">表现力进阶：在一串音里<b>平滑地把速度推快（渐快 accel.）</b>或<b>拉慢（渐慢 rit.）</b>，是乐句收放、rubato 的核心。和"节拍稳定度"（追求匀速）相反，这里追求<b>有方向地变速</b>。连续敲 <b id="tr-count-lbl">9</b> 下（任意琴键或空格键），引擎测每两下的间隔，画成 BPM 曲线并按方向/平滑度/变速幅度评分。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>方向</label>
+        <select id="tr-dir"><option value="accel" selected>渐快 accel. »（慢→快）</option><option value="rit">渐慢 rit. «（快→慢）</option></select>
+      </div>
+      <div class="param-row"><label>敲击数</label>
+        <select id="tr-count"><option value="6">6 下</option><option value="9" selected>9 下</option><option value="13">13 下</option></select>
+      </div>
+      <div class="param-row"><label>变速幅度要求</label>
+        <select id="tr-ratio"><option value="0.25">轻松（变速 25%）</option><option value="0.4" selected>标准（变速 40%）</option><option value="0.6">明显（变速 60%）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <svg id="tr-curve" class="cr-curve" viewBox="0 0 480 180" preserveAspectRatio="none"></svg>
+      <div id="tr-feedback" class="sight-feedback" style="margin-top:10px">点"开始"，然后依次敲出渐变的速度</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="tr-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">本条分数</div></div>
+      <div class="sight-stat"><div id="tr-dir-pct" class="sight-stat-num">—</div><div class="sight-stat-lbl">方向正确</div></div>
+      <div class="sight-stat"><div id="tr-smooth" class="sight-stat-num">—</div><div class="sight-stat-lbl">平滑度</div></div>
+      <div class="sight-stat"><div id="tr-prog" class="sight-stat-num">0</div><div class="sight-stat-lbl">进度</div></div>
+      <div class="sight-stat"><div id="tr-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="tr-start" class="big-btn">▶ 开始 / 重来</button>
+      <button id="tr-tap" class="big-btn" style="background:var(--accent)">👆 敲击（或按空格）</button>
+      <button id="tr-sim-good" class="big-btn" style="background:var(--panel2)">🎹 模拟（平滑变速）</button>
+      <button id="tr-sim-bad" class="big-btn" style="background:var(--panel2)">🎹 模拟（忽快忽慢）</button>
+      <span id="tr-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let tr = null;
+
+  function opts() {
+    return { direction: $('#tr-dir').value, count: +$('#tr-count').value, minRatio: +$('#tr-ratio').value };
+  }
+
+  // 画 BPM 曲线：x = 间隔序号，y = BPM。绿点=方向正确，红点=方向错。虚线=理想斜坡。
+  function drawCurve(bpms, result) {
+    const W = 480, H = 180, pad = 16;
+    const dir = $('#tr-dir').value;
+    // accel: BPM 应递增（diff>0 对）；rit: 应递减（diff<0 对）
+    const wantSign = dir === 'rit' ? -1 : 1;
+    const all = bpms.slice();
+    if (result && result.idealIois) all.push(...result.idealIois.map(ioiToBpm));
+    const lo = all.length ? Math.min(...all) : 60;
+    const hi = all.length ? Math.max(...all) : 180;
+    const pad2 = Math.max(10, (hi - lo) * 0.15);
+    const yMin = lo - pad2, yMax = hi + pad2;
+    const count = (tr ? tr.count : +$('#tr-count').value) - 1; // 间隔数
+    const x = (i) => pad + (count <= 1 ? 0 : (W - 2 * pad) * i / (count - 1));
+    const y = (v) => H - pad - (H - 2 * pad) * (v - yMin) / (yMax - yMin || 1);
+    let svg = '';
+    // 理想斜坡（结算后）
+    if (result && result.idealIois && result.idealIois.length >= 2) {
+      const idb = result.idealIois.map(ioiToBpm);
+      const pts = idb.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      svg += `<polyline points="${pts}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.6"/>`;
+    }
+    if (bpms.length >= 2) {
+      const pts = bpms.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      svg += `<polyline points="${pts}" fill="none" stroke="url(#trg)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    }
+    bpms.forEach((v, i) => {
+      let col = 'var(--hi2)';
+      if (i === 0) col = 'var(--muted)';
+      else col = Math.sign(v - bpms[i - 1]) === wantSign ? 'var(--ok)' : 'var(--hi)';
+      svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4.5" fill="${col}"/>`;
+    });
+    svg = `<defs><linearGradient id="trg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#667eea"/><stop offset="1" stop-color="#4ade80"/></linearGradient></defs>` + svg;
+    $('#tr-curve').innerHTML = svg;
+  }
+
+  function showResult(r) {
+    $('#tr-score').textContent = r.score;
+    $('#tr-dir-pct').textContent = Math.round(r.monotonic * 100) + '%';
+    $('#tr-smooth').textContent = Math.round(r.smoothness * 100) + '%';
+    $('#tr-best').textContent = tr.best;
+    drawCurve(r.bpms, r);
+    const dirName = r.direction === 'rit' ? '渐慢' : '渐快';
+    const startBpm = Math.round(r.bpms[0] || 0), endBpm = Math.round(r.bpms[r.bpms.length - 1] || 0);
+    const fb = $('#tr-feedback');
+    if (r.score >= 85) { fb.className = 'sight-feedback ok'; fb.textContent = `🏆 ${r.score} 分！${dirName}平滑到位（${startBpm}→${endBpm} BPM）`; }
+    else if (r.score >= 60) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${r.score} 分。方向 ${Math.round(r.monotonic * 100)}%、平滑 ${Math.round(r.smoothness * 100)}%（${startBpm}→${endBpm} BPM），再均匀一点`; }
+    else if (r.monotonic < 0.5) { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分：方向只对 ${Math.round(r.monotonic * 100)}%，注意整体要${dirName}（别忽快忽慢）`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分：${r.spanScore < 0.4 ? '变速幅度太小，速度差再拉大些' : '起伏不够平滑，让每一步变速差不多大'}`; }
+    recordPractice('temporamp', '速度渐变', 1, r.score >= 60 ? 1 : 0, tr.best);
+    tempoRampOnNote = null;
+    $('#tr-status').textContent = '完成 · 可重来';
+  }
+
+  function tap(time) {
+    if (!tr || tr.done) return;
+    tr.feed(time);
+    $('#tr-prog').textContent = `${tr.progress}/${tr.count}`;
+    // 实时画当前已有间隔的 BPM
+    drawCurve(tempoBpms(), null);
+  }
+
+  function tempoBpms() {
+    if (!tr) return [];
+    const b = [];
+    for (let i = 1; i < tr.times.length; i++) b.push(ioiToBpm(tr.times[i] - tr.times[i - 1]));
+    return b;
+  }
+
+  function start() {
+    tr = new TempoRampTrainer(opts());
+    tr.onComplete = (r) => showResult(r);
+    tempoRampOnNote = (time) => tap(time);
+    $('#tr-score').textContent = '—'; $('#tr-dir-pct').textContent = '—'; $('#tr-smooth').textContent = '—';
+    $('#tr-best').textContent = tr.best; $('#tr-prog').textContent = `0/${tr.count}`;
+    const fb = $('#tr-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = `🎯 敲 ${tr.count} 下，速度整体${tr.direction === 'rit' ? '渐慢（快→慢）' : '渐快（慢→快）'}`;
+    $('#tr-status').textContent = '进行中…';
+    drawCurve([], null);
+  }
+
+  // 模拟：从初始 IOI 平滑变速 or 忽快忽慢，造时间戳喂入
+  function sim(good) {
+    start();
+    const dir = tr.direction;
+    const ratio = tr.minRatio + 0.1;
+    const startIoi = dir === 'accel' ? 600 : 600 * (1 - ratio);
+    const endIoi = dir === 'accel' ? 600 * (1 - ratio) : 600;
+    const m = tr.count - 1; // 间隔数
+    let t = performance.now();
+    tr.feed(t);
+    for (let i = 0; i < m; i++) {
+      const ideal = startIoi + (endIoi - startIoi) * i / (m - 1 || 1);
+      const noise = good ? (Math.random() * 30 - 15) : (Math.random() * 240 - 120);
+      t += Math.max(80, ideal + noise);
+      tr.feed(t);
+    }
+  }
+
+  $('#tr-dir').onchange = () => { tr = null; drawCurve([], null); };
+  $('#tr-count').onchange = () => { tr = null; $('#tr-count-lbl').textContent = $('#tr-count').value; drawCurve([], null); };
+  $('#tr-ratio').onchange = () => { tr = null; };
+  $('#tr-start').onclick = start;
+  $('#tr-tap').onclick = () => tap(performance.now());
+  $('#tr-sim-good').onclick = () => sim(true);
+  $('#tr-sim-bad').onclick = () => sim(false);
+  // 空格键敲击（仅当本模块激活时）
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && root.classList.contains('active') && tr && !tr.done) {
+      e.preventDefault();
+      tap(performance.now());
+    }
+  });
+
+  drawCurve([], null);
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -3937,7 +4106,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
