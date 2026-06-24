@@ -2975,6 +2975,11 @@ function renderArpeggio() {
       <div class="arp-progbar"><div id="arp-progfill" class="arp-progfill"></div></div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 整条琶音的<b>音序与走向</b>都画在 88 键上（紫=目标音，黄 ▶=当前该弹的音），看着键位<b>按顺序弹出</b>更直观；没连琴可直接点键模拟</div>
+      <div id="arp-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="arp-speed" class="sight-stat-num">—</div><div class="sight-stat-lbl">速度(音/秒)</div></div>
       <div class="sight-stat"><div id="arp-even" class="sight-stat-num">—</div><div class="sight-stat-lbl">均匀度</div></div>
@@ -3000,6 +3005,19 @@ function renderArpeggio() {
 
   let arp = null;
   const seqBox = $('#arp-seq');
+  const arpKb = new PianoKeyboard($('#arp-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { if (arp && !arp.done) feed(m); else playTone(midiToFreq(m), 0, 0.6); },
+  });
+  arpKb.scrollToShow(48, 84);
+
+  function paintKb() {
+    if (!arp) { arpKb.clear(); return; }
+    const uniq = [...new Set(arp.target)];
+    arpKb.highlightMany(uniq.map((n) => ({ midi: n, color: 'hsl(265,55%,56%)' })), { scroll: false });
+    const cur = arp.target[arp.idx];
+    if (cur != null && !arp.done) arpKb.highlight(cur, { color: 'hsl(48,100%,55%)', text: '▶' });
+  }
 
   function renderSeq() {
     seqBox.innerHTML = '';
@@ -3014,6 +3032,7 @@ function renderArpeggio() {
     const total = arp.target.length;
     $('#arp-progtxt').textContent = `${arp.idx} / ${total}`;
     $('#arp-progfill').style.width = (total ? (arp.idx / total * 100) : 0) + '%';
+    paintKb();
   }
 
   function showResult(r) {
@@ -3046,6 +3065,8 @@ function renderArpeggio() {
     });
     arp.onComplete = (r) => showResult(r);
     arpOnNote = (note) => feed(note);
+    const lo = Math.min(...arp.target), hi = Math.max(...arp.target);
+    arpKb.scrollToShow(Math.max(21, lo - 2), Math.min(108, hi + 2));
     $('#arp-speed').textContent = '—'; $('#arp-even').textContent = '—'; $('#arp-score').textContent = '—';
     $('#arp-best').textContent = arp.best;
     const fb = $('#arp-feedback'); fb.className = 'sight-feedback'; fb.textContent = '🎯 按顺序弹出目标音序，越匀越快分越高';
@@ -3797,6 +3818,11 @@ function renderVoicing() {
       <div id="vo-dots" class="vo-dots"></div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 你按下的和弦显示在 88 键上，<b>金色"响"=该突出的旋律声部</b>、蓝色=内声部（键上小字是力度 v 值）；目标就是让金键力度明显高于蓝键</div>
+      <div id="vo-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="vo-avg" class="sight-stat-num">—</div><div class="sight-stat-lbl">平均分</div></div>
       <div class="sight-stat"><div id="vo-clean" class="sight-stat-num">—</div><div class="sight-stat-lbl">达标和弦</div></div>
@@ -3814,6 +3840,23 @@ function renderVoicing() {
   let vo = null;
   let flushTimer = 0;
   const WINDOW = 80;
+  const voKb = new PianoKeyboard($('#vo-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  voKb.scrollToShow(55, 79);
+
+  function paintKb() {
+    if (!vo || !vo.buffer || !vo.buffer.length) { voKb.clear(); return; }
+    const sorted = vo.buffer.slice().sort((a, b) => a.note - b.note);
+    const targetNote = $('#vo-voice').value === 'top'
+      ? sorted[sorted.length - 1].note : sorted[0].note;
+    voKb.highlightMany(sorted.map((b) => ({
+      midi: b.note,
+      color: b.note === targetNote ? 'hsl(45,100%,55%)' : 'hsl(215,62%,55%)',
+      text: b.note === targetNote ? '响' : 'v' + b.vel,
+    })), { scroll: false });
+  }
 
   function opts() {
     return { targetVoice: $('#vo-voice').value, margin: +$('#vo-margin').value, rounds: +$('#vo-rounds').value, window: WINDOW };
@@ -3869,6 +3912,7 @@ function renderVoicing() {
     $('#vo-chord').innerHTML = vo.buffer
       .slice().sort((a, b) => a.note - b.note)
       .map((b) => `<span class="vo-key">${chordNoteName(b.note)}<small>v${b.vel}</small></span>`).join('');
+    paintKb();
     scheduleFlush();
   }
 
@@ -3882,6 +3926,7 @@ function renderVoicing() {
     const fb = $('#vo-feedback'); fb.className = 'sight-feedback';
     fb.textContent = `🎯 弹 ${vo.rounds} 个和弦，每个让${$('#vo-voice').value === 'top' ? '最高' : '最低'}音更响`;
     $('#vo-status').textContent = '进行中…';
+    voKb.clear();
     renderDots();
   }
 
@@ -3899,12 +3944,13 @@ function renderVoicing() {
     });
     $('#vo-chord').innerHTML = vo.buffer.slice().sort((a, b) => a.note - b.note)
       .map((b) => `<span class="vo-key">${chordNoteName(b.note)}<small>v${b.vel}</small></span>`).join('');
+    paintKb();
     vo.flush();
   }
 
-  $('#vo-voice').onchange = () => { vo = null; renderDots(); };
-  $('#vo-margin').onchange = () => { vo = null; renderDots(); };
-  $('#vo-rounds').onchange = () => { vo = null; renderDots(); };
+  $('#vo-voice').onchange = () => { vo = null; voKb.clear(); renderDots(); };
+  $('#vo-margin').onchange = () => { vo = null; voKb.clear(); renderDots(); };
+  $('#vo-rounds').onchange = () => { vo = null; voKb.clear(); renderDots(); };
   $('#vo-start').onclick = start;
   $('#vo-sim-good').onclick = () => sim(true);
   $('#vo-sim-bad').onclick = () => sim(false);
@@ -4617,6 +4663,11 @@ function renderFingerInd() {
       <div id="fi-feedback" class="sight-feedback" style="margin-top:14px">按"开始"，先按住 hold 的键，再用其他手指敲 move 音型</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 在 88 键上看清<b>哪些键要按住不放</b>（琥珀"按"，按住时变亮、若滑脱抬起会闪红）与<b>哪些键来回敲</b>（蓝"移"，敲到时闪一下）——空间位置一目了然</div>
+      <div id="fi-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="fi-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
       <div class="sight-stat"><div id="fi-sustain" class="sight-stat-num">—</div><div class="sight-stat-lbl">独立保持</div></div>
@@ -4634,6 +4685,21 @@ function renderFingerInd() {
   let trainer = null, playing = false;
   const preset = () => FINGER_PRESETS[+$('#fi-preset').value];
   const reps = () => +$('#fi-reps').value;
+  const fiKb = new PianoKeyboard($('#fi-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+
+  function paintKb() {
+    const p = preset();
+    const items = [];
+    const seen = new Set();
+    p.pattern.forEach((n) => { if (!seen.has(n)) { seen.add(n); items.push({ midi: n, color: 'hsl(215,70%,55%)', text: '移' }); } });
+    p.held.forEach((n) => items.push({ midi: n, color: 'hsl(35,92%,55%)', text: '按' }));
+    fiKb.highlightMany(items, { scroll: false });
+    const all = [...p.held, ...p.pattern];
+    if (all.length) fiKb.scrollToShow(Math.max(21, Math.min(...all) - 2), Math.min(108, Math.max(...all) + 2));
+  }
 
   function renderKeys() {
     const p = preset();
@@ -4649,10 +4715,12 @@ function renderFingerInd() {
       const k = document.createElement('div'); k.className = 'fi-key fi-key-move';
       k.dataset.idx = i; k.textContent = CA99.noteName(n); drawMove.appendChild(k);
     });
+    paintKb();
   }
 
   function lightHeld(note, on) {
     document.querySelectorAll(`#fi-held-keys .fi-key[data-note="${note}"]`).forEach(k => k.classList.toggle('active', on));
+    if (on) fiKb.press(note); else fiKb.release(note);
   }
 
   function finishRound(r) {
@@ -4673,6 +4741,7 @@ function renderFingerInd() {
     $('#fi-status').textContent = '完成';
     document.querySelectorAll('#fi-held-keys .fi-key').forEach(k => k.classList.remove('active'));
     document.querySelectorAll('#fi-move-keys .fi-key').forEach(k => k.classList.remove('done'));
+    preset().held.forEach(n => fiKb.release(n));
   }
 
   function startOne() {
@@ -4686,9 +4755,16 @@ function renderFingerInd() {
         else {
           const keys = document.querySelectorAll('#fi-move-keys .fi-key');
           const k = keys[moveIdx % keys.length]; if (k) { k.classList.add('done'); setTimeout(() => k.classList.remove('done'), 200); }
+          fiKb.flash(ev.note, 'hsl(215,80%,60%)');
           moveIdx++;
         }
-      } else { if (p.held.includes(ev.note)) lightHeld(ev.note, false); }
+      } else {
+        if (p.held.includes(ev.note)) {
+          lightHeld(ev.note, false);
+          // 练习中途松开了该按住的键 = 滑脱，闪红提醒
+          if (playing && !trainer.done) fiKb.flash(ev.note, 'hsl(0,85%,58%)');
+        }
+      }
       $('#fi-status').textContent = `移动 ${trainer.progress}/${trainer.targetTaps}`;
     };
     trainer.onComplete = (r) => finishRound(r);
@@ -4710,6 +4786,7 @@ function renderFingerInd() {
     $('#fi-start').classList.remove('running');
     $('#fi-status').textContent = '已停止';
     document.querySelectorAll('#fi-held-keys .fi-key').forEach(k => k.classList.remove('active'));
+    preset().held.forEach(n => fiKb.release(n));
   }
 
   function simulate() {
