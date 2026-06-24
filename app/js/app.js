@@ -54,6 +54,7 @@ import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GR
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
+import { SightPhrase, KEYS as SP_KEYS, keyById as spKeyById, keySignatureAccidentals as spKeySig, degreeToMidi as spDegToMidi, durGlyph as spDurGlyph } from './sight-phrase.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
@@ -101,6 +102,7 @@ let transOnNote = null;     // 移调视奏的 note-on 回调（模块40注册�
 let fingOnNote = null;      // 音阶指法提示的 note-on 回调（模块43注册）
 let ivbOnNote = null;       // 音程构建的 note-on 回调（模块44注册）
 let scfOnNote = null;       // 曲谱跟弹的 note-on 回调（模块45注册，带时间在内部取）
+let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -271,6 +273,8 @@ function onMidiIn(bytes) {
     if (ivbOnNote) ivbOnNote(m.note);
     // 驱动曲谱跟弹
     if (scfOnNote) scfOnNote(m.note);
+    // 驱动乐句视奏
+    if (spOnNote) spOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -7993,6 +7997,300 @@ function renderScoreFollow() {
   prepare();
 }
 
+// ---------- 模块48：乐句视奏（phrase sight-reading）----------
+function renderSightPhrase() {
+  const root = $('#module-sphrase');
+  let game = null;
+  let keyId = 'C';
+  let measures = 2;
+  let rhythmLv = 'easy';
+  let easy = true;        // 忽略八度
+  let active = false;     // 正在答题
+  let previewing = false;
+  const previewTimers = [];
+  const CLEF = 'treble';
+  const NN = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+  // 调号升降号在高音谱号上的标准位置（staffPosition 体系：E4=0 底线）
+  const SHARP_POS = { F: 8, C: 5, G: 9, D: 6, A: 3, E: 7, B: 4 };
+  const FLAT_POS  = { B: 4, E: 7, A: 3, D: 6, G: 2, C: 5, F: 1 };
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎼 乐句视奏（Phrase Sight-Reading）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">真正的<b>视奏</b>训练：屏幕给一句<b>标准五线谱</b>记谱的短旋律（带<b>节奏</b>与<b>调号</b>），你<b>照着谱、按自己的节奏</b>在键盘上把它<b>逐音弹出来</b>。弹对的音变绿、当前该弹的音高亮，弹错不前进——整句一次弹对才计满分。和"视奏闪卡"（只认/弹一个音）、"识谱卡"（只说音名）、"旋律听写"（靠耳朵）、"曲谱跟弹"（音符下落+计时）都不同：<b>这里脱离听觉与下落提示，纯靠读谱</b>，是从识谱迈向流畅演奏的关键一步。可选调（升降号 ≤2）、乐句长度、节奏难度。卡住可 👂 试听 或 🏳 看答案。没接 MIDI 也能点屏幕琴键作答，成绩入仪表盘。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调（含调号）</label>
+        <select id="sp-key"></select></div>
+      <div class="param-row"><label>乐句长度</label>
+        <div class="ear-chips" id="sp-measures">
+          <button class="ear-chip" data-m="1">1 小节</button>
+          <button class="ear-chip on" data-m="2">2 小节</button>
+          <button class="ear-chip" data-m="3">3 小节</button>
+        </div></div>
+      <div class="param-row"><label>节奏难度</label>
+        <div class="ear-chips" id="sp-rhythm">
+          <button class="ear-chip on" data-r="easy">入门（四分/二分）</button>
+          <button class="ear-chip" data-r="medium">进阶（加八分）</button>
+          <button class="ear-chip" data-r="hard">挑战（加附点）</button>
+        </div></div>
+      <div class="param-row"><label>难度</label>
+        <div class="ear-chips" id="sp-easy">
+          <button class="ear-chip on" data-e="1">简单（忽略八度）</button>
+          <button class="ear-chip" data-e="0">标准（要弹准八度）</button>
+        </div></div>
+    </div>
+
+    <div class="sight-stage">
+      <div class="sight-staff-wrap"><div id="sp-staff" class="sp-staff"></div></div>
+      <div id="sp-feedback" class="sight-feedback">选好设置，按"开始"出一句谱</div>
+      <div id="sp-tip" class="mid-hint"></div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 看着上面的谱，在这里（或真琴上）<b>从左到右逐音弹出</b>这一句</div>
+      <div id="sp-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="sp-score">0</span><span class="sight-stat-lbl">弹对句数</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sp-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sp-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sp-acc">—</span><span class="sight-stat-lbl">一遍过率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="sp-start" class="big-btn">▶ 开始 / 下一句</button>
+      <button id="sp-preview" class="scf-mode-btn" disabled>👂 试听</button>
+      <button id="sp-reveal" class="scf-mode-btn" disabled>🏳 看答案</button>
+      <span id="sp-status" style="color:var(--muted);margin-left:6px">未开始</span>
+    </div>`;
+
+  // 调下拉
+  $('#sp-key').innerHTML = SP_KEYS.map((k) => `<option value="${k.id}">${k.name}</option>`).join('');
+  $('#sp-key').onchange = () => { if (!active) keyId = $('#sp-key').value; };
+
+  function bindChips(sel, attr, apply) {
+    $(sel).querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (active) return;
+        $(sel).querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+        apply(b.dataset[attr]);
+      };
+    });
+  }
+  bindChips('#sp-measures', 'm', (v) => { measures = parseInt(v, 10); });
+  bindChips('#sp-rhythm', 'r', (v) => { rhythmLv = v; });
+  bindChips('#sp-easy', 'e', (v) => { easy = (v === '1'); });
+
+  const spKb = new PianoKeyboard($('#sp-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (spOnNote) spOnNote(m); },
+  });
+  spKb.scrollToShow(55, 79);
+
+  // ---- 谱面绘制 ----
+  const CLEF_GLYPH = { treble: '𝄞', bass: '𝄢' };
+  function drawStaff() {
+    const meter = 4;
+    const leftPad = 96;       // 谱号 + 调号 + 拍号
+    const beatPx = 50;
+    const topY = 60, stepPx = 7, rightPad = 26;
+    const totalBeats = game ? game.totalBeats : measures * meter;
+    const W = leftPad + totalBeats * beatPx + rightPad;
+    const H = 184;
+    const yForPos = (pos) => topY + (8 - pos) * stepPx;
+    const xForBeat = (beat) => leftPad + beat * beatPx;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="sp-staff-svg" preserveAspectRatio="xMinYMid meet">`;
+    // 五线
+    for (let p = 0; p <= 8; p += 2) {
+      const y = yForPos(p);
+      svg += `<line x1="26" y1="${y}" x2="${W - 10}" y2="${y}" class="staff-line"/>`;
+    }
+    // 谱号
+    svg += `<text x="32" y="${yForPos(2) + 6}" class="clef-glyph">${CLEF_GLYPH[CLEF]}</text>`;
+    // 调号
+    const key = spKeyById(keyId);
+    const sig = spKeySig(key.sig);
+    let ax = 58;
+    for (const letter of sig.letters) {
+      const pos = (sig.type === 'sharp' ? SHARP_POS : FLAT_POS)[letter];
+      const glyph = sig.type === 'sharp' ? '♯' : '♭';
+      svg += `<text x="${ax}" y="${yForPos(pos) + 5}" class="sp-keysig">${glyph}</text>`;
+      ax += 11;
+    }
+    // 拍号 4/4
+    svg += `<text x="${ax + 4}" y="${yForPos(6) + 4}" class="sp-timesig">4</text>`;
+    svg += `<text x="${ax + 4}" y="${yForPos(2) + 4}" class="sp-timesig">4</text>`;
+    // 小节线
+    for (let b = meter; b < totalBeats - 1e-6; b += meter) {
+      const bx = xForBeat(b);
+      svg += `<line x1="${bx}" y1="${yForPos(8)}" x2="${bx}" y2="${yForPos(0)}" class="sp-barline"/>`;
+    }
+    // 终止线
+    svg += `<line x1="${W - 12}" y1="${yForPos(8)}" x2="${W - 12}" y2="${yForPos(0)}" class="sp-barline-final"/>`;
+    // 音符
+    if (game) {
+      const pos0 = game.pos;
+      game.phrase.forEach((n, idx) => {
+        const pos = staffPosition(n.midi, CLEF);
+        const cy = yForPos(pos);
+        const cx = xForBeat(n.beat) + 14;
+        const g = spDurGlyph(n.dur);
+        // 当前/已弹状态
+        const done = idx < pos0;
+        const cur = idx === pos0 && active;
+        // 当前音高亮框
+        if (cur) svg += `<rect x="${cx - 15}" y="14" width="30" height="${H - 28}" rx="6" class="sp-cur-box"/>`;
+        // 加线
+        if (pos > 8) for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 11}" y1="${yForPos(p)}" x2="${cx + 11}" y2="${yForPos(p)}" class="ledger-line"/>`;
+        if (pos < 0) for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 11}" y1="${yForPos(p)}" x2="${cx + 11}" y2="${yForPos(p)}" class="ledger-line"/>`;
+        let headCls = 'sp-head';
+        if (done) headCls += ' sp-done';
+        else if (cur) headCls += ' sp-current';
+        const fill = g.filled;
+        // 符头
+        svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${headCls}" ${fill ? '' : 'fill="none"'} style="${fill ? '' : 'stroke-width:1.6'}"/></g>`;
+        // 符干
+        if (g.stem) {
+          const up = pos < 4;
+          const sx = up ? cx + 6 : cx - 6;
+          const sy2 = up ? cy - 30 : cy + 30;
+          svg += `<line x1="${sx}" y1="${cy}" x2="${sx}" y2="${sy2}" class="${done ? 'sp-stem sp-done-stroke' : 'sp-stem'}"/>`;
+          // 符尾旗（八分）
+          if (g.flags >= 1) {
+            const fy = sy2;
+            svg += `<path d="M${sx},${fy} q9,4 7,16" class="${done ? 'sp-flag sp-done-stroke' : 'sp-flag'}" fill="none"/>`;
+          }
+        }
+        // 附点
+        if (g.dotted) svg += `<circle cx="${cx + 12}" cy="${cy + (pos % 2 === 0 ? -3 : 0)}" r="2" class="${done ? 'sp-head sp-done' : 'sp-head'}"/>`;
+      });
+    }
+    svg += `</svg>`;
+    const wrap = $('#sp-staff');
+    wrap.innerHTML = svg;
+    // 自动滚动让当前音可见
+    if (game && active) {
+      const sw = wrap.parentElement;
+      if (sw && game.pos < game.phrase.length) {
+        const curX = leftPad + game.phrase[game.pos].beat * beatPx;
+        sw.scrollLeft = Math.max(0, curX - sw.clientWidth / 2);
+      }
+    }
+  }
+
+  function flash(ok) {
+    const wrap = $('#sp-staff').closest('.sight-staff-wrap');
+    if (!wrap) return;
+    wrap.classList.remove('flash-ok', 'flash-no');
+    void wrap.offsetWidth;
+    wrap.classList.add(ok ? 'flash-ok' : 'flash-no');
+  }
+
+  function refreshStats() {
+    if (!game) return;
+    $('#sp-score').textContent = game.score;
+    $('#sp-streak').textContent = game.streak;
+    $('#sp-best').textContent = game.best;
+    $('#sp-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function setKbRange() {
+    const [lo, hi] = game.range();
+    const klo = Math.max(21, lo - 2), khi = Math.min(108, hi + 2);
+    spKb.scrollToShow(klo, khi);
+  }
+
+  function newPhrase() {
+    if (!game) {
+      game = new SightPhrase({ key: spKeyById(keyId), measures, rhythm: rhythmLv, octaveAgnostic: easy });
+    } else {
+      game.key = spKeyById(keyId); game.measures = measures; game.rhythm = rhythmLv; game.octaveAgnostic = easy;
+    }
+    game.next();
+    active = true;
+    spKb.clear();
+    setKbRange();
+    spOnNote = (m) => onPlay(m);
+    $('#sp-preview').disabled = false;
+    $('#sp-reveal').disabled = false;
+    $('#sp-status').textContent = '读谱中…逐音弹出';
+    $('#sp-tip').textContent = '';
+    $('#sp-feedback').className = 'sight-feedback';
+    $('#sp-feedback').textContent = `📖 看谱：${game.phrase.length} 个音，从左到右弹。弹对的变绿、当前音高亮。`;
+    drawStaff();
+  }
+
+  function onPlay(midi) {
+    if (!active || !game) return;
+    const r = game.play(midi);
+    if (!r) return;
+    if (r.ok) {
+      // 弹对：把刚弹的音点亮一下
+      spKb.flash(midi, '#34d399');
+      drawStaff();
+      if (r.done) {
+        active = false;
+        spOnNote = null;
+        refreshStats();
+        flash(true);
+        $('#sp-preview').disabled = true;
+        $('#sp-reveal').disabled = true;
+        if (r.mistakes === 0) {
+          $('#sp-feedback').className = 'sight-feedback ok';
+          $('#sp-feedback').textContent = `🎉 整句一遍弹对！连击 ${game.streak}。按"下一句"继续。`;
+          recordPractice('sightphrase', '乐句视奏', game.phrase.length, game.phrase.length, game.streak);
+        } else {
+          $('#sp-feedback').className = 'sight-feedback';
+          $('#sp-feedback').textContent = `✅ 这句弹完了（中间错了 ${r.mistakes} 次，未计满分）。再来一句巩固。`;
+          recordPractice('sightphrase', '乐句视奏', game.phrase.length, Math.max(0, game.phrase.length - r.mistakes), 0);
+        }
+        $('#sp-status').textContent = '完成';
+      } else {
+        $('#sp-feedback').className = 'sight-feedback';
+        $('#sp-feedback').textContent = `👍 第 ${game.pos}/${game.phrase.length} 个音对了，继续。`;
+      }
+    } else {
+      // 弹错：闪红 + 提示该弹的音名（不前进）
+      spKb.flash(midi, '#f87171');
+      flash(false);
+      const want = r.expected;
+      $('#sp-tip').textContent = `💡 这个音不对——当前该弹的是 ${CA99.noteName(want)}（${easy ? '忽略八度，可在任意八度弹' : '需弹准八度'}）`;
+    }
+  }
+
+  function reveal() {
+    if (!game || !game.phrase.length) return;
+    // 把整句画在键盘上，并按顺序标号
+    const items = game.phrase.map((n, i) => ({ midi: n.midi, color: i < game.pos ? '#34d399' : '#7c5cff', text: String(i + 1) }));
+    spKb.highlightMany(items);
+    $('#sp-tip').textContent = '🏳 已把整句的音按顺序画在键盘上（数字=第几个音）。看着把它弹完吧。';
+  }
+
+  function preview() {
+    if (!game || !game.phrase.length || previewing) return;
+    previewing = true;
+    const bpm = 96, beatMs = 60000 / bpm;
+    game.phrase.forEach((n) => {
+      const t = setTimeout(() => {
+        playTone(midiToFreq(n.midi), 0, Math.min(1.2, n.dur * beatMs / 1000));
+        spKb.flash(n.midi, '#22d3ee');
+      }, n.beat * beatMs);
+      previewTimers.push(t);
+    });
+    const endT = setTimeout(() => { previewing = false; }, game.totalBeats * beatMs + 200);
+    previewTimers.push(endT);
+    $('#sp-tip').textContent = '👂 试听一遍（这是辅助；视奏的目标是直接读谱弹出来）。';
+  }
+  function clearPreview() { while (previewTimers.length) clearTimeout(previewTimers.pop()); previewing = false; }
+
+  $('#sp-start').onclick = () => { clearPreview(); newPhrase(); };
+  $('#sp-preview').onclick = preview;
+  $('#sp-reveal').onclick = reveal;
+
+  drawStaff();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -8133,7 +8431,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

@@ -337,6 +337,23 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-staff-svg .note-head.nh-good { fill: #22d3ee; stroke: #0e9cb5; }
 .scf-staff-svg .note-head.nh-miss { fill: #f87171; stroke: #c84a4a; opacity: .65; }
 .scf-staff-svg .scf-cursor-line { stroke: #fbbf24; stroke-width: 2; opacity: .85; }
+/* 乐句视奏 sp-staff */
+.sp-staff { overflow-x: auto; max-width: 100%; }
+.sp-staff-svg { display: block; }
+.sp-staff-svg .staff-line { stroke: var(--muted); stroke-width: 1.4; }
+.sp-staff-svg .ledger-line { stroke: var(--text); stroke-width: 1.6; }
+.sp-staff-svg .clef-glyph { font-size: 52px; fill: var(--text); font-family: serif; }
+.sp-staff-svg .sp-keysig { font-size: 26px; fill: var(--text); font-family: serif; }
+.sp-staff-svg .sp-timesig { font-size: 19px; font-weight: 700; fill: var(--text); font-family: serif; text-anchor: middle; }
+.sp-staff-svg .sp-barline { stroke: var(--muted); stroke-width: 1.4; }
+.sp-staff-svg .sp-barline-final { stroke: var(--text); stroke-width: 3; }
+.sp-staff-svg .sp-head { fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.sp-staff-svg .sp-head.sp-current { fill: #fbbf24; stroke: #d99a16; }
+.sp-staff-svg .sp-head.sp-done { fill: #34d399; stroke: #1f9d6f; }
+.sp-staff-svg .sp-stem { stroke: #4a5fc8; stroke-width: 1.6; }
+.sp-staff-svg .sp-flag { stroke: #4a5fc8; stroke-width: 1.6; }
+.sp-staff-svg .sp-done-stroke { stroke: #1f9d6f; }
+.sp-staff-svg .sp-cur-box { fill: rgba(251,191,36,.12); stroke: rgba(251,191,36,.5); stroke-width: 1; }
 .scf-highway-wrap {
   position: relative; width: 100%; overflow: hidden; height: 196px;
   border-radius: 14px; background: linear-gradient(#0c1024, #161b34);
