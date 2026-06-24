@@ -48,6 +48,7 @@ import { IntervalBuildGame, INTERVALS as IB_INTERVALS, DIRECTIONS as IB_DIRECTIO
 import { ModeIdGame, MODES as MID_MODES, modeName as midModeName } from './mode-id.js';
 import { SolfegeGame, DEGREES as SOL_DEGREES, syllable as solSyllable, noteName as solNoteName } from './solfege.js';
 import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } from './chord-quality.js';
+import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -6097,6 +6098,191 @@ function renderChordQuality() {
   };
 }
 
+// ========== 模块 48: 和声进行听辨（harmonic progression）==========
+function renderProgressionEar() {
+  const root = $('#module-progear');
+  let game = null;
+  const enabled = new Set(PE_PROGS.map((p) => p.id));
+  let choiceCount = 4;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎶 和声进行听辨</h2>
+    <p style="color:var(--muted);margin-bottom:14px">🔊 听一段<b>大调和弦进行</b>，逐个辨认每个和弦的<b>罗马数字级数</b>（I ii iii IV V vi vii°）。第一个和弦固定是主和弦 <b>I</b>（给你当锚点），之后听辨每个和弦在调里的<b>功能/走向</b>。诀窍：<b>V 强烈想回 I</b>、<b>IV 下属明亮</b>、<b>vi 是忧郁的关系小调</b>、<b>vii° 极不稳定</b>。和"和弦进行"（看级数弹出和弦）不同——这里练<b>和声功能/进行走向听觉</b>，是扒和弦/即兴/编配的核心。无需连琴（纯听辨多选）。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>进行范围</label>
+        <div class="ear-chips" id="pe-chips"></div></div>
+      <div class="param-row"><label>选项数量</label>
+        <select id="pe-cc">
+          <option value="3">3 选 1（入门）</option>
+          <option value="4" selected>4 选 1（进阶）</option>
+          <option value="7">7 选 1（全部）</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="pe-slots" class="pe-slots"></div>
+      <div id="pe-feedback" class="sight-feedback">选好范围，按"开始"出题</div>
+      <div id="pe-hint" class="pe-hint"></div>
+    </div>
+
+    <div class="rotate-bar" style="justify-content:center;margin-bottom:8px">
+      <button id="pe-replay" class="big-btn" disabled>🔊 再听整段</button>
+    </div>
+
+    <div class="ear-answers" id="pe-answers"></div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="pe-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="pe-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="pe-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="pe-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="pe-start" class="big-btn">▶ 开始练习</button>
+      <span id="pe-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawChips() {
+    $('#pe-chips').innerHTML = PE_PROGS.map((p) =>
+      `<button class="ear-chip ${enabled.has(p.id) ? 'on' : ''}" data-p="${p.id}">${p.name}</button>`).join('');
+    $('#pe-chips').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        const p = b.dataset.p;
+        if (enabled.has(p)) { if (enabled.size > 1) enabled.delete(p); } else enabled.add(p);
+        drawChips();
+      };
+    });
+  }
+  drawChips();
+  $('#pe-cc').onchange = () => { if (!game) choiceCount = +$('#pe-cc').value; };
+
+  function refreshStats() {
+    $('#pe-score').textContent = game.score;
+    $('#pe-streak').textContent = game.streak;
+    $('#pe-best').textContent = game.best;
+    $('#pe-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  // slots: 已辨认显示罗马数字；当前高亮；未到的显示 ?
+  function drawSlots(revealAll) {
+    const chords = game.chords();
+    const idx = game.index();
+    $('#pe-slots').innerHTML = chords.map((c, i) => {
+      let cls = 'pe-slot';
+      let txt;
+      if (i === 0) { txt = c.roman; cls += ' given'; }
+      else if (revealAll || i < idx) { txt = c.roman; cls += ' done'; }
+      else if (i === idx) { txt = '?'; cls += ' active'; }
+      else { txt = '·'; cls += ' future'; }
+      return `<span class="${cls}">${txt}</span>`;
+    }).join('<span class="pe-arrow">→</span>');
+  }
+
+  function playProgression() {
+    const seq = game.progressionNotes();
+    let t = 0;
+    seq.forEach((notes) => {
+      notes.forEach((n) => playTone(midiToFreq(n), t, 0.92, 0.15));
+      t += 1.0;
+    });
+  }
+  function playChordAt(i) {
+    const seq = game.progressionNotes();
+    if (seq[i]) seq[i].forEach((n) => playTone(midiToFreq(n), 0, 1.0, 0.16));
+  }
+
+  function drawAnswers() {
+    const ch = game.currentChord();
+    if (!ch) { $('#pe-answers').innerHTML = ''; return; }
+    $('#pe-answers').innerHTML = game.choices().map((c) =>
+      `<button class="ear-ans" data-d="${c.degree}">${c.roman}<small>${c.name}</small></button>`).join('');
+    $('#pe-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      b.onclick = () => answer(+b.dataset.d, b);
+    });
+  }
+
+  let answering = false;
+  function answer(deg, btn) {
+    if (!game || answering || game.isComplete()) return;
+    const ch = game.currentChord();
+    if (!ch) return;
+    answering = true;
+    const correctDeg = ch.degree;
+    const slotIdx = game.index();
+    const correct = game.check(deg);
+    refreshStats();
+    $('#pe-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      const d = +b.dataset.d;
+      if (d === correctDeg) b.classList.add('correct');
+      else if (d === deg) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    const info = PE_DEGREES.find((x) => x.degree === correctDeg);
+    $('#pe-hint').textContent = '💡 ' + info.roman + ' ' + info.name + '：' + info.hint;
+    drawSlots(false);
+    playChordAt(slotIdx);
+    const fb = $('#pe-feedback');
+    if (game.isComplete()) {
+      if (correct) { fb.textContent = `✅ ${info.roman} 对了！整段完成 · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+      else { fb.textContent = `❌ 该和弦是 ${info.roman} · 整段完成`; fb.className = 'sight-feedback no'; }
+      drawSlots(true);
+      setTimeout(() => { if (game) nextProgression(); }, 2100);
+    } else {
+      if (correct) { fb.textContent = `✅ ${info.roman} 对了！下一个和弦…`; fb.className = 'sight-feedback ok'; }
+      else { fb.textContent = `❌ 该和弦是 ${info.roman}，继续下一个…`; fb.className = 'sight-feedback no'; }
+      setTimeout(() => {
+        if (!game) return;
+        answering = false;
+        drawAnswers();
+        $('#pe-hint').textContent = '';
+        $('#pe-feedback').textContent = `🤔 第 ${game.index() + 1} 个和弦是什么级数？`;
+        $('#pe-feedback').className = 'sight-feedback';
+      }, 1400);
+    }
+  }
+
+  function nextProgression() {
+    answering = false;
+    game.next();
+    drawSlots(false);
+    drawAnswers();
+    $('#pe-hint').textContent = '';
+    $('#pe-feedback').textContent = '🤔 第 2 个和弦是什么级数？（第 1 个已给 = I）';
+    $('#pe-feedback').className = 'sight-feedback';
+    $('#pe-replay').disabled = false;
+    playProgression();
+  }
+
+  $('#pe-replay').onclick = () => { if (game && game.current) playProgression(); };
+
+  $('#pe-start').onclick = () => {
+    if (game) {
+      recordPractice('progear', '和声进行听辨', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#pe-start').textContent = '▶ 开始练习';
+      $('#pe-start').classList.remove('running');
+      $('#pe-status').textContent = '已停止';
+      $('#pe-slots').innerHTML = '';
+      $('#pe-answers').innerHTML = '';
+      $('#pe-hint').textContent = '';
+      $('#pe-replay').disabled = true;
+      $('#pe-feedback').textContent = '选好范围，按"开始"出题';
+      $('#pe-feedback').className = 'sight-feedback';
+      drawChips();
+      return;
+    }
+    game = new ProgressionEarGame({ progressions: [...enabled], choiceCount });
+    $('#pe-start').textContent = '⏸ 停止练习';
+    $('#pe-start').classList.add('running');
+    $('#pe-status').textContent = '进行中…';
+    refreshStats();
+    nextProgression();
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -6233,7 +6419,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
