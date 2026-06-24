@@ -1151,7 +1151,20 @@ function renderChord() {
         <div id="chord-target" class="chord-target">—</div>
         <div id="chord-feedback" style="min-height:24px;font-weight:700"></div>
       </div>
+      <div class="kb-wrap">
+        <div class="kb-cap">🎹 挑战开始后，这里把目标和弦该按的键高亮在 88 键上（点键可试听）；照着位置在钢琴上弹出即可过关</div>
+        <div id="chord-kb"></div>
+      </div>
     </div>`;
+
+  const CT_IV = { '': [0, 4, 7], 'm': [0, 3, 7], '7': [0, 4, 7, 10], 'maj7': [0, 4, 7, 11], 'm7': [0, 3, 7, 10] };
+  const CT_NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  function chordTargetMidi(q) { const base = 60 + CT_NOTE.indexOf(q.root); return (CT_IV[q.suffix] || [0, 4, 7]).map((iv) => base + iv); }
+  const chordKb = new PianoKeyboard($('#chord-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  chordKb.scrollToShow(55, 79);
 
   const nowEl = $('#chord-now'), detailEl = $('#chord-detail');
 
@@ -1187,12 +1200,17 @@ function renderChord() {
       $('#chord-start').textContent = '▶ 开始挑战';
       $('#chord-start').classList.remove('running');
       $('#chord-quiz').style.display = 'none';
+      chordKb.clear();
       log('和弦挑战: 结束');
       return;
     }
     challenge = new ChordChallenge();
     challenge.onCorrect = () => paintStats();
-    challenge.onNew = (q) => { $('#chord-target').textContent = `${q.root} ${q.label}`; };
+    challenge.onNew = (q) => {
+      $('#chord-target').textContent = `${q.root} ${q.label}`;
+      const notes = chordTargetMidi(q);
+      chordKb.highlightMany(notes.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
+    };
     challenge.next();
     paintStats();
     $('#chord-start').textContent = '⏸ 结束挑战';
@@ -1543,6 +1561,11 @@ function renderSight() {
       <div id="sight-feedback" class="sight-feedback">按"开始"出题</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 没接 MIDI 也能点琴键当作弹奏作答；答错时会把正确音高亮在 88 键上，照着位置弹就懂了</div>
+      <div id="sight-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="sight-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="sight-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -1604,6 +1627,12 @@ function renderSight() {
 
   drawStaff(null, $('#sight-clef').value);
 
+  const sightKb = new PianoKeyboard($('#sight-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (sightOnNote) sightOnNote(m); },
+  });
+  sightKb.scrollToShow(55, 79);
+
   $('#sight-clef').onchange = () => { if (!game) drawStaff(null, $('#sight-clef').value); };
 
   $('#sight-start').onclick = () => {
@@ -1621,7 +1650,7 @@ function renderSight() {
     }
     const clef = $('#sight-clef').value;
     game = new SightReadingGame({ clef, octaveAgnostic: $('#sight-octave').value === '1' });
-    game.onNew = (note) => { drawStaff(note, clef); };
+    game.onNew = (note) => { drawStaff(note, clef); sightKb.clear(); };
     game.onResult = (ok, info) => {
       refreshStats();
       flash(ok);
@@ -1633,6 +1662,7 @@ function renderSight() {
         fb.textContent = `❌ 不对，正确答案是 ${sightNoteLabel(game.current)}`;
         fb.className = 'sight-feedback no';
       }
+      if (game && game.current != null) sightKb.highlightMany([{ midi: game.current, color: ok ? '#34d399' : '#fbbf24', text: ok ? '✓' : '答' }]);
     };
     sightOnNote = (note) => game && game.check(note);
     $('#sight-start').textContent = '⏸ 停止练习';
@@ -1968,7 +1998,19 @@ function renderTransposer() {
         <button id="trans-reset" class="big-btn" style="max-width:160px">↺ 归零</button>
       </div>
       <p id="trans-hint" style="color:var(--muted);font-size:13px;margin-top:10px">移调 0：原调</p>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 点击琴键发<b>真实 MIDI</b> 到钢琴（已随当前移调量发声）——不用伸手去琴键就能听移调效果对不对</div>
+      <div id="trans-kb"></div>
     </div>`;
+
+  const transKb = new PianoKeyboard($('#trans-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => kbMidiOn(m, 0),
+    onNoteOff: (m) => kbMidiOff(m, 0),
+  });
+  transKb.scrollToShow(48, 72);
 
   const presets = [
     { s: -12, t: '低八度' }, { s: -5, t: '降4度' }, { s: -2, t: '降全音' },
@@ -2421,6 +2463,11 @@ function renderChordProg() {
       <div id="cp-feedback" class="sight-feedback" style="margin-top:10px">选好调与进行，点开始</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 练习时把<b>当前该弹的和弦</b>高亮在 88 键上（带序号），照着位置在钢琴上弹出即可推进（点键可试听）</div>
+      <div id="cp-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="cp-score" class="sight-stat-num">0</div><div class="sight-stat-lbl">弹对</div></div>
       <div class="sight-stat"><div id="cp-streak" class="sight-stat-num">0</div><div class="sight-stat-lbl">连击</div></div>
@@ -2436,6 +2483,11 @@ function renderChordProg() {
     </div>`;
 
   let game = null, ac = null, judging = false;
+  const cpKb = new PianoKeyboard($('#cp-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  cpKb.scrollToShow(48, 72);
   function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
   // 把和弦符号转成根位 MIDI（C4 区域），用于试听与"替我弹"
   const CP_INTERVALS = { '': [0, 4, 7], 'm': [0, 3, 7], 'dim': [0, 3, 6], 'aug': [0, 4, 8] };
@@ -2484,6 +2536,10 @@ function renderChordProg() {
   function showTarget() {
     const t = game && game.current();
     $('#cp-target').textContent = t ? `🎯 现在弹：${t.symbol}（${t.roman}）` : '✅ 已走完整条';
+    if (t) {
+      const ns = chordMidi(t);
+      cpKb.highlightMany(ns.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
+    } else cpKb.clear();
   }
 
   function updateStats() {
@@ -2530,6 +2586,7 @@ function renderChordProg() {
     $('#cp-listen').disabled = true;
     $('#cp-auto').disabled = true;
     $('#cp-status').textContent = '已停止';
+    cpKb.clear();
   }
 
   $('#cp-key').onchange = () => { if (game) restart(); };
@@ -4993,6 +5050,11 @@ function renderSightTranspose() {
       <div id="st-feedback" class="sight-feedback" style="margin-top:14px">点"换一题"出题，然后在琴上把这段旋律移到目标调弹出来</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 看答案或完成一轮后，把<b>移调后的目标音</b>按顺序画在 88 键上（带序号），照着位置弹就懂怎么移调（点键也可作答）</div>
+      <div id="st-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><div id="st-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
       <div class="sight-stat"><div id="st-note" class="sight-stat-num">—</div><div class="sight-stat-lbl">音准</div></div>
@@ -5010,6 +5072,12 @@ function renderSightTranspose() {
 
   let trainer = null;
   let revealed = false;
+
+  const stKb = new PianoKeyboard($('#st-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); if (transOnNote) transOnNote(m); },
+  });
+  stKb.scrollToShow(55, 79);
 
   function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
   function playTone(freq, when, dur) {
@@ -5052,6 +5120,7 @@ function renderSightTranspose() {
     $('#st-answer').style.display = 'none';
     $('#st-answer').textContent = '';
     revealed = false;
+    stKb.clear();
     drawPlayDots();
   }
 
@@ -5083,6 +5152,7 @@ function renderSightTranspose() {
     else tip = '先在心里把每个音程往上搬，再弹';
     fb.textContent = `综合 ${r.score} 分 · 音准 ${Math.round(r.noteAccuracy * 100)}% · 形状 ${Math.round(r.shapeAccuracy * 100)}%（起音${r.rootOk ? '对' : '错'}） —— ${tip}`;
     $('#st-status').textContent = '完成（换一题再来）';
+    stKb.highlightMany(trainer.expected.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
   }
 
   function arm() {
@@ -5114,8 +5184,10 @@ function renderSightTranspose() {
     if (revealed) {
       a.style.display = 'inline-flex';
       a.innerHTML = '答案：' + trainer.expected.map((n) => `<b>${CA99.noteName(n)}</b>`).join(' ');
+      stKb.highlightMany(trainer.expected.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
     } else {
       a.style.display = 'none';
+      stKb.clear();
     }
   }
 
@@ -5185,6 +5257,16 @@ function renderChordInversion() {
 
     <div class="ear-answers" id="inv-answers"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完把这个和弦的三个音画在 88 键上 — <span class="kb-legend" style="color:#f472b6"><i></i>低音（决定转位）</span>（点键可试听）</div>
+      <div id="inv-kb"></div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完把这个和弦画在 88 键上（<b style="color:#ff5da2">低</b>=最低的音/低音，数字=从低到高第几个音，点键可试听）</div>
+      <div id="inv-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="inv-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="inv-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -5233,6 +5315,12 @@ function renderChordInversion() {
   }
   drawAnswers();
 
+  const invKb = new PianoKeyboard($('#inv-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  invKb.scrollToShow(48, 72);
+
   function refreshStats() {
     $('#inv-score').textContent = game.score;
     $('#inv-streak').textContent = game.streak;
@@ -5262,6 +5350,7 @@ function renderChordInversion() {
     // 揭示具体音符 + 低音
     $('#inv-notes').innerHTML = `<span class="inv-tag">${q.name} ${inversionName(correctInv)}</span>` +
       notes.map((n, idx) => `<span class="inv-chip${idx === 0 ? ' inv-bass' : ''}">${CA99.noteName(n)}</span>`).join('');
+    invKb.highlightMany(notes.map((n, idx) => ({ midi: n, color: idx === 0 ? '#f472b6' : HL_PALETTE[idx % HL_PALETTE.length], text: idx === 0 ? '低' : String(idx + 1) })));
     const fb = $('#inv-feedback');
     if (ok) { fb.textContent = `✅ 对了！是${q.name}${inversionName(correctInv)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
     else { fb.textContent = `❌ 不对，正确答案是 ${q.name}${inversionName(correctInv)}`; fb.className = 'sight-feedback no'; }
@@ -5273,6 +5362,7 @@ function renderChordInversion() {
     const notes = game.next();
     $('#inv-answers').querySelectorAll('.ear-ans').forEach((b) => { b.disabled = false; b.classList.remove('correct', 'wrong'); });
     $('#inv-notes').innerHTML = '';
+    invKb.clear();
     $('#inv-feedback').textContent = '🎧 听一听，这是第几转位？';
     $('#inv-feedback').className = 'sight-feedback';
     playChordNotes(notes, $('#inv-mode').value === 'arp');
@@ -5289,6 +5379,7 @@ function renderChordInversion() {
       $('#inv-status').textContent = '已停止';
       $('#inv-replay').disabled = true;
       $('#inv-notes').innerHTML = '';
+      invKb.clear();
       $('#inv-feedback').textContent = '选好范围，按"开始"出题';
       $('#inv-feedback').className = 'sight-feedback';
       drawQChips(); drawIChips(); drawAnswers();
@@ -5335,6 +5426,11 @@ function renderKeySignature() {
 
     <div class="ear-answers" id="ks-answers"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完把该调<b>音阶</b>从主音起依次画在 88 键上（带级数 1-7），照着弹一遍就记住这个调（点键可试听）</div>
+      <div id="ks-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="ks-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="ks-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -5362,6 +5458,12 @@ function renderKeySignature() {
   }
   drawMChips();
   $('#ks-max').onchange = () => { if (!game) maxAcc = +$('#ks-max').value; };
+
+  const ksKb = new PianoKeyboard($('#ks-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  ksKb.scrollToShow(55, 79);
 
   function refreshStats() {
     $('#ks-score').textContent = game.score;
@@ -5411,6 +5513,8 @@ function renderKeySignature() {
     if (res.correct) { fb.textContent = `✅ 对了！${labelKey(correct)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
     else { fb.textContent = `❌ 不对，正确答案是 ${labelKey(correct)}`; fb.className = 'sight-feedback no'; }
     playScale(correct);
+    const seq = ksScale(correct);
+    ksKb.highlightMany(seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String((i % 7) + 1) })));
     setTimeout(() => { if (game) nextQuestion(); }, 1700);
   }
 
@@ -5423,6 +5527,7 @@ function renderKeySignature() {
     const q = game.next();
     drawSig(q);
     drawAnswers(q);
+    ksKb.clear();
     $('#ks-hint').textContent = '';
     $('#ks-feedback').textContent = '🤔 这是哪个调？';
     $('#ks-feedback').className = 'sight-feedback';
@@ -5438,6 +5543,7 @@ function renderKeySignature() {
       $('#ks-sig').innerHTML = '';
       $('#ks-hint').textContent = '';
       $('#ks-answers').innerHTML = '';
+      ksKb.clear();
       $('#ks-feedback').textContent = '选好范围，按"开始"出题';
       $('#ks-feedback').className = 'sight-feedback';
       drawMChips();
@@ -5646,6 +5752,11 @@ function renderIntervalBuild() {
       <div id="ivb-feedback" class="sight-feedback">设置好后开始，跟着提示弹目标音</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 弹错或弹对都会把<span class="kb-legend" style="color:#5b8cff"><i></i>根音</span>和<span class="kb-legend" style="color:#34d399"><i></i>目标音</span>画在 88 键上，照位置就知道该弹哪个键（点键也可作答）</div>
+      <div id="ivb-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="ivb-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="ivb-streak">0</span><span class="sight-stat-lbl">连对</span></div>
@@ -5668,6 +5779,12 @@ function renderIntervalBuild() {
     });
   }
   drawPresets();
+
+  const ivbKb = new PianoKeyboard($('#ivb-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (ivbOnNote) ivbOnNote(m); },
+  });
+  ivbKb.scrollToShow(48, 72);
 
   $('#ivb-dir').querySelectorAll('.ear-chip').forEach((b) => {
     b.onclick = () => {
@@ -5701,6 +5818,7 @@ function renderIntervalBuild() {
   function nextQuestion() {
     game.next();
     showQuestion();
+    if (typeof ivbKb !== 'undefined') ivbKb.clear();
     $('#ivb-feedback').textContent = '🎹 找到根音，往' + (game.current.dir.sign > 0 ? '上' : '下') + '弹出目标音';
     $('#ivb-feedback').className = 'sight-feedback';
     hearRoot();
@@ -5719,8 +5837,10 @@ function renderIntervalBuild() {
     ivbOnNote = (note) => {
       if (!game || !game.current) return;
       const target = game.current.target;
+      const root = game.current.root;
       const correct = game.check(note);
       refreshStats();
+      ivbKb.highlightMany([{ midi: root, color: '#5b8cff', text: '根' }, { midi: target, color: '#34d399', text: '标' }]);
       if (correct) {
         $('#ivb-feedback').textContent = `✅ 正确！${ibNoteName(target)}　连对 ${game.streak}`;
         $('#ivb-feedback').className = 'sight-feedback ok';
@@ -5737,6 +5857,7 @@ function renderIntervalBuild() {
   function stop() {
     ivbOnNote = null;
     game = null;
+    ivbKb.clear();
     $('#ivb-start').textContent = '▶ 开始';
     $('#ivb-start').classList.remove('running');
     $('#ivb-hear').disabled = true;
@@ -5786,6 +5907,11 @@ function renderModeId() {
 
     <div class="ear-answers" id="mid-answers"></div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完把这条调式音阶画在 88 键上（带级数 1-7），看哪几级和大调不同就懂这个调式的色彩了（点键可试听）</div>
+      <div id="mid-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="mid-score">0</span><span class="sight-stat-lbl">得分</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="mid-streak">0</span><span class="sight-stat-lbl">连击</span></div>
@@ -5812,6 +5938,12 @@ function renderModeId() {
   }
   drawChips();
   $('#mid-cc').onchange = () => { if (!game) choiceCount = +$('#mid-cc').value; };
+
+  const midKb = new PianoKeyboard($('#mid-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  midKb.scrollToShow(55, 79);
 
   function refreshStats() {
     $('#mid-score').textContent = game.score;
@@ -5847,6 +5979,8 @@ function renderModeId() {
       b.disabled = true;
     });
     $('#mid-hint').textContent = '💡 ' + game.current.mode.hint;
+    const seq = game.notes();
+    if (seq && seq.length) midKb.highlightMany(seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String((i % 7) + 1) })));
     const fb = $('#mid-feedback');
     if (correct) { fb.textContent = `✅ 对了！${midModeName(correctId)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
     else { fb.textContent = `❌ 不对，正确答案是 ${midModeName(correctId)}`; fb.className = 'sight-feedback no'; }
@@ -5857,6 +5991,7 @@ function renderModeId() {
     answering = false;
     game.next();
     drawAnswers();
+    midKb.clear();
     $('#mid-hint').textContent = '';
     $('#mid-feedback').textContent = '🤔 这是哪个调式？';
     $('#mid-feedback').className = 'sight-feedback';
@@ -5876,6 +6011,7 @@ function renderModeId() {
       $('#mid-answers').innerHTML = '';
       $('#mid-hint').textContent = '';
       $('#mid-replay').disabled = true;
+      midKb.clear();
       $('#mid-feedback').textContent = '选好范围，按"开始"出题';
       $('#mid-feedback').className = 'sight-feedback';
       drawChips();
