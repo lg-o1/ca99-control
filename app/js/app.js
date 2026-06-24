@@ -45,6 +45,7 @@ import { ChordInversionGame, INVERSIONS as INV_OPTIONS, QUALITIES as INV_QUALITI
 import { KeySignatureGame, accidentalList as ksAccidentals, scaleMidi as ksScale } from './key-signature.js';
 import { ScaleFingeringSession, FINGERINGS as SF_FINGERINGS, listScales as sfList, scaleNotes as sfNotes, defaultRootMidi as sfRoot, fingers as sfFingers, crossingPoints as sfCross } from './scale-fingering.js';
 import { IntervalBuildGame, INTERVALS as IB_INTERVALS, DIRECTIONS as IB_DIRECTIONS, noteName as ibNoteName } from './interval-build.js';
+import { ModeIdGame, MODES as MID_MODES, modeName as midModeName } from './mode-id.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -5635,6 +5636,143 @@ function renderIntervalBuild() {
   $('#ivb-skip').onclick = () => { if (game) nextQuestion(); };
 }
 
+// ========== 模块 45: 调式识别（教会调式）==========
+function renderModeId() {
+  const root = $('#module-modeid');
+  let game = null;
+  const enabled = new Set(MID_MODES.map((m) => m.id));
+  let choiceCount = 4;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎶 调式识别</h2>
+    <p style="color:var(--muted);margin-bottom:14px">🔊 听一段<b>调式音阶</b>（7 个教会调式之一），判断它是哪个调式。诀窍：听<b>每级之间的半音/全音排列</b>——多利亚像小调但<b>6 级升高</b>明亮一点；利底亚像大调但<b>4 级升高</b>更梦幻；混合利底亚像大调但<b>7 级降低</b>；弗里几亚最暗（<b>2 级降低</b>）；洛克里亚最不稳定（<b>5 级降低</b>）。无需连琴（纯听辨多选）。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>调式范围</label>
+        <div class="ear-chips" id="mid-chips"></div></div>
+      <div class="param-row"><label>选项数量</label>
+        <select id="mid-cc">
+          <option value="3">3 选 1（入门）</option>
+          <option value="4" selected>4 选 1（进阶）</option>
+          <option value="7">7 选 1（全部）</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="mid-feedback" class="sight-feedback">选好范围，按"开始"出题</div>
+      <div id="mid-hint" class="mid-hint"></div>
+    </div>
+
+    <div class="rotate-bar" style="justify-content:center;margin-bottom:8px">
+      <button id="mid-replay" class="big-btn" disabled>🔊 再听一次</button>
+    </div>
+
+    <div class="ear-answers" id="mid-answers"></div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="mid-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="mid-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="mid-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="mid-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="mid-start" class="big-btn">▶ 开始练习</button>
+      <span id="mid-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawChips() {
+    $('#mid-chips').innerHTML = MID_MODES.map((m) =>
+      `<button class="ear-chip ${enabled.has(m.id) ? 'on' : ''}" data-m="${m.id}">${m.name}</button>`).join('');
+    $('#mid-chips').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        const m = b.dataset.m;
+        if (enabled.has(m)) { if (enabled.size > 2) enabled.delete(m); } else enabled.add(m);
+        drawChips();
+      };
+    });
+  }
+  drawChips();
+  $('#mid-cc').onchange = () => { if (!game) choiceCount = +$('#mid-cc').value; };
+
+  function refreshStats() {
+    $('#mid-score').textContent = game.score;
+    $('#mid-streak').textContent = game.streak;
+    $('#mid-best').textContent = game.best;
+    $('#mid-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function playScale() {
+    const seq = game.notes();
+    seq.forEach((n, i) => playTone(midiToFreq(n), i * 0.32, 0.42, 0.2));
+  }
+
+  function drawAnswers() {
+    $('#mid-answers').innerHTML = game.choices().map((c) =>
+      `<button class="ear-ans" data-m="${c.id}">${c.name}<small>${c.alias}</small></button>`).join('');
+    $('#mid-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      b.onclick = () => answer(b.dataset.m, b);
+    });
+  }
+
+  let answering = false;
+  function answer(modeId, btn) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctId = game.current.mode.id;
+    const correct = game.check(modeId);
+    refreshStats();
+    $('#mid-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      const m = b.dataset.m;
+      if (m === correctId) b.classList.add('correct');
+      else if (m === modeId) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    $('#mid-hint').textContent = '💡 ' + game.current.mode.hint;
+    const fb = $('#mid-feedback');
+    if (correct) { fb.textContent = `✅ 对了！${midModeName(correctId)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${midModeName(correctId)}`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1800);
+  }
+
+  function nextQuestion() {
+    answering = false;
+    game.next();
+    drawAnswers();
+    $('#mid-hint').textContent = '';
+    $('#mid-feedback').textContent = '🤔 这是哪个调式？';
+    $('#mid-feedback').className = 'sight-feedback';
+    $('#mid-replay').disabled = false;
+    playScale();
+  }
+
+  $('#mid-replay').onclick = () => { if (game && game.current) playScale(); };
+
+  $('#mid-start').onclick = () => {
+    if (game) {
+      recordPractice('modeid', '调式识别', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#mid-start').textContent = '▶ 开始练习';
+      $('#mid-start').classList.remove('running');
+      $('#mid-status').textContent = '已停止';
+      $('#mid-answers').innerHTML = '';
+      $('#mid-hint').textContent = '';
+      $('#mid-replay').disabled = true;
+      $('#mid-feedback').textContent = '选好范围，按"开始"出题';
+      $('#mid-feedback').className = 'sight-feedback';
+      drawChips();
+      return;
+    }
+    game = new ModeIdGame({ modes: [...enabled], choiceCount });
+    $('#mid-start').textContent = '⏸ 停止练习';
+    $('#mid-start').classList.add('running');
+    $('#mid-status').textContent = '进行中…';
+    refreshStats();
+    nextQuestion();
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -5771,7 +5909,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
