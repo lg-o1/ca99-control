@@ -51,6 +51,7 @@ import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } fr
 import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
 import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
 import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi } from './score-follow.js';
+import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
@@ -6072,6 +6073,170 @@ function renderModeId() {
   };
 }
 
+// ========== 模块 49: 终止式辨认（cadence ID）==========
+function renderCadence() {
+  const root = $('#module-cad');
+  let game = null;
+  const enabled = new Set(CAD_LIST.map((c) => c.id));
+  let choiceCount = 4;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎵 终止式辨认</h2>
+    <p style="color:var(--muted);margin-bottom:14px">🔊 听一个<b>两个和弦</b>的<b>终止式</b>（乐句的和声落点），辨认它属于哪一类。诀窍：<b>正格 V→I</b> 最有"结束感"像句号；<b>变格 IV→I</b> 柔和庄重像"阿门"；<b>半终止 ?→V</b> 停在属和弦上悬而未决像逗号；<b>阻碍 V→vi</b> 本想回主却走到 vi 制造意外。这是听辨乐句结构、即兴收束、扒歌分段的核心能力。无需连琴（纯听辨多选），成绩入仪表盘。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>终止式范围</label>
+        <div class="ear-chips" id="cad-chips"></div></div>
+      <div class="param-row"><label>选项数量</label>
+        <select id="cad-cc">
+          <option value="2">2 选 1（入门）</option>
+          <option value="3">3 选 1（进阶）</option>
+          <option value="4" selected>4 选 1（全部）</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="cad-feedback" class="sight-feedback">选好范围，按"开始"出题</div>
+      <div id="cad-hint" class="mid-hint"></div>
+    </div>
+
+    <div class="rotate-bar" style="justify-content:center;margin-bottom:8px">
+      <button id="cad-replay" class="big-btn" disabled>🔊 再听一次</button>
+    </div>
+
+    <div class="ear-answers" id="cad-answers"></div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 答完把两个和弦画在 88 键上 — <span class="kb-legend" style="color:#5b8cff"><i></i>第①个和弦</span> <span class="kb-legend" style="color:#fbbf24"><i></i>第②个和弦</span>（点键可试听）</div>
+      <div id="cad-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="cad-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cad-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cad-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cad-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="cad-start" class="big-btn">▶ 开始练习</button>
+      <span id="cad-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawChips() {
+    $('#cad-chips').innerHTML = CAD_LIST.map((c) =>
+      `<button class="ear-chip ${enabled.has(c.id) ? 'on' : ''}" data-c="${c.id}">${c.name}<small>${c.short}</small></button>`).join('');
+    $('#cad-chips').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        const c = b.dataset.c;
+        if (enabled.has(c)) { if (enabled.size > 1) enabled.delete(c); } else enabled.add(c);
+        drawChips();
+      };
+    });
+  }
+  drawChips();
+  $('#cad-cc').onchange = () => { if (!game) choiceCount = +$('#cad-cc').value; };
+
+  const cadKb = new PianoKeyboard($('#cad-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => playTone(midiToFreq(m), 0, 0.6),
+  });
+  cadKb.scrollToShow(48, 72);
+
+  function refreshStats() {
+    $('#cad-score').textContent = game.score;
+    $('#cad-streak').textContent = game.streak;
+    $('#cad-best').textContent = game.best;
+    $('#cad-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  // 依次播放两个和弦（柱式），第 2 个稍后响
+  function playCadence() {
+    const seq = game.notes();
+    if (!seq.length) return;
+    seq.forEach((chord, ci) => {
+      chord.forEach((n) => playTone(midiToFreq(n), ci * 1.25, 1.1, 0.17));
+    });
+  }
+
+  function drawAnswers() {
+    $('#cad-answers').innerHTML = game.choices().map((c) =>
+      `<button class="ear-ans" data-c="${c.id}">${c.name}<small>${c.short}</small></button>`).join('');
+    $('#cad-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      b.onclick = () => answer(b.dataset.c, b);
+    });
+  }
+
+  let answering = false;
+  function answer(cadId, btn) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctId = game.answerId();
+    const correct = game.check(cadId);
+    refreshStats();
+    $('#cad-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      const c = b.dataset.c;
+      if (c === correctId) b.classList.add('correct');
+      else if (c === cadId) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    const info = cadenceInfo(correctId);
+    $('#cad-hint').textContent = '💡 ' + info.hint;
+    // 把两个和弦画在键盘上：第①个蓝、第②个金，徽章标罗马数字
+    const chords = game.chords();
+    const items = [];
+    chords.forEach((ch, ci) => {
+      ch.notes.forEach((n, ni) => {
+        items.push({ midi: n, color: ci === 0 ? '#5b8cff' : '#fbbf24', text: ni === 0 ? ch.roman : '' });
+      });
+    });
+    cadKb.highlightMany(items);
+    const fb = $('#cad-feedback');
+    if (correct) { fb.textContent = `✅ 对了！${info.name}（${info.short}） · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${info.name}（${info.short}）`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 2000);
+  }
+
+  function nextQuestion() {
+    answering = false;
+    game.next();
+    drawAnswers();
+    cadKb.clear();
+    $('#cad-hint').textContent = '';
+    $('#cad-feedback').textContent = '🤔 这是什么终止式？';
+    $('#cad-feedback').className = 'sight-feedback';
+    $('#cad-replay').disabled = false;
+    playCadence();
+  }
+
+  $('#cad-replay').onclick = () => { if (game && game.current) playCadence(); };
+
+  $('#cad-start').onclick = () => {
+    if (game) {
+      recordPractice('cadence', '终止式辨认', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#cad-start').textContent = '▶ 开始练习';
+      $('#cad-start').classList.remove('running');
+      $('#cad-status').textContent = '已停止';
+      $('#cad-answers').innerHTML = '';
+      $('#cad-hint').textContent = '';
+      $('#cad-replay').disabled = true;
+      cadKb.clear();
+      $('#cad-feedback').textContent = '选好范围，按"开始"出题';
+      $('#cad-feedback').className = 'sight-feedback';
+      drawChips();
+      return;
+    }
+    game = new CadenceGame({ cadences: [...enabled], choiceCount });
+    $('#cad-start').textContent = '⏸ 停止练习';
+    $('#cad-start').classList.add('running');
+    $('#cad-status').textContent = '进行中…';
+    refreshStats();
+    nextQuestion();
+  };
+}
+
 // ========== 模块 46: 唱名/音级听辨（solfège）==========
 function renderSolfege() {
   const root = $('#module-solfege');
@@ -7318,7 +7483,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
