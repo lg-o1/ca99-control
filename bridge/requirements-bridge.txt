@@ -1,4 +1,7 @@
-# CA99 蓝牙 MIDI 桥依赖
-# 仅 Windows 需要（用 WinRT 访问蓝牙 MIDI）
-winsdk>=1.0.0b10
+# CA99 蓝牙 MIDI 桥依赖（仅 Windows）
+# winrt-* 为预编译 wheel，秒级安装；pywin32 提供 COM STA 初始化
+winrt-Windows.Devices.Midi>=3.2
+winrt-Windows.Devices.Enumeration>=3.2
+winrt-Windows.Storage.Streams>=3.2
+pywin32>=306
 websockets>=12.0

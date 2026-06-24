@@ -21,49 +21,237 @@ ca99_midi_bridge.py — CA99 蓝牙 MIDI 桥（WinRT → WebSocket）
                  {"evt":"message","bytes":[..]} / {"evt":"selected",..} /
                  {"evt":"error","message":..}
 
+依赖（已预装，无需编译）：
+  pip install winrt-Windows.Devices.Midi winrt-Windows.Devices.Enumeration
+              winrt-Windows.Storage.Streams websockets pywin32
+
 运行：
-  pip install -r requirements-bridge.txt
   python ca99_midi_bridge.py            # 默认 127.0.0.1:8765
   python ca99_midi_bridge.py --host 0.0.0.0 --port 8765
+
+技术说明（COM STA 线程）：
+  winrt-* Python 包的 WinRT 对象在 COM STA 公寓中创建。asyncio ProactorEventLoop
+  使用 MTA（IOCP），两者混用会导致 send_message 在 await 之后报
+  WinError -2147024775（semaphore timeout）。
+  解决方案：所有 WinRT MIDI 操作在专用 STA 线程中执行，每次异步操作（list/open）
+  用独立的 event loop 跑完即销毁；send_message 是同步调用，直接在 STA 线程执行。
+  WebSocket 层仍在主 asyncio 循环，通过 asyncio.to_thread 调用 STA 线程。
 """
 import argparse
 import asyncio
 import json
+import queue
 import sys
+import threading
 
 import websockets
-from winsdk.windows.devices.midi import MidiInPort, MidiOutPort
-from winsdk.windows.devices.enumeration import DeviceInformation
-from winsdk.windows.security.cryptography import CryptographicBuffer
+
+try:
+    import pythoncom
+except ImportError:
+    sys.exit("ERROR: pywin32 required — pip install pywin32")
+
+try:
+    from winrt.windows.devices.midi import (
+        MidiInPort, MidiOutPort,
+        MidiControlChangeMessage, MidiProgramChangeMessage,
+        MidiNoteOnMessage, MidiNoteOffMessage,
+        MidiPolyphonicKeyPressureMessage, MidiChannelPressureMessage,
+        MidiPitchBendChangeMessage, MidiSystemExclusiveMessage,
+    )
+    from winrt.windows.devices.enumeration import DeviceInformation
+    from winrt.windows.storage.streams import Buffer
+except ImportError as e:
+    sys.exit(f"ERROR: {e}\n"
+             "pip install winrt-Windows.Devices.Midi "
+             "winrt-Windows.Devices.Enumeration winrt-Windows.Storage.Streams")
 
 PROTOCOL_VERSION = 1
 
 
-async def enumerate_ports():
-    """枚举所有 MIDI 输入/输出端口（含蓝牙）。"""
-    in_sel = MidiInPort.get_device_selector()
-    out_sel = MidiOutPort.get_device_selector()
-    # 注意：必须用 2 参数形式 find_all_async(selector, [])，
-    # 单参数形式会被解析成 DeviceClass(int) 重载而报错。
-    in_devs = await DeviceInformation.find_all_async(in_sel, [])
-    out_devs = await DeviceInformation.find_all_async(out_sel, [])
-    inputs = [{"id": d.id, "name": d.name, "manufacturer": ""} for d in in_devs]
-    outputs = [{"id": d.id, "name": d.name, "manufacturer": ""} for d in out_devs]
-    return inputs, outputs
+# ---------------------------------------------------------------------------
+# MidiSTA — 所有 WinRT MIDI 操作在专用 STA 线程中执行
+# ---------------------------------------------------------------------------
+class MidiSTA:
+    """
+    WinRT MIDI worker 运行在独立 COM STA 线程。
+    - 异步 WinRT 操作（list / open port）：每次创建临时 event loop，用完即销毁。
+    - 同步 WinRT 操作（send_message）：直接在 STA 线程调用，无需 event loop。
+    主线程通过 execute() 投递命令并等待结果（blocking），
+    通过 send_nowait() 异步投递发送命令（fire-and-forget）。
+    """
+
+    def __init__(self, main_loop: asyncio.AbstractEventLoop):
+        self._cmd_q: queue.Queue = queue.Queue()
+        self._res_q: queue.Queue = queue.Queue()
+        self._main_loop = main_loop
+        self._ready = threading.Event()
+        self._in_port = None
+        self._in_token = None
+        self._out_port = None
+        self.on_message = None   # coroutine function: bytes → None
+
+    def start(self):
+        t = threading.Thread(target=self._run, name="MidiSTA", daemon=True)
+        t.start()
+        self._ready.wait(5)
+
+    def _run(self):
+        pythoncom.CoInitialize()
+        self._ready.set()
+        while True:
+            cmd = self._cmd_q.get()
+            if cmd is None:
+                break
+            try:
+                result = self._exec(cmd)
+            except Exception as exc:
+                result = {"ok": False, "error": str(exc)}
+            self._res_q.put(result)
+        pythoncom.CoUninitialize()
+
+    def _exec(self, cmd: dict) -> dict:
+        op = cmd["op"]
+        # ---- synchronous ops ----
+        if op == "send":
+            self._send_bytes(cmd["bytes"])
+            return {"ok": True}
+        if op == "close_in":
+            self._close_in()
+            return {"ok": True}
+        if op == "close_out":
+            self._close_out()
+            return {"ok": True}
+        # ---- async ops: fresh event loop per call ----
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(self._async_exec(op, cmd))
+        finally:
+            loop.close()
+            asyncio.set_event_loop(None)
+
+    async def _async_exec(self, op: str, cmd: dict) -> dict:
+        if op == "list":
+            outs = await DeviceInformation.find_all_async_aqs_filter(
+                MidiOutPort.get_device_selector())
+            ins = await DeviceInformation.find_all_async_aqs_filter(
+                MidiInPort.get_device_selector())
+            return {
+                "ok": True,
+                "outputs": [{"id": d.id, "name": d.name, "manufacturer": ""}
+                            for d in outs],
+                "inputs":  [{"id": d.id, "name": d.name, "manufacturer": ""}
+                            for d in ins],
+            }
+        if op == "open_out":
+            port = await MidiOutPort.from_id_async(cmd["id"])
+            if port is None:
+                return {"ok": False, "error": "from_id_async returned None "
+                        "(虚拟合成器无法打开，请选真实 MIDI 设备)"}
+            self._out_port = port
+            return {"ok": True}
+        if op == "open_in":
+            port = await MidiInPort.from_id_async(cmd["id"])
+            if port is None:
+                return {"ok": False, "error": "from_id_async returned None"}
+            self._in_token = port.add_message_received(self._on_midi_in)
+            self._in_port = port
+            return {"ok": True}
+        return {"ok": False, "error": f"unknown op: {op}"}
+
+    def _send_bytes(self, bts: list):
+        if not self._out_port or not bts:
+            return
+        data = bytes(int(b) & 0xFF for b in bts)
+        s = data[0]
+        b = s & 0xF0
+        ch = s & 0x0F
+        try:
+            if   b == 0xB0 and len(data) >= 3:
+                self._out_port.send_message(
+                    MidiControlChangeMessage(ch, data[1], data[2]))
+            elif b == 0xC0 and len(data) >= 2:
+                self._out_port.send_message(
+                    MidiProgramChangeMessage(ch, data[1]))
+            elif b == 0x90 and len(data) >= 3:
+                self._out_port.send_message(
+                    MidiNoteOnMessage(ch, data[1], data[2]))
+            elif b == 0x80 and len(data) >= 3:
+                self._out_port.send_message(
+                    MidiNoteOffMessage(ch, data[1], data[2]))
+            elif b == 0xA0 and len(data) >= 3:
+                self._out_port.send_message(
+                    MidiPolyphonicKeyPressureMessage(ch, data[1], data[2]))
+            elif b == 0xD0 and len(data) >= 2:
+                self._out_port.send_message(
+                    MidiChannelPressureMessage(ch, data[1]))
+            elif b == 0xE0 and len(data) >= 3:
+                self._out_port.send_message(
+                    MidiPitchBendChangeMessage(ch, data[1] | (data[2] << 7)))
+            elif s == 0xF0:
+                buf = Buffer(len(data))
+                buf.length = len(data)
+                memoryview(buf)[:] = data
+                self._out_port.send_message(MidiSystemExclusiveMessage(buf))
+            else:
+                print(f"[bridge] unhandled MIDI: {[hex(x) for x in data]}",
+                      flush=True)
+        except Exception as exc:
+            print(f"[bridge] send error: {exc}", flush=True)
+
+    def _on_midi_in(self, _sender, args):
+        """WinRT thread-pool callback — forward to main asyncio loop."""
+        try:
+            raw = list(memoryview(args.message.raw_data))
+        except Exception:
+            return
+        if self.on_message and self._main_loop:
+            asyncio.run_coroutine_threadsafe(
+                self.on_message(raw), self._main_loop)
+
+    def _close_in(self):
+        if self._in_port:
+            try:
+                if self._in_token is not None:
+                    self._in_port.remove_message_received(self._in_token)
+            except Exception:
+                pass
+            try:
+                self._in_port.close()
+            except Exception:
+                pass
+        self._in_port = None
+        self._in_token = None
+
+    def _close_out(self):
+        if self._out_port:
+            try:
+                self._out_port.close()
+            except Exception:
+                pass
+        self._out_port = None
+
+    def execute(self, cmd: dict, timeout: float = 8.0) -> dict:
+        """Main-thread-safe: enqueue and wait for result (blocking)."""
+        self._cmd_q.put(cmd)
+        return self._res_q.get(timeout=timeout)
+
+    def send_nowait(self, bts: list):
+        """Fire-and-forget MIDI send (non-blocking from caller's perspective)."""
+        self._cmd_q.put({"op": "send", "bytes": bts})
+
+    def stop(self):
+        self._cmd_q.put(None)
 
 
-def buffer_to_bytes(buf):
-    return bytes(CryptographicBuffer.copy_to_byte_array(buf))
-
-
-def bytes_to_buffer(data):
-    return CryptographicBuffer.create_from_byte_array(bytes(data))
-
-
-async def handle_client(ws):
-    loop = asyncio.get_running_loop()
-    state = {"in_port": None, "in_token": None, "out_port": None,
-             "in_id": None, "out_id": None}
+# ---------------------------------------------------------------------------
+# WebSocket handler — 保持远程 agent 定义的协议不变（PROTOCOL_VERSION = 1）
+# ---------------------------------------------------------------------------
+async def handle_client(ws, midi: MidiSTA):
+    main_loop = asyncio.get_running_loop()
+    in_id: str | None = None
+    out_id: str | None = None
 
     async def send_json(obj):
         try:
@@ -71,133 +259,112 @@ async def handle_client(ws):
         except Exception:
             pass
 
-    def on_midi_message(sender, args):
-        # 该回调跑在 WinRT 线程池线程，需调度回 asyncio 事件循环。
-        try:
-            data = buffer_to_bytes(args.message.raw_data)
-        except Exception:
-            return
-        payload = json.dumps({"evt": "message", "bytes": list(data)})
-        asyncio.run_coroutine_threadsafe(_safe_send(payload), loop)
+    async def forward_midi(raw: list):
+        await send_json({"evt": "message", "bytes": raw})
 
-    async def _safe_send(text):
-        try:
-            await ws.send(text)
-        except Exception:
-            pass
-
-    def close_input():
-        if state["in_port"] is not None:
-            try:
-                if state["in_token"] is not None:
-                    state["in_port"].remove_message_received(state["in_token"])
-            except Exception:
-                pass
-            try:
-                state["in_port"].close()
-            except Exception:
-                pass
-        state["in_port"] = None
-        state["in_token"] = None
-
-    def close_output():
-        if state["out_port"] is not None:
-            try:
-                state["out_port"].close()
-            except Exception:
-                pass
-        state["out_port"] = None
+    midi.on_message = forward_midi
 
     peer = getattr(ws, "remote_address", None)
     print(f"[bridge] client connected {peer}", flush=True)
-    await send_json({"evt": "hello", "version": PROTOCOL_VERSION, "transport": "winrt"})
+    await send_json({"evt": "hello", "version": PROTOCOL_VERSION,
+                     "transport": "winrt"})
 
     try:
-        async for raw in ws:
+        async for raw_msg in ws:
             try:
-                msg = json.loads(raw)
+                msg = json.loads(raw_msg)
             except (ValueError, TypeError):
                 await send_json({"evt": "error", "message": "bad json"})
                 continue
             cmd = msg.get("cmd")
 
             if cmd == "list":
-                inputs, outputs = await enumerate_ports()
-                await send_json({"evt": "ports", "inputs": inputs, "outputs": outputs})
-
-            elif cmd == "selectInput":
-                dev_id = msg.get("id")
-                close_input()
-                try:
-                    port = await MidiInPort.from_id_async(dev_id)
-                    if port is None:
-                        raise RuntimeError("打开输入端口失败")
-                    token = port.add_message_received(on_midi_message)
-                    state["in_port"] = port
-                    state["in_token"] = token
-                    state["in_id"] = dev_id
-                    await send_json({"evt": "selected", "input": state["in_id"],
-                                     "output": state["out_id"]})
-                    print(f"[bridge] input selected: {dev_id}", flush=True)
-                except Exception as e:
-                    await send_json({"evt": "error", "message": f"selectInput: {e}"})
+                r = await asyncio.to_thread(midi.execute, {"op": "list"})
+                if r["ok"]:
+                    await send_json({"evt": "ports",
+                                     "inputs":  r["inputs"],
+                                     "outputs": r["outputs"]})
+                else:
+                    await send_json({"evt": "error", "message": r["error"]})
 
             elif cmd == "selectOutput":
-                dev_id = msg.get("id")
-                close_output()
-                try:
-                    port = await MidiOutPort.from_id_async(dev_id)
-                    if port is None:
-                        raise RuntimeError("打开输出端口失败")
-                    state["out_port"] = port
-                    state["out_id"] = dev_id
-                    await send_json({"evt": "selected", "input": state["in_id"],
-                                     "output": state["out_id"]})
+                dev_id = msg.get("id", "")
+                await asyncio.to_thread(midi.execute, {"op": "close_out"})
+                r = await asyncio.to_thread(midi.execute,
+                                            {"op": "open_out", "id": dev_id})
+                if r["ok"]:
+                    out_id = dev_id
+                    await send_json({"evt": "selected",
+                                     "input": in_id, "output": out_id})
                     print(f"[bridge] output selected: {dev_id}", flush=True)
-                except Exception as e:
-                    await send_json({"evt": "error", "message": f"selectOutput: {e}"})
+                else:
+                    await send_json({"evt": "error",
+                                     "message": f"selectOutput: {r['error']}"})
+
+            elif cmd == "selectInput":
+                dev_id = msg.get("id", "")
+                await asyncio.to_thread(midi.execute, {"op": "close_in"})
+                r = await asyncio.to_thread(midi.execute,
+                                            {"op": "open_in", "id": dev_id})
+                if r["ok"]:
+                    in_id = dev_id
+                    await send_json({"evt": "selected",
+                                     "input": in_id, "output": out_id})
+                    print(f"[bridge] input selected: {dev_id}", flush=True)
+                else:
+                    await send_json({"evt": "error",
+                                     "message": f"selectInput: {r['error']}"})
 
             elif cmd == "send":
                 bts = msg.get("bytes") or []
-                if state["out_port"] is None:
-                    await send_json({"evt": "error", "message": "no output selected"})
-                    continue
-                try:
-                    clean = bytes((int(b) & 0xFF) for b in bts)
-                    state["out_port"].send_buffer(bytes_to_buffer(clean))
-                except Exception as e:
-                    await send_json({"evt": "error", "message": f"send: {e}"})
+                if midi._out_port is None:
+                    await send_json({"evt": "error",
+                                     "message": "no output selected"})
+                else:
+                    midi.send_nowait(bts)
 
             else:
-                await send_json({"evt": "error", "message": f"unknown cmd: {cmd}"})
+                await send_json({"evt": "error",
+                                 "message": f"unknown cmd: {cmd}"})
 
     except websockets.ConnectionClosed:
         pass
     finally:
-        close_input()
-        close_output()
         print(f"[bridge] client disconnected {peer}", flush=True)
 
 
-async def main_async(host, port):
-    print(f"[bridge] CA99 MIDI bridge (WinRT) listening on ws://{host}:{port}", flush=True)
-    # 启动时打印一次端口清单，便于确认蓝牙设备是否可见
-    try:
-        inputs, outputs = await enumerate_ports()
-        print(f"[bridge] inputs={len(inputs)} outputs={len(outputs)}", flush=True)
-        for d in inputs:
-            print(f"[bridge]   IN  {d['name']}", flush=True)
-        for d in outputs:
-            print(f"[bridge]   OUT {d['name']}", flush=True)
-    except Exception as e:
-        print(f"[bridge] enumerate failed: {e}", flush=True)
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+async def main_async(host: str, port: int):
+    main_loop = asyncio.get_running_loop()
+    midi = MidiSTA(main_loop)
+    midi.start()
+    print(f"[bridge] CA99 MIDI bridge (WinRT) listening on ws://{host}:{port}",
+          flush=True)
 
-    async with websockets.serve(handle_client, host, port):
-        await asyncio.Future()  # run forever
+    # 启动时枚举端口，确认蓝牙设备可见
+    try:
+        r = await asyncio.to_thread(midi.execute, {"op": "list"})
+        ins, outs = r.get("inputs", []), r.get("outputs", [])
+        print(f"[bridge] inputs={len(ins)} outputs={len(outs)}", flush=True)
+        for d in ins:
+            print(f"[bridge]   IN  {d['name']}", flush=True)
+        for d in outs:
+            print(f"[bridge]   OUT {d['name']}", flush=True)
+    except Exception as exc:
+        print(f"[bridge] enumerate failed: {exc}", flush=True)
+
+    async def _handler(ws):
+        await handle_client(ws, midi)
+
+    async with websockets.serve(_handler, host, port):
+        await asyncio.Future()   # run forever
 
 
 def main():
-    ap = argparse.ArgumentParser(description="CA99 蓝牙 MIDI 桥 (WinRT → WebSocket)")
+    ap = argparse.ArgumentParser(
+        description="CA99 蓝牙 MIDI 桥 (WinRT → WebSocket)")
     ap.add_argument("--host", default="127.0.0.1")
     ap.add_argument("--port", type=int, default=8765)
     args = ap.parse_args()
