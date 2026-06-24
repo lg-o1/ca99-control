@@ -33,6 +33,7 @@ import { TrillTrainer } from './trill.js';
 import { OrnamentTrainer, ORNAMENT_LABELS } from './ornament.js';
 import { LeapTrainer } from './leap.js';
 import { VoicingTrainer } from './voicing.js';
+import { CrescendoTrainer, CRESC_DIRECTIONS, idealRamp } from './crescendo.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -65,6 +66,7 @@ let trillOnNote = null;     // 颤音训练的 note-on 回调（模块29注册�
 let ornamentOnNote = null;  // 装饰音训练的 note-on 回调（模块30注册）
 let leapOnNote = null;      // 大跳准确度的 note-on 回调（模块31注册）
 let voicingOnNote = null;   // 旋律声部突出的 note-on 回调（模块32注册，带力度）
+let crescOnNote = null;     // 力度渐变曲线的 note-on 回调（模块33注册，带力度）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -213,6 +215,8 @@ function onMidiIn(bytes) {
     if (leapOnNote) leapOnNote(m.note, performance.now());
     // 驱动旋律声部突出（带力度）
     if (voicingOnNote) voicingOnNote(m.note, m.velocity, performance.now());
+    // 驱动力度渐变曲线（带力度）
+    if (crescOnNote) crescOnNote(m.velocity);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -3659,6 +3663,144 @@ function renderVoicing() {
   renderDots();
 }
 
+// ---------- 模块33：力度渐变曲线（crescendo / decrescendo） ----------
+function renderCrescendo() {
+  const root = $('#module-cresc');
+  if (!root) return;
+  root.innerHTML = `
+    <h2>🎚️ 力度渐变曲线（Crescendo / Decrescendo）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">表现力进阶：把一串音的力度<b>平滑地推上去（渐强）</b>或<b>收下来（渐弱）</b>，是塑造乐句呼吸感的关键。本模块请你连续弹 <b id="cr-count-lbl">8</b> 个音，引擎记录每个音的力度并画成曲线，按<b>方向正确度</b>、<b>平滑度</b>、<b>力度跨度</b>综合评分。没连琴可点下方"模拟"按钮。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>方向</label>
+        <select id="cr-dir"><option value="cresc" selected>渐强 cresc. ＜（弱→强）</option><option value="decresc">渐弱 decresc. ＞（强→弱）</option></select>
+      </div>
+      <div class="param-row"><label>音数</label>
+        <select id="cr-count"><option value="5">5 个</option><option value="8" selected>8 个</option><option value="12">12 个</option></select>
+      </div>
+      <div class="param-row"><label>跨度要求</label>
+        <select id="cr-span"><option value="30">轻松（首尾差 30）</option><option value="40" selected>标准（首尾差 40）</option><option value="60">明显（首尾差 60）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <svg id="cr-curve" class="cr-curve" viewBox="0 0 480 180" preserveAspectRatio="none"></svg>
+      <div id="cr-feedback" class="sight-feedback" style="margin-top:10px">点"开始"，然后依次弹出渐变的力度</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="cr-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">本条分数</div></div>
+      <div class="sight-stat"><div id="cr-dir-pct" class="sight-stat-num">—</div><div class="sight-stat-lbl">方向正确</div></div>
+      <div class="sight-stat"><div id="cr-smooth" class="sight-stat-num">—</div><div class="sight-stat-lbl">平滑度</div></div>
+      <div class="sight-stat"><div id="cr-prog" class="sight-stat-num">0</div><div class="sight-stat-lbl">进度</div></div>
+      <div class="sight-stat"><div id="cr-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="cr-start" class="big-btn">▶ 开始 / 重来</button>
+      <button id="cr-sim-good" class="big-btn" style="background:var(--panel2)">🎹 模拟（平滑渐变）</button>
+      <button id="cr-sim-bad" class="big-btn" style="background:var(--panel2)">🎹 模拟（忽强忽弱）</button>
+      <span id="cr-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let cr = null;
+
+  function opts() {
+    return { direction: $('#cr-dir').value, count: +$('#cr-count').value, minSpan: +$('#cr-span').value };
+  }
+
+  // 画力度曲线：x = 音序，y = 力度（顶=127）。绿点=方向正确，红点=方向错。虚线=理想斜坡。
+  function drawCurve(velocities, result) {
+    const W = 480, H = 180, pad = 14;
+    const count = cr ? cr.count : +$('#cr-count').value;
+    const sign = $('#cr-dir').value === 'decresc' ? -1 : 1;
+    const x = (i) => pad + (count <= 1 ? 0 : (W - 2 * pad) * i / (count - 1));
+    const y = (v) => H - pad - (H - 2 * pad) * (v - 1) / 126;
+    let svg = '';
+    // 网格基线（pp..ff 的几条参考横线）
+    [31, 67, 105].forEach((v) => {
+      svg += `<line x1="${pad}" y1="${y(v).toFixed(1)}" x2="${W - pad}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+    });
+    // 理想斜坡（结算后才有）
+    if (result && result.ideal && result.ideal.length >= 2) {
+      const id = result.ideal;
+      const pts = id.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      svg += `<polyline points="${pts}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.6"/>`;
+    }
+    // 实际折线
+    if (velocities.length >= 2) {
+      const pts = velocities.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      svg += `<polyline points="${pts}" fill="none" stroke="url(#crg)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    }
+    // 点
+    velocities.forEach((v, i) => {
+      let col = 'var(--hi2)';
+      if (i === 0) col = 'var(--muted)';
+      else col = Math.sign(v - velocities[i - 1]) === sign ? 'var(--ok)' : 'var(--hi)';
+      svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4.5" fill="${col}"/>`;
+    });
+    svg = `<defs><linearGradient id="crg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#667eea"/><stop offset="1" stop-color="#e94560"/></linearGradient></defs>` + svg;
+    $('#cr-curve').innerHTML = svg;
+  }
+
+  function showResult(r) {
+    $('#cr-score').textContent = r.score;
+    $('#cr-dir-pct').textContent = Math.round(r.monotonic * 100) + '%';
+    $('#cr-smooth').textContent = Math.round(r.smoothness * 100) + '%';
+    $('#cr-best').textContent = cr.best;
+    drawCurve(r.velocities, r);
+    const dirName = r.direction === 'decresc' ? '渐弱' : '渐强';
+    const fb = $('#cr-feedback');
+    if (r.score >= 85) { fb.className = 'sight-feedback ok'; fb.textContent = `🏆 ${r.score} 分！${dirName}既到位又平滑，跨度 ${r.span}`; }
+    else if (r.score >= 60) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${r.score} 分。方向 ${Math.round(r.monotonic * 100)}%、平滑 ${Math.round(r.smoothness * 100)}%、跨度 ${r.span}，再均匀一点`; }
+    else if (r.monotonic < 0.5) { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分：方向只对 ${Math.round(r.monotonic * 100)}%，注意整体要${dirName}（别忽强忽弱）`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分：${r.span < 20 ? '力度跨度太小，拉开强弱对比' : '起伏不够平滑，让每一步差不多大'}`; }
+    recordPractice('cresc', '力度渐变曲线', 1, r.score >= 60 ? 1 : 0, cr.best);
+    crescOnNote = null;
+    $('#cr-status').textContent = '完成 · 可重来';
+  }
+
+  function feed(vel) {
+    if (!cr || cr.done) return;
+    cr.feed(vel);
+    $('#cr-prog').textContent = `${cr.progress}/${cr.count}`;
+    drawCurve(cr.velocities, null);
+  }
+
+  function start() {
+    cr = new CrescendoTrainer(opts());
+    cr.onComplete = (r) => showResult(r);
+    crescOnNote = (vel) => feed(vel);
+    $('#cr-score').textContent = '—'; $('#cr-dir-pct').textContent = '—'; $('#cr-smooth').textContent = '—';
+    $('#cr-best').textContent = cr.best; $('#cr-prog').textContent = `0/${cr.count}`;
+    const fb = $('#cr-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = `🎯 连续弹 ${cr.count} 个音，力度整体${cr.direction === 'decresc' ? '渐弱（强→弱）' : '渐强（弱→强）'}`;
+    $('#cr-status').textContent = '进行中…';
+    drawCurve([], null);
+  }
+
+  // 模拟：平滑渐变 or 忽强忽弱
+  function sim(good) {
+    start();
+    const sign = cr.direction === 'decresc' ? -1 : 1;
+    const ideal = idealRamp(sign > 0 ? 25 : 110, sign > 0 ? 110 : 25, cr.count);
+    ideal.forEach((v) => {
+      const noise = good ? (Math.random() * 6 - 3) : (Math.random() * 70 - 35);
+      cr.feed(v + noise);
+    });
+  }
+
+  $('#cr-dir').onchange = () => { cr = null; drawCurve([], null); };
+  $('#cr-count').onchange = () => { cr = null; $('#cr-count-lbl').textContent = $('#cr-count').value; drawCurve([], null); };
+  $('#cr-span').onchange = () => { cr = null; };
+  $('#cr-start').onclick = start;
+  $('#cr-sim-good').onclick = () => sim(true);
+  $('#cr-sim-bad').onclick = () => sim(false);
+
+  drawCurve([], null);
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -3795,7 +3937,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
