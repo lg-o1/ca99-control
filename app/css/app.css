@@ -647,6 +647,14 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   font-weight: 700; font-size: 13px; background: var(--panel2, rgba(127,127,127,.12)); color: var(--text, #eee); }
 .inv-bass { background: #667eea; color: #fff; box-shadow: 0 0 10px rgba(102,126,234,.5); }
 
+/* 调号识别（模块42） */
+.ks-sig { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+.ks-count { font-size: 26px; font-weight: 800; color: #667eea; margin-right: 4px; }
+.ks-acc-chip { min-width: 30px; padding: 4px 9px; border-radius: 7px; text-align: center;
+  font-weight: 700; font-size: 18px; background: var(--panel2, rgba(127,127,127,.12)); color: var(--text, #eee); }
+.ks-none { font-size: 18px; color: var(--muted, #888); font-style: italic; }
+.ks-hint { margin-top: 8px; text-align: center; font-size: 13px; color: #e8a44a; min-height: 18px; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }
