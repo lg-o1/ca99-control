@@ -344,6 +344,33 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-note.n-perfect { background: linear-gradient(#4ade80, #22a463); box-shadow: 0 0 10px rgba(52,211,153,.8); }
 .scf-note.n-good { background: linear-gradient(#67e8f9, #1ba8c4); box-shadow: 0 0 10px rgba(34,211,238,.8); }
 .scf-note.n-miss { background: linear-gradient(#f87171, #b94b4b); opacity: .5; }
+.scf-note.n-left { background: linear-gradient(#c4b5fd, #8b5cf6); box-shadow: 0 0 6px rgba(139,92,246,.5); }
+.scf-note.n-dim { opacity: .22; filter: grayscale(.5); }
+.scf-staff-svg .note-head.nh-left { fill: #a78bfa; stroke: #7c4ddb; }
+/* MIDI 上传按钮 */
+.scf-upload-btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  padding: 8px 14px; border-radius: 10px; font-size: 14px; font-weight: 600;
+  color: #fff; background: linear-gradient(135deg, #7c5cff, #5566d6);
+  box-shadow: 0 2px 8px rgba(102,126,234,.35); transition: transform .12s, box-shadow .12s;
+}
+.scf-upload-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(102,126,234,.5); }
+/* 训练阶梯（由易到难） */
+.scf-ladder {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  flex-wrap: wrap; margin: 16px 0 6px;
+}
+.scf-ladder-arrow { color: var(--muted); font-weight: 700; font-size: 18px; }
+.scf-mode-btn {
+  padding: 11px 20px; border-radius: 12px; border: 2px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 15px; font-weight: 700;
+  cursor: pointer; transition: transform .12s, box-shadow .12s, border-color .12s, background .12s;
+}
+.scf-mode-btn:hover:not(:disabled) { transform: translateY(-2px); border-color: #7c5cff; box-shadow: 0 4px 14px rgba(124,92,255,.3); }
+.scf-mode-btn.primary { background: linear-gradient(135deg, #7c5cff, #5566d6); color: #fff; border-color: transparent; }
+.scf-mode-btn.running { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; border-color: transparent; box-shadow: 0 0 14px rgba(245,158,11,.5); }
+.scf-mode-btn:disabled { opacity: .4; cursor: not-allowed; }
+.sight-feedback.err { background: rgba(248,113,113,.14); color: #f87171; }
 .scf-hitline {
   position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
   background: linear-gradient(90deg, transparent, #fbbf24, transparent);

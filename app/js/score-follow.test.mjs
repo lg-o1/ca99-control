@@ -3,7 +3,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ScoreFollow, GRADE, SONGS, getSong, beatToMs } from './score-follow.js';
+import { ScoreFollow, GRADE, SONGS, getSong, beatToMs, songFromMidi } from './score-follow.js';
 
 // ---- beatToMs ----
 test('beatToMs：1 拍在 60bpm 为 1000ms', () => {
@@ -182,7 +182,138 @@ test('done：全部判定后为真', () => {
   assert.equal(sf.done, true);
 });
 
-// ---- 内置曲库可正常构建 ----
+// ---- 绝对时间记谱（MIDI 导入 / 复音 / 双手） ----
+test('notes 绝对记谱：直接用 ms/durMs/hand 构建', () => {
+  const song = {
+    id: 'm', title: 'm', clef: 'treble', bpm: 120, hands: true,
+    notes: [
+      { midi: 72, ms: 0, durMs: 500, beat: 0, dur: 1, hand: 'r' },
+      { midi: 48, ms: 0, durMs: 500, beat: 0, dur: 1, hand: 'l' },
+      { midi: 74, ms: 500, durMs: 500, beat: 1, dur: 1, hand: 'r' },
+    ],
+  };
+  const sf = new ScoreFollow(song);
+  assert.equal(sf.total, 3);
+  assert.equal(sf.notes[0].ms, 0);
+  assert.equal(sf.notes[0].hand, 'r');
+  assert.equal(sf.notes[1].hand, 'l');
+  assert.equal(sf.notes[2].ms, 500);
+  assert.equal(sf.durationMs, 1000);
+});
+
+test('timeScale 缩放整条时间轴', () => {
+  const song = { id: 'm', title: 'm', clef: 'treble', bpm: 120, notes: [
+    { midi: 60, ms: 0, durMs: 500, beat: 0, dur: 1 },
+    { midi: 62, ms: 500, durMs: 500, beat: 1, dur: 1 },
+  ] };
+  const slow = new ScoreFollow(song, { timeScale: 2 });   // 慢一倍
+  assert.equal(slow.notes[1].ms, 1000);
+  assert.equal(slow.notes[1].durMs, 1000);
+  const fast = new ScoreFollow(song, { timeScale: 0.5 }); // 快一倍
+  assert.equal(fast.notes[1].ms, 250);
+});
+
+test('timeScale 也作用于 seq 记谱', () => {
+  const song = { id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1], [62, 1]] };
+  const sf = new ScoreFollow(song, { timeScale: 0.5 });
+  assert.equal(sf.notes[1].ms, 500); // 1 拍@60bpm=1000ms，×0.5=500
+});
+
+// ---- handFilter 手别过滤 ----
+test('handFilter 只统计/判定该手的音符', () => {
+  const song = { id: 'm', title: 'm', clef: 'treble', bpm: 120, hands: true, notes: [
+    { midi: 72, ms: 0, durMs: 200, hand: 'r' },
+    { midi: 48, ms: 0, durMs: 200, hand: 'l' },
+    { midi: 74, ms: 300, durMs: 200, hand: 'r' },
+  ] };
+  const right = new ScoreFollow(song, { handFilter: 'r' });
+  assert.equal(right.total, 2);
+  assert.deepEqual(right.range, [72, 74]);
+  // 弹左手音符不应判定（不属于该手）
+  assert.equal(right.judge(48, 0).grade, null);
+  assert.equal(right.judge(72, 0).grade, GRADE.PERFECT);
+  const left = new ScoreFollow(song, { handFilter: 'l' });
+  assert.equal(left.total, 1);
+  assert.equal(left.judge(48, 0).grade, GRADE.PERFECT);
+});
+
+test('handFilter=both 时统计全部', () => {
+  const song = { id: 'm', title: 'm', clef: 'treble', bpm: 120, hands: true, notes: [
+    { midi: 72, ms: 0, durMs: 200, hand: 'r' },
+    { midi: 48, ms: 0, durMs: 200, hand: 'l' },
+  ] };
+  const sf = new ScoreFollow(song, { handFilter: 'both' });
+  assert.equal(sf.total, 2);
+});
+
+test('handFilter 下 done 只看该手是否弹完', () => {
+  const song = { id: 'm', title: 'm', clef: 'treble', bpm: 120, hands: true, notes: [
+    { midi: 72, ms: 0, durMs: 200, hand: 'r' },
+    { midi: 48, ms: 0, durMs: 200, hand: 'l' },
+  ] };
+  const right = new ScoreFollow(song, { handFilter: 'r', goodMs: 500 });
+  assert.equal(right.done, false);
+  right.judge(72, 0);
+  assert.equal(right.done, true); // 右手只有一个音，弹完即 done
+});
+
+// ---- groups 分组（等待模式 / 和弦） ----
+test('groups：同时刻音符归为一组（和弦）', () => {
+  const song = { id: 'm', title: 'm', clef: 'treble', bpm: 120, notes: [
+    { midi: 60, ms: 0, durMs: 200 }, { midi: 64, ms: 0, durMs: 200 }, { midi: 67, ms: 0, durMs: 200 },
+    { midi: 72, ms: 500, durMs: 200 },
+  ] };
+  const g = new ScoreFollow(song).groups();
+  assert.equal(g.length, 2);
+  assert.equal(g[0].notes.length, 3); // 第一组是三和弦
+  assert.equal(g[1].notes.length, 1);
+  assert.equal(g[0].ms, 0);
+  assert.equal(g[1].ms, 500);
+});
+
+test('groups 受 handFilter 影响', () => {
+  const song = { id: 'm', title: 'm', clef: 'treble', bpm: 120, hands: true, notes: [
+    { midi: 72, ms: 0, durMs: 200, hand: 'r' },
+    { midi: 48, ms: 0, durMs: 200, hand: 'l' },
+    { midi: 74, ms: 500, durMs: 200, hand: 'r' },
+  ] };
+  const g = new ScoreFollow(song, { handFilter: 'r' }).groups();
+  assert.equal(g.length, 2);
+  assert.ok(g.every((grp) => grp.notes.every((n) => n.hand === 'r')));
+});
+
+// ---- beatAt 光标插值 ----
+test('beatAt：在音符间线性插值拍位', () => {
+  const song = { id: 'm', title: 'm', clef: 'treble', bpm: 120, notes: [
+    { midi: 60, ms: 0, durMs: 500, beat: 0, dur: 1 },
+    { midi: 62, ms: 1000, durMs: 500, beat: 2, dur: 1 },
+  ] };
+  const sf = new ScoreFollow(song);
+  assert.equal(sf.beatAt(0), 0);
+  assert.equal(sf.beatAt(500), 1);   // 一半时间 -> 一半拍位（0..2 拍）
+  assert.equal(sf.beatAt(1000), 2);
+});
+
+// ---- songFromMidi ----
+test('songFromMidi 映射 parseMidi 结构', () => {
+  const parsed = {
+    bpm: 100, hasHands: true, durationMs: 1000,
+    notes: [
+      { midi: 60, ms: 0, durMs: 500, beat: 0, dur: 1, hand: 'r' },
+      { midi: 48, ms: 0, durMs: 500, beat: 0, dur: 1, hand: 'l' },
+    ],
+  };
+  const song = songFromMidi(parsed, { id: 'up', title: '我的曲子' });
+  assert.equal(song.id, 'up');
+  assert.equal(song.title, '我的曲子');
+  assert.equal(song.bpm, 100);
+  assert.equal(song.hands, true);
+  assert.equal(song.notes.length, 2);
+  const sf = new ScoreFollow(song);
+  assert.equal(sf.total, 2);
+  assert.equal(sf.notes[1].hand, 'l');
+});
+
 test('每首内置乐曲都能构建出音符', () => {
   for (const s of SONGS) {
     const sf = new ScoreFollow(s);

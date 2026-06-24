@@ -60,7 +60,8 @@ app/
     chord-quality.js   ← 和弦性质听辨（听和弦辨大/小/增/减/七和弦类型，纯逻辑，185 单元测试）
     progression-ear.js ← 和声进行听辨（听大调进行辨每个和弦的罗马数字级数，纯逻辑，337 单元测试）
     piano-keyboard.js  ← 通用全幅 88 键虚拟钢琴组件（可点击发声/高亮答案/演示点亮，纯布局逻辑 46 单元测试）
-    score-follow.js    ← 曲谱跟弹（Synthesia 式：内置乐曲落音符到琴键、按音高+时机判分，纯逻辑，21 单元测试）
+    score-follow.js    ← 曲谱跟弹（Synthesia 式：内置乐曲/上传 MIDI 落音符到琴键、3 档训练听示范→等待练习→跟弹判分、支持左右手过滤/和弦/变速，纯逻辑，31 单元测试）
+    midi-file.js       ← 标准 MIDI 文件(SMF)解析器（解析多轨/VLQ/note on-off/running status/tempo map，tick→ms，自动按音轨或音高分配左右手，纯逻辑，13 单元测试）
     circle-of-fifths.js ← 五度圈交互工具（点调看调号/关系小调/正确拼写音阶/顺阶和弦 I–vii°，可试听音阶+和弦+终止式，纯逻辑，21 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
@@ -92,7 +93,7 @@ app/
 | ⏺ 录制回放 | ✅ | 录下弹奏，回放欣赏，或导出标准 MIDI 文件（.mid）保存/分享 |
 | 🎼 音阶练习 | ✅ | 选调+音阶类型，按高亮提示依次弹奏，实时检查对错+进度（8 种音阶/上下行/忽略八度） |
 | 👀 视奏闪卡 | ✅ | SVG 五线谱出题，看谱在琴键弹出对应音，弹对自动出下一题（高/低音谱号/连击/正确率/忽略八度） |
-| 🎹 曲谱跟弹 | ✅ | <b>Synthesia 式</b>跟弹：选内置乐曲（小星星/欢乐颂/玛丽的小羊/铃儿响叮当），音符像 Synthesia 从上往下<b>落到对应琴键</b>，上方<b>五线谱</b>同步走光标——既练识谱又练跟弹。音符落到底部判定线那刻弹对应键，按<b>音高+时机</b>双重判分：正中=PERFECT、稍偏=GOOD、漏弹=MISS，连对累计 Combo，结束按正确率给 ★☆ 评星。可选速度（0.5/0.75/1×）、难度（简单忽略八度/标准要弹准八度），🔊「听一遍」自动示范、▶「开始跟弹」判分，没接 MIDI 也能点屏幕琴键作答，成绩入仪表盘。和"视奏闪卡"（单音闪卡无时间压力）不同——这里练<b>整首曲子的连续节奏跟弹</b> |
+| 🎹 曲谱跟弹 | ✅ | <b>Synthesia 式</b>跟弹，<b>支持上传任意 .mid/.midi 文件</b>作为曲谱（自动识别多轨/和弦/左右手/变速），也可选内置乐曲（小星星/欢乐颂/玛丽的小羊/铃儿响叮当）。音符像 Synthesia 从上往下<b>落到对应琴键</b>，上方<b>五线谱</b>同步走光标（右手蓝/左手紫）。<b>三档由易到难的训练</b>：🔊 <b>听示范</b>（看+听不判分）→ 🐢 <b>等待练习</b>（Synthesia 学习模式：播放头停在当前音符组、弹齐才前进，最适合入门、和弦/双手一组一起弹）→ 🎯 <b>跟弹判分</b>（音符落到判定线那刻弹对应键，按<b>音高+时机</b>双重判分：正中=PERFECT、稍偏=GOOD、漏弹=MISS，连对累计 Combo，结束按正确率给 ★☆ 评星）。MIDI 含左右手时可选<b>练右手/左手/双手</b>（其余手音符淡显）。可选速度（0.5/0.75/1×，统一缩放时间轴）、难度（简单忽略八度/标准要弹准八度），没接 MIDI 也能点屏幕琴键作答，成绩入仪表盘 |
 | 👂 音程听辨 | ✅ | 电脑发声播放两个音，辨认它们的音程并点按钮作答（上行/下行/和声/混合，可选音程范围，连击/正确率） |
 | 💪 力度练习 | ✅ | 屏幕给目标力度（pp~ff），用触键强弱命中它，力度刻度条+指针实时显示你的 velocity（6 档/容差可调/连击/正确率） |
 | 🎹 移调器 | ✅ | 一键把整个键盘升/降调（-12~+12 半音），用熟悉指法弹任意调，发 CA99 移调 SysEx 让钢琴自身也移调（滑块/±按钮/预设/听感调显示） |
@@ -169,7 +170,7 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 - 音阶练习用 `scale-trainer.js`（纯逻辑，41 单元测试）：`buildScale`/`buildScaleUpDown` 生成 8 种音阶（大调/三种小调/五声/布鲁斯/半音阶）的 MIDI 序列，`ScaleSession` 按依次弹奏检查进度（可忽略八度），note-on 驱动前进/报错/完成，UI 高亮当前应弹的音
 - 五度圈用 `circle-of-fifths.js`（纯逻辑，21 单元测试）：`WHEEL` 12 格（顺时针每格升五度、关系大小调主音差小三度，6 点钟含 F#/Gb 等音）；`majorScaleSpelling(key)` 用字母序列+半音差算出<b>正确拼写</b>的 7 音音阶（保证 7 个字母不重复，如 G→F#、Db→全降、含必要重升降）；`diatonicChords(key)` 给出顺阶七级三和弦（罗马数字+质量 maj/min/dim+和弦名）；`chordMidi(key,degree,baseC)`/`scaleMidi(key,baseC)` 算 MIDI 供试听；`neighbors(key)` 取顺/逆时针相邻调与关系小调；`signatureLabel` 生成调号文字。UI 用 SVG 环形扇区手绘圆盘（`pt(r,deg)`+`sector(rIn,rOut,a0,a1)` 算annular sector path，0°在 12 点钟顺时针），外环大调/内环小调可点击选调、中心 hub 显示当前调+调号；右侧信息卡列调号/关系小调/音阶/相邻调+7 个配色和弦按钮；点和弦/「播放音阶」/「I–IV–V–I 终止式」用 Web Audio 发声并在 88 键上高亮（主音金色）。纯探索工具不计分
 - 视奏闪卡用 `sight-reading.js`（纯逻辑，62 单元测试）：`staffPosition`/`needsLedger`/`randomNote` 把 MIDI 音符映射到五线谱位置（高/低音谱号、自动加线），`SightReadingGame` 随机出题并校验（可忽略八度），记录得分/连击/最佳/正确率，UI 用 SVG 实时绘制谱表+符头，note-on 驱动判分与翻题
-- 曲谱跟弹用 `score-follow.js`（纯逻辑，21 单元测试）：内置 4 首公有领域旋律（顺序记谱 `[midi,durBeats]`，`null`=休止），`ScoreFollow` 按 BPM 把"拍"换成毫秒时间轴；播放头时间 `t`（毫秒）驱动 `judge(midi,t)`（找最近、音高匹配、在 good 窗内的未判音符，按 `|t−目标ms|` 分 PERFECT≤130ms/GOOD≤320ms，连对累计 Combo+加分）、`expire(t)`（过窗未弹自动判 MISS 并断连击）、`active(t)`/`upcoming(t,ahead)`（取该弹/即将落下的音符），`accuracy`/`stars`（90/70/50% → ★★★/★★/★）。UI 用 `requestAnimationFrame` 把 `performance.now()−t0` 换成 `t`：上方 SVG 五线谱整曲横向铺开 + 黄色光标随拍前进并自动滚动居中、音符按判定结果染色；中间 Synthesia 式下落高速路（用 `piano-keyboard.js` 的 `buildLayout` 取每键 x 中心，音符块按 `(目标ms−t)` 下落到底部判定线、对齐下方 88 键）；落到判定线时高亮该弹的键、弹对/漏弹弹出 PERFECT/GOOD/MISS×Combo 飘字。两种模式：🔊「听一遍」自动播放示范（不判分）、▶「开始跟弹」judge 判分；可选速度倍率（缩放有效 BPM）、简单/标准（octaveAgnostic）。键盘范围按曲子音域补齐到整八度。结束写入成就仪表盘
+- 曲谱跟弹用 `score-follow.js`（纯逻辑，31 单元测试）+ `midi-file.js`（SMF 解析，13 单元测试）：曲谱有两种记谱——内置 4 首公有领域旋律用顺序记谱 `[midi,durBeats]`（`null`=休止），上传的 MIDI 经 `parseMidi()` 解析为<b>绝对时间记谱</b> `notes:[{midi,ms,durMs,beat,dur,hand}]`（支持和弦/双手/变速），`songFromMidi()` 转成 ScoreFollow 曲目。`ScoreFollow._build` 兼容两种记谱并用 `timeScale`（默认 1，速度倍率走 `1/speed`）统一缩放时间轴；播放头时间 `t`（毫秒）驱动 `judge(midi,t)`（找最近、音高匹配、在 good 窗内的未判音符，按 `|t−目标ms|` 分 PERFECT≤130ms/GOOD≤320ms，连对累计 Combo+加分）、`expire(t)`（过窗未弹自动判 MISS 并断连击）、`active(t)`/`upcoming(t,ahead)`（取该弹/即将落下的音符），`groups(tol)`（同起音时刻音符归一组，供等待模式逐组推进+和弦显示）、`beatAt(t)`（按 (ms,beat) 线性插值算五线谱光标拍位，兼容变速 MIDI）、`accuracy`/`stars`（90/70/50% → ★★★/★★/★）。`handFilter`（'both'|'r'|'l'）让 judge/expire/active/total/range 只算该手，实现<b>分手练习</b>。UI 用 `requestAnimationFrame`：上方 SVG 五线谱整曲横向铺开 + 光标随拍前进并自动滚动居中、音符按手别染色（右手蓝/左手紫）/按判定结果染色、非练习手淡显；中间 Synthesia 式下落高速路（用 `piano-keyboard.js` 的 `buildLayout` 取每键 x 中心，音符块按 `(目标ms−t)` 下落到判定线、对齐下方 88 键）；落到判定线时高亮该弹的键、弹对/漏弹弹出 PERFECT/GOOD/MISS×Combo 飘字。<b>三档训练</b>：🔊 听示范（自动播放不判分）/ 🐢 等待练习（播放头停在当前组、`waitOnNote` 验证弹齐整组才 `frozen=false` 推进、不计时）/ 🎯 跟弹判分（judge 计分）。上传 MIDI 经 `<input type=file>` → `FileReader.readAsArrayBuffer` → `parseMidi` → `songFromMidi` 加入选曲。结束写入成就仪表盘
 - 音程听辨用 `ear-training.js`（纯逻辑，49 单元测试）：`INTERVALS` 表（0..12 半音）+ `EarTrainingGame` 随机出根音+音程（方向 up/down/harmonic/mixed，可选音程集合，自动保证音符落在合法 MIDI 范围），`check` 校验并记录得分/连击/最佳/正确率，UI 用 Web Audio 三角波发声播放，点按钮作答（无需连钢琴）
 - 力度练习用 `dynamics-trainer.js`（纯逻辑，52 单元测试）：`DYNAMICS` 把 velocity 1..127 无缝划成 6 档（pp/p/mp/mf/f/ff），`velocityToIndex` 定位档位，`DynamicsGame` 出目标力度并按 note-on velocity 校验（容差可调，相邻档可算对），记录得分/连击/最佳/正确率，UI 用刻度色带+指针实时显示你弹的力度落点
 - 移调器用 `transposer.js`（纯逻辑，74 单元测试）：`encodeTransposeByte` 把半音 -12..12 编码成 CA99 TransposeValue 字节（0x40+半音，实测 -12→0x34/+12→0x4C），`Transposer` 跟踪移调量、`targetKeyName` 算听感调、`transposeNote` 软件移调音符；UI 用滑块/±按钮/预设切换，`CA99.buildTranspose` 发 SysEx 让钢琴自身发声也移调
@@ -333,6 +334,7 @@ node js/chord-quality.test.mjs
 node js/progression-ear.test.mjs
 node js/piano-keyboard.test.mjs
 node js/score-follow.test.mjs
+node js/midi-file.test.mjs
 node js/circle-of-fifths.test.mjs
 node js/bridge-protocol.test.mjs
 ```
