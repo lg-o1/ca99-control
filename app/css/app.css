@@ -313,6 +313,53 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sight-feedback { font-weight: 700; font-size: 15px; min-height: 22px; color: var(--muted); }
 .sight-feedback.ok { color: var(--ok); }
 .sight-feedback.no { color: var(--hi2); }
+
+/* ===== 曲谱跟弹（Synthesia 式）===== */
+.scf-stage { margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }
+.scf-staff-wrap {
+  width: 100%; overflow-x: auto; border-radius: 14px; padding: 6px 4px;
+  background: var(--panel2); border: 2px solid var(--line);
+}
+.scf-staff-svg { display: block; height: 150px; }
+.scf-staff-svg .staff-line { stroke: var(--muted); stroke-width: 1.4; }
+.scf-staff-svg .ledger-line { stroke: var(--text); stroke-width: 1.6; }
+.scf-staff-svg .clef-glyph { font-size: 50px; fill: var(--text); font-family: serif; }
+.scf-staff-svg .note-head { fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.scf-staff-svg .note-head.nh-perfect { fill: #34d399; stroke: #1f9d6f; }
+.scf-staff-svg .note-head.nh-good { fill: #22d3ee; stroke: #0e9cb5; }
+.scf-staff-svg .note-head.nh-miss { fill: #f87171; stroke: #c84a4a; opacity: .65; }
+.scf-staff-svg .scf-cursor-line { stroke: #fbbf24; stroke-width: 2; opacity: .85; }
+.scf-highway-wrap {
+  position: relative; width: 100%; overflow: hidden; height: 196px;
+  border-radius: 14px; background: linear-gradient(#0c1024, #161b34);
+  border: 2px solid var(--line);
+}
+.scf-highway { position: absolute; left: 0; top: 0; height: 100%; }
+.scf-note {
+  position: absolute; border-radius: 5px;
+  background: linear-gradient(#7d8cf0, #5566d6);
+  box-shadow: 0 0 6px rgba(102,126,234,.5); transition: none;
+}
+.scf-note.n-due { background: linear-gradient(#fcd34d, #f59e0b); box-shadow: 0 0 12px rgba(251,191,36,.8); }
+.scf-note.n-perfect { background: linear-gradient(#4ade80, #22a463); box-shadow: 0 0 10px rgba(52,211,153,.8); }
+.scf-note.n-good { background: linear-gradient(#67e8f9, #1ba8c4); box-shadow: 0 0 10px rgba(34,211,238,.8); }
+.scf-note.n-miss { background: linear-gradient(#f87171, #b94b4b); opacity: .5; }
+.scf-hitline {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+  background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+  box-shadow: 0 0 10px 2px rgba(251,191,36,.6);
+}
+.scf-pop {
+  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%) scale(.6);
+  font-weight: 900; font-size: 30px; letter-spacing: 1px; opacity: 0;
+  text-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none;
+}
+.scf-pop.show { animation: scfPop .5s ease-out; }
+@keyframes scfPop {
+  0% { opacity: 0; transform: translateX(-50%) scale(.5); }
+  30% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+  100% { opacity: 0; transform: translateX(-50%) scale(1) translateY(-18px); }
+}
 .sight-stats { display: flex; gap: 10px; justify-content: center; margin: 16px 0; flex-wrap: wrap; }
 .sight-stat {
   display: flex; flex-direction: column; align-items: center; min-width: 72px;

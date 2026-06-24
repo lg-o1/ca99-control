@@ -49,7 +49,8 @@ import { ModeIdGame, MODES as MID_MODES, modeName as midModeName } from './mode-
 import { SolfegeGame, DEGREES as SOL_DEGREES, syllable as solSyllable, noteName as solNoteName } from './solfege.js';
 import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } from './chord-quality.js';
 import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
-import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE } from './piano-keyboard.js';
+import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
+import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE } from './score-follow.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -94,6 +95,7 @@ let dictOnNote = null;      // 节奏听写的 note-on 回调（模块39注册�
 let transOnNote = null;     // 移调视奏的 note-on 回调（模块40注册）
 let fingOnNote = null;      // 音阶指法提示的 note-on 回调（模块43注册）
 let ivbOnNote = null;       // 音程构建的 note-on 回调（模块44注册）
+let scfOnNote = null;       // 曲谱跟弹的 note-on 回调（模块45注册，带时间在内部取）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -262,6 +264,8 @@ function onMidiIn(bytes) {
     if (fingOnNote) fingOnNote(m.note);
     // 驱动音程构建
     if (ivbOnNote) ivbOnNote(m.note);
+    // 驱动曲谱跟弹
+    if (scfOnNote) scfOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -5590,6 +5594,11 @@ function renderScaleFingering() {
       <div id="fing-feedback" class="sight-feedback">选好音阶，按"开始"跟弹</div>
     </div>
 
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 整条音阶画在 88 键上，键上数字=<span class="kb-legend" style="color:#5b8cff"><i></i>该用几号手指</span>，<span class="kb-legend" style="color:#fbbf24"><i></i>▶ 当前该弹的键</span>，<span class="kb-legend" style="color:#f87171"><i></i>红=穿指/跨指点</span>（点键可试听/作答）</div>
+      <div id="fing-kb"></div>
+    </div>
+
     <div class="sight-stats">
       <div class="sight-stat"><span class="sight-stat-num" id="fing-prog">0/0</span><span class="sight-stat-lbl">进度</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="fing-correct">0</span><span class="sight-stat-lbl">正确</span></div>
@@ -5624,6 +5633,40 @@ function renderScaleFingering() {
   bindToggle('#fing-hand', 'h', () => hand, (v) => { hand = v; });
   bindToggle('#fing-dir', 'd', () => bidir, (v) => { bidir = (v === 'updown'); });
 
+  const fingKb = new PianoKeyboard($('#fing-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (fingOnNote) fingOnNote(m); },
+  });
+
+  // 计算当前（预览或跟弹）的音符、指法、穿跨指点
+  function fingData() {
+    const rootMidi = sfRoot(scaleId);
+    let notes, fseq;
+    if (session) { notes = session.notes; fseq = session.fingerSeq; }
+    else {
+      notes = sfNotes(scaleId, rootMidi);
+      const up = sfFingers(scaleId, hand);
+      if (bidir) { notes = notes.concat(notes.slice(0, -1).reverse()); fseq = up.concat(up.slice(0, -1).reverse()); }
+      else fseq = up;
+    }
+    const cross = sfCross(fseq.slice(0, bidir ? sfFingers(scaleId, hand).length : fseq.length), hand);
+    return { notes, fseq, crossSet: new Set(cross), ptr: session ? session.pointer : -1 };
+  }
+
+  function paintKb() {
+    const { notes, fseq, crossSet, ptr } = fingData();
+    // 同一 midi 可能出现两次（上行/下行），用最后一次进度决定颜色，这里按位置逐个画
+    const items = notes.map((n, i) => {
+      let color = '#5b8cff';
+      if (crossSet.has(i)) color = '#f87171';
+      if (i === ptr) color = '#fbbf24';
+      const badge = i === ptr ? '▶' + fseq[i] : String(fseq[i]);
+      return { midi: n, color, text: badge };
+    });
+    fingKb.highlightMany(items, { scroll: false });
+    if (notes.length) fingKb.scrollToShow(Math.min(...notes), Math.max(...notes));
+  }
+
   // 画音阶谱面（静态预览或跟弹高亮）
   function drawStaff() {
     const rootMidi = sfRoot(scaleId);
@@ -5648,6 +5691,7 @@ function renderScaleFingering() {
         <span class="fing-note">${CA99.noteName(n)}</span>
       </div>`;
     }).join('');
+    paintKb();
   }
   drawStaff();
 
@@ -6712,10 +6756,320 @@ function renderDashboard() {
   paint();
 }
 
+// ---------- 模块45：曲谱跟弹（Synthesia 式）----------
+function renderScoreFollow() {
+  const root = $('#module-scf');
+  let sf = null;            // ScoreFollow 引擎实例
+  let raf = null;           // requestAnimationFrame 句柄
+  let t0 = 0;               // 播放起点（performance.now() 基准 + 前导拍）
+  let mode = null;          // 'practice' | 'demo'
+  let songId = SCF_SONGS[0].id;
+  let speed = 1;            // 速度倍率
+  let easy = true;          // 简单模式（忽略八度）
+  const LEAD_MS = 1900;     // 前导：第一个音落下前的缓冲
+  const LOOK_MS = 2200;     // 下落高速路向前看的时间窗
+  const HW_H = 196;         // 高速路高度（px）
+  let kbFirst = 60, kbLast = 72;
+  let layout = null, centerX = new Map();
+  let demoPlayed = new Set();
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 曲谱跟弹（Synthesia 式）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">挑一首曲子，音符像 <b>Synthesia</b> 一样从上往下<b>落到对应琴键</b>，同时上方 <b>五线谱</b>跟着走光标——既练<b>识谱</b>又练<b>跟弹</b>。音符落到底部判定线那一刻弹对应键：正中=<span style="color:#34d399">PERFECT</span>、稍偏=<span style="color:#22d3ee">GOOD</span>、漏弹=<span style="color:#f87171">MISS</span>，像节奏游戏一样按<b>音高+时机</b>打分，连对累计 Combo。先 🔊「听一遍」看示范，再 ▶「开始跟弹」。没接 MIDI 也能点屏幕琴键作答。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>选曲</label>
+        <div class="ear-chips" id="scf-songs"></div></div>
+      <div class="param-row"><label>速度</label>
+        <div class="ear-chips" id="scf-speed">
+          <button class="ear-chip" data-s="0.5">0.5×</button>
+          <button class="ear-chip" data-s="0.75">0.75×</button>
+          <button class="ear-chip on" data-s="1">1×</button>
+        </div></div>
+      <div class="param-row"><label>难度</label>
+        <div class="ear-chips" id="scf-easy">
+          <button class="ear-chip on" data-e="1">简单（忽略八度）</button>
+          <button class="ear-chip" data-e="0">标准（要弹准八度）</button>
+        </div></div>
+    </div>
+
+    <div class="scf-stage">
+      <div class="scf-staff-wrap"><div id="scf-staff"></div></div>
+      <div class="scf-highway-wrap">
+        <div id="scf-highway" class="scf-highway"></div>
+        <div class="scf-hitline"></div>
+        <div id="scf-pop" class="scf-pop"></div>
+      </div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 落到判定线的音符对应这里高亮的键；点屏幕琴键也可作答（接 CA99 则直接弹真琴）</div>
+      <div id="scf-kb"></div>
+    </div>
+
+    <div id="scf-feedback" class="sight-feedback">选好曲子，按"开始跟弹"</div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="scf-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="scf-combo">0</span><span class="sight-stat-lbl">连对 Combo</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="scf-prog">0/0</span><span class="sight-stat-lbl">进度</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="scf-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="scf-stars">☆☆☆</span><span class="sight-stat-lbl">评星</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="scf-start" class="big-btn">▶ 开始跟弹</button>
+      <button id="scf-demo" class="big-btn">🔊 听一遍</button>
+      <span id="scf-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  const scfKb = new PianoKeyboard($('#scf-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (scfOnNote) scfOnNote(m); },
+  });
+
+  function drawSongChips() {
+    $('#scf-songs').innerHTML = SCF_SONGS.map((s) =>
+      `<button class="ear-chip ${s.id === songId ? 'on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
+    $('#scf-songs').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => { if (mode) return; songId = b.dataset.id; drawSongChips(); prepare(); };
+    });
+  }
+  function bindChips(sel, attr, apply) {
+    $(sel).querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (mode) return;
+        $(sel).querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+        apply(b.dataset[attr]);
+      };
+    });
+  }
+  drawSongChips();
+  bindChips('#scf-speed', 's', (v) => { speed = parseFloat(v); prepare(); });
+  bindChips('#scf-easy', 'e', (v) => { easy = (v === '1'); });
+
+  // 准备引擎与键盘范围（静态预览，不播放）
+  function prepare() {
+    const song = scfGetSong(songId);
+    sf = new ScoreFollow(song, { bpm: Math.round((song.bpm) * speed), octaveAgnostic: easy });
+    let [lo, hi] = sf.range;
+    // 补齐到完整八度边界，键盘更好看
+    lo = Math.max(21, lo - ((lo % 12 === 0) ? 0 : (lo % 12)));
+    hi = Math.min(108, hi + (11 - (hi % 12)));
+    kbFirst = lo; kbLast = hi;
+    scfKb.first = lo; scfKb.last = hi;
+    scfKb.layout = kbBuildLayout(lo, hi);
+    scfKb._render();
+    layout = kbBuildLayout(lo, hi);
+    centerX = new Map();
+    layout.keys.forEach((k) => centerX.set(k.midi, k.x + k.w / 2));
+    $('#scf-highway').style.width = layout.width + 'px';
+    demoPlayed = new Set();
+    drawStaff(-LEAD_MS);
+    drawHighway(-LEAD_MS);
+    refreshStats();
+  }
+
+  // ---- 五线谱（整曲横向 + 光标）----
+  const CLEF_GLYPH = { treble: '𝄞', bass: '𝄢' };
+  function drawStaff(t) {
+    if (!sf) return;
+    const leftPad = 50, beatPx = 26, topY = 30, stepPx = 7, rightPad = 24;
+    const W = leftPad + sf.totalBeats * beatPx + rightPad;
+    const H = 150;
+    const yForPos = (pos) => topY + (8 - pos) * stepPx;
+    const xForBeat = (beat) => leftPad + beat * beatPx;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="scf-staff-svg" preserveAspectRatio="xMinYMid meet">`;
+    for (let p = 0; p <= 8; p += 2) {
+      const y = yForPos(p);
+      svg += `<line x1="${leftPad - 14}" y1="${y}" x2="${W - 8}" y2="${y}" class="staff-line"/>`;
+    }
+    svg += `<text x="${leftPad - 44}" y="${yForPos(2) + 6}" class="clef-glyph">${CLEF_GLYPH[sf.clef] || CLEF_GLYPH.treble}</text>`;
+    // 音符
+    for (const n of sf.notes) {
+      const pos = staffPosition(n.midi, sf.clef);
+      const cy = yForPos(pos);
+      const cx = xForBeat(n.beat);
+      if (pos > 8) for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
+      if (pos < 0) for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
+      let cls = 'note-head';
+      if (n.grade === SCF_GRADE.PERFECT) cls += ' nh-perfect';
+      else if (n.grade === SCF_GRADE.GOOD) cls += ' nh-good';
+      else if (n.grade === SCF_GRADE.MISS) cls += ' nh-miss';
+      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${cls}"/></g>`;
+    }
+    // 光标
+    const cursorBeat = Math.max(0, (t * (sf.bpm)) / 60000);
+    const curX = xForBeat(cursorBeat);
+    svg += `<line x1="${curX}" y1="14" x2="${curX}" y2="${H - 10}" class="scf-cursor-line"/>`;
+    svg += `</svg>`;
+    const wrap = $('#scf-staff');
+    wrap.innerHTML = svg;
+    // 自动滚动让光标居中
+    const sw = wrap.parentElement;
+    if (sw) sw.scrollLeft = Math.max(0, curX - sw.clientWidth / 2);
+  }
+
+  // ---- 下落高速路（Synthesia）----
+  function drawHighway(t) {
+    if (!sf) return;
+    const pxPerMs = HW_H / LOOK_MS;
+    let html = '';
+    for (const n of sf.notes) {
+      const dt = n.ms - t;            // >0 在上方未到，=0 到判定线
+      if (dt > LOOK_MS || dt < -260) continue;
+      const cx = centerX.get(n.midi);
+      if (cx == null) continue;
+      const isBlack = [1, 3, 6, 8, 10].includes(((n.midi % 12) + 12) % 12);
+      const w = isBlack ? layout.blackW : layout.whiteW - 3;
+      const h = Math.max(14, n.durMs * pxPerMs);
+      const top = HW_H - dt * pxPerMs - h;
+      let cls = 'scf-note';
+      if (n.grade === SCF_GRADE.PERFECT) cls += ' n-perfect';
+      else if (n.grade === SCF_GRADE.GOOD) cls += ' n-good';
+      else if (n.grade === SCF_GRADE.MISS) cls += ' n-miss';
+      else if (Math.abs(dt) <= sf.goodMs) cls += ' n-due';
+      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px"></div>`;
+    }
+    $('#scf-highway').innerHTML = html;
+    // 键盘上高亮"该弹"的键
+    const due = sf.active(t);
+    if (due.length) scfKb.highlightMany(due.map((n) => ({ midi: n.midi, color: '#fbbf24', text: '▶' })), { scroll: false });
+    else scfKb.clear();
+  }
+
+  function refreshStats() {
+    if (!sf) return;
+    $('#scf-score').textContent = sf.score;
+    $('#scf-combo').textContent = sf.combo;
+    $('#scf-prog').textContent = `${sf.judgedCount}/${sf.total}`;
+    $('#scf-acc').textContent = sf.judgedCount ? Math.round(sf.accuracy * 100) + '%' : '—';
+    const st = sf.stars;
+    $('#scf-stars').textContent = '★★★☆☆☆'.slice(3 - st, 6 - st);
+  }
+
+  let popTimer = null;
+  function popGrade(grade) {
+    const pop = $('#scf-pop');
+    const map = {
+      perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'], miss: ['MISS', '#f87171'],
+    };
+    const [txt, color] = map[grade] || ['', '#fff'];
+    pop.textContent = sf.combo > 1 && grade !== 'miss' ? `${txt}  ×${sf.combo}` : txt;
+    pop.style.color = color;
+    pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show');
+    clearTimeout(popTimer); popTimer = setTimeout(() => pop.classList.remove('show'), 520);
+  }
+
+  function frame() {
+    const t = performance.now() - t0;
+    if (mode === 'practice') {
+      sf.expire(t).forEach(() => { popGrade('miss'); });
+    } else if (mode === 'demo') {
+      for (const n of sf.notes) {
+        if (!demoPlayed.has(n.i) && t >= n.ms) {
+          demoPlayed.add(n.i);
+          playTone(midiToFreq(n.midi), 0, Math.min(0.9, n.durMs / 1000), 0.2);
+          scfKb.flash(n.midi, '#22d3ee');
+        }
+      }
+    }
+    drawHighway(t);
+    drawStaff(t);
+    refreshStats();
+    if (t > sf.durationMs + sf.goodMs + 700) { finish(); return; }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function start(which) {
+    if (mode) { stop(); return; }
+    prepare();
+    mode = which;
+    t0 = performance.now() + LEAD_MS;
+    demoPlayed = new Set();
+    if (which === 'practice') {
+      scfOnNote = (midi) => {
+        if (!sf || mode !== 'practice') return;
+        const t = performance.now() - t0;
+        const r = sf.judge(midi, t);
+        if (r.grade) { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); }
+        refreshStats();
+      };
+      $('#scf-feedback').textContent = '🎯 音符落到判定线就弹对应键！';
+      $('#scf-feedback').className = 'sight-feedback';
+      $('#scf-start').textContent = '⏸ 停止';
+      $('#scf-start').classList.add('running');
+      $('#scf-demo').disabled = true;
+    } else {
+      $('#scf-feedback').textContent = '🔊 示范播放中，看音符怎么落…';
+      $('#scf-feedback').className = 'sight-feedback';
+      $('#scf-demo').textContent = '⏸ 停止';
+      $('#scf-demo').classList.add('running');
+      $('#scf-start').disabled = true;
+    }
+    $('#scf-status').textContent = which === 'practice' ? '跟弹中…' : '示范中…';
+    raf = requestAnimationFrame(frame);
+  }
+
+  function resetButtons() {
+    $('#scf-start').textContent = '▶ 开始跟弹';
+    $('#scf-start').classList.remove('running');
+    $('#scf-start').disabled = false;
+    $('#scf-demo').textContent = '🔊 听一遍';
+    $('#scf-demo').classList.remove('running');
+    $('#scf-demo').disabled = false;
+  }
+
+  function stop() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    const wasPractice = mode === 'practice';
+    mode = null; scfOnNote = null;
+    resetButtons();
+    $('#scf-status').textContent = '已停止';
+    if (wasPractice && sf) {
+      $('#scf-feedback').textContent = '已停止。再按"开始跟弹"重来。';
+    } else {
+      $('#scf-feedback').textContent = '选好曲子，按"开始跟弹"';
+    }
+    $('#scf-feedback').className = 'sight-feedback';
+    drawSongChips();
+    prepare();
+  }
+
+  function finish() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    const wasPractice = mode === 'practice';
+    mode = null; scfOnNote = null;
+    resetButtons();
+    $('#scf-status').textContent = '完成';
+    scfKb.clear();
+    if (wasPractice && sf) {
+      const s = sf.summary();
+      recordPractice('scorefollow', '曲谱跟弹', s.total, s.perfect + s.good, s.maxCombo);
+      const star = '★'.repeat(s.stars) + '☆'.repeat(3 - s.stars);
+      $('#scf-feedback').textContent = `🎉 完成！${star}　正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}`;
+      $('#scf-feedback').className = 'sight-feedback ok';
+    } else {
+      $('#scf-feedback').textContent = '示范结束，按"开始跟弹"自己试试。';
+      $('#scf-feedback').className = 'sight-feedback';
+      drawSongChips();
+      prepare();
+    }
+  }
+
+  $('#scf-start').onclick = () => start('practice');
+  $('#scf-demo').onclick = () => start('demo');
+
+  prepare();
+}
+
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderDashboard();
+
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
