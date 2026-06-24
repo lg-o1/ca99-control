@@ -36,6 +36,7 @@ import { VoicingTrainer } from './voicing.js';
 import { CrescendoTrainer, CRESC_DIRECTIONS, idealRamp } from './crescendo.js';
 import { TempoRampTrainer, TEMPO_DIRECTIONS, ioiToBpm } from './tempo-ramp.js';
 import { PolyrhythmTrainer, POLY_RATIOS, combinedGrid } from './polyrhythm.js';
+import { EvennessTrainer } from './evenness.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -71,6 +72,7 @@ let voicingOnNote = null;   // 旋律声部突出的 note-on 回调（模块32�
 let crescOnNote = null;     // 力度渐变曲线的 note-on 回调（模块33注册，带力度）
 let tempoRampOnNote = null; // 速度渐变的 note-on 回调（模块34注册，带时间）
 let polyOnNote = null;      // 复节奏的 note-on 回调（模块35注册，带音高+时间，按音高分左右手）
+let evenOnNote = null;      // 颗粒性的 note-on 回调（模块36注册，带力度+时间）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -225,6 +227,8 @@ function onMidiIn(bytes) {
     if (tempoRampOnNote) tempoRampOnNote(performance.now());
     // 驱动复节奏（按音高分左右手）
     if (polyOnNote) polyOnNote(m.note, performance.now());
+    // 驱动颗粒性（带力度+时间）
+    if (evenOnNote) evenOnNote(m.note, m.velocity, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -4196,6 +4200,162 @@ function renderPolyrhythm() {
   drawTracks(ratioObj(), cycles());
 }
 
+// ---------- 模块36：颗粒性 / 均匀度 ----------
+function renderEvenness() {
+  const root = $('#module-even');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">💧 颗粒性</h2>
+    <p style="color:var(--muted);margin-bottom:14px">钢琴基本功"颗粒性"：连弹一串跑动音（音阶/琶音），让<b>每个音的力度</b>和<b>每两音的间隔</b>都尽量均匀——没有忽强忽弱、忽快忽慢。引擎用变异系数（离散度）打分：力度越齐、节奏越匀，分越高。<b>连琴</b>能同时练力度+时值；没连琴用按钮 / 空格只能练时值均匀（力度固定）。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>音数</label>
+        <select id="ev-count"><option value="8">8 个音</option><option value="12">12 个音</option><option value="16">16 个音</option></select>
+      </div>
+      <div class="param-row"><label>力度权重</label>
+        <input id="ev-vw" type="range" min="0" max="100" step="10" value="50" class="trans-slider" style="max-width:220px">
+        <span id="ev-vw-val" style="color:#667eea;font-weight:700;min-width:120px">力度 50% · 时值 50%</span>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div class="ev-row-lbl"><span class="pl-tag pl-tag-a">力度 velocity</span><span id="ev-vel-cv" style="color:var(--muted)">越齐越好</span></div>
+      <div id="ev-vel-bars" class="ev-bars"></div>
+      <div class="ev-row-lbl" style="margin-top:14px"><span class="pl-tag pl-tag-b">间隔 timing</span><span id="ev-ioi-cv" style="color:var(--muted)">越匀越好</span></div>
+      <div id="ev-ioi-bars" class="ev-bars"></div>
+      <div id="ev-feedback" class="sight-feedback" style="margin-top:14px">按"开始"，然后均匀地连敲一串音</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="ev-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="ev-vscore" class="sight-stat-num">—</div><div class="sight-stat-lbl">力度均匀</div></div>
+      <div class="sight-stat"><div id="ev-tscore" class="sight-stat-num">—</div><div class="sight-stat-lbl">时值均匀</div></div>
+      <div class="sight-stat"><div id="ev-bpm" class="sight-stat-num">—</div><div class="sight-stat-lbl">速度 BPM</div></div>
+      <div class="sight-stat"><div id="ev-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="ev-start" class="big-btn">▶ 开始</button>
+      <button id="ev-tap" class="big-btn" style="background:#4a7de8" disabled>👆 敲一下（空格）</button>
+      <button id="ev-sim" class="big-btn" style="background:#667eea">🎲 模拟一遍</button>
+      <span id="ev-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let trainer = null, playing = false;
+  const count = () => +$('#ev-count').value;
+  const velWeight = () => +$('#ev-vw').value / 100;
+
+  function clearBars() { $('#ev-vel-bars').innerHTML = ''; $('#ev-ioi-bars').innerHTML = ''; }
+
+  function addVelBar(ev) {
+    const bar = document.createElement('div');
+    bar.className = 'ev-bar';
+    const h = 18 + Math.min(1, (ev.velocity || 0) / 127) * 82;
+    bar.style.height = h + '%';
+    $('#ev-vel-bars').appendChild(bar);
+  }
+
+  function paintResult(r) {
+    // 力度柱按相对均值偏差着色
+    const vbars = [...$('#ev-vel-bars').children];
+    r.velDev.forEach((d, i) => {
+      if (!vbars[i]) return;
+      const a = Math.abs(d);
+      vbars[i].classList.toggle('ev-good', a <= trainer.velTol * 0.5);
+      vbars[i].classList.toggle('ev-off', a > trainer.velTol);
+    });
+    // 间隔柱（从第二个音起，共 n-1 根）
+    const wrap = $('#ev-ioi-bars'); wrap.innerHTML = '';
+    const maxIoi = Math.max(...r.iois, 1);
+    r.iois.forEach((x, i) => {
+      const bar = document.createElement('div');
+      bar.className = 'ev-bar';
+      bar.style.height = (18 + Math.min(1, x / maxIoi) * 82) + '%';
+      const a = Math.abs(r.ioiDev[i] || 0);
+      if (a <= trainer.ioiTol * 0.5) bar.classList.add('ev-good');
+      else if (a > trainer.ioiTol) bar.classList.add('ev-off');
+      wrap.appendChild(bar);
+    });
+    $('#ev-vel-cv').textContent = '离散 ' + Math.round(r.velCV * 100) + '%';
+    $('#ev-ioi-cv').textContent = '离散 ' + Math.round(r.ioiCV * 100) + '%';
+  }
+
+  function finishRound(r) {
+    playing = false;
+    evenOnNote = null;
+    $('#ev-score').textContent = r.score;
+    $('#ev-vscore').textContent = Math.round(r.velScore * 100);
+    $('#ev-tscore').textContent = Math.round(r.timingScore * 100);
+    $('#ev-bpm').textContent = r.bpm ? Math.round(r.bpm) : '—';
+    $('#ev-best').textContent = trainer.best;
+    paintResult(r);
+    recordPractice('even', '颗粒性', r.n, Math.round(r.n * r.score / 100), r.score);
+    const fb = $('#ev-feedback');
+    fb.className = 'sight-feedback ok';
+    const worst = r.velScore < r.timingScore ? '力度' : '时值';
+    fb.textContent = `综合 ${r.score} 分 · 力度均匀 ${Math.round(r.velScore * 100)} · 时值均匀 ${Math.round(r.timingScore * 100)} · ${Math.round(r.bpm)} BPM —— 多注意「${worst}」的一致性`;
+    $('#ev-tap').disabled = true;
+    $('#ev-start').textContent = '▶ 开始';
+    $('#ev-start').classList.remove('running');
+    $('#ev-status').textContent = '完成';
+  }
+
+  function startOne() {
+    clearBars();
+    $('#ev-ioi-bars').innerHTML = '';
+    trainer = new EvennessTrainer({ count: count(), velWeight: velWeight() });
+    trainer.onTap = (ev, n, c) => { addVelBar(ev); $('#ev-status').textContent = `已敲 ${n}/${c}`; };
+    trainer.onComplete = (r) => finishRound(r);
+    playing = true;
+    evenOnNote = (note, vel, time) => { if (playing) trainer.feed(note, vel, time); };
+    $('#ev-tap').disabled = false;
+    $('#ev-start').textContent = '⏸ 停止';
+    $('#ev-start').classList.add('running');
+    $('#ev-score').textContent = '—'; $('#ev-vscore').textContent = '—';
+    $('#ev-tscore').textContent = '—'; $('#ev-bpm').textContent = '—';
+    $('#ev-status').textContent = `已敲 0/${count()}`;
+    const fb = $('#ev-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = '均匀地连敲一串音——连琴练力度+时值，按钮/空格只练时值';
+  }
+
+  function stopAll() {
+    playing = false; evenOnNote = null;
+    $('#ev-tap').disabled = true;
+    $('#ev-start').textContent = '▶ 开始';
+    $('#ev-start').classList.remove('running');
+    $('#ev-status').textContent = '已停止';
+  }
+
+  function manualTap() { if (playing && trainer) trainer.feed(60, 80, performance.now()); }
+
+  function simulate() {
+    if (playing) return;
+    clearBars();
+    trainer = new EvennessTrainer({ count: count(), velWeight: velWeight() });
+    trainer.onTap = (ev) => addVelBar(ev);
+    trainer.onComplete = (r) => finishRound(r);
+    const n = count();
+    let t = 0;
+    for (let i = 0; i < n; i++) {
+      const vel = 82 + (Math.random() - 0.5) * 26;       // 力度 ±13 抖动
+      trainer.feed(60 + i, Math.round(vel), t);
+      t += 165 + (Math.random() - 0.5) * 40;             // 间隔 165ms ±20 抖动
+    }
+  }
+
+  $('#ev-vw').oninput = () => {
+    const v = +$('#ev-vw').value;
+    $('#ev-vw-val').textContent = `力度 ${v}% · 时值 ${100 - v}%`;
+  };
+  $('#ev-tap').onclick = manualTap;
+  $('#ev-sim').onclick = simulate;
+  $('#ev-start').onclick = () => { if (playing) { stopAll(); } else { startOne(); } };
+
+  document.addEventListener('keydown', (e) => {
+    if (!$('#module-even').classList.contains('active') || !playing || e.repeat) return;
+    if (e.code === 'Space') { e.preventDefault(); manualTap(); }
+  });
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -4332,7 +4492,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

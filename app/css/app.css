@@ -583,6 +583,15 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .pl-tag-a { background: #e8794a; }
 .pl-tag-b { background: #4a7de8; }
 
+/* 颗粒性/均匀度（模块36） */
+.ev-row-lbl { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 13px; }
+.ev-bars { display: flex; align-items: flex-end; gap: 4px; height: 84px; padding: 6px 8px;
+  background: var(--panel2, rgba(127,127,127,.08)); border-radius: 10px; min-height: 84px; }
+.ev-bar { flex: 1 1 0; min-width: 6px; border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, #8a93f0, #667eea); transition: height .15s ease, background .2s ease; }
+.ev-bar.ev-good { background: linear-gradient(180deg, #5fd49a, #2fae73); }
+.ev-bar.ev-off { background: linear-gradient(180deg, #f0a36a, #e8794a); }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }
