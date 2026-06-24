@@ -30,6 +30,7 @@ import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeg
 import { ArticulationTrainer } from './articulation.js';
 import { PedalTiming, PEDAL_THRESHOLD } from './pedal-timing.js';
 import { TrillTrainer } from './trill.js';
+import { OrnamentTrainer, ORNAMENT_LABELS } from './ornament.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -59,6 +60,7 @@ let articOnNoteOff = null;  // 连奏/断奏的 note-off 回调（模块27注册
 let pedalTimeOnNote = null; // 踏板时机的 note-on 回调（模块28注册）
 let pedalTimeOnCC = null;   // 踏板时机的 CC 回调（模块28注册）
 let trillOnNote = null;     // 颤音训练的 note-on 回调（模块29注册）
+let ornamentOnNote = null;  // 装饰音训练的 note-on 回调（模块30注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -201,6 +203,8 @@ function onMidiIn(bytes) {
     if (pedalTimeOnNote) pedalTimeOnNote(m.note, performance.now());
     // 驱动颤音速度训练
     if (trillOnNote) trillOnNote(m.note, performance.now());
+    // 驱动装饰音训练
+    if (ornamentOnNote) ornamentOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -3193,6 +3197,171 @@ function renderTrill() {
   updateKeyLabels();
 }
 
+// ---------- 模块30：装饰音训练 ----------
+function renderOrnament() {
+  const root = $('#module-ornament');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎵 装饰音训练</h2>
+    <p style="color:var(--muted);margin-bottom:14px">装饰音是钢琴曲里给旋律"加花"的小音群。本模块练三种：<b>倚音</b>（小音抢在主音前，两音）、<b>波音</b>（主-辅-主，三音）、<b>回音</b>（上辅-主-下辅-主，四音）。看下方"目标音序列"，按顺序又快又匀地弹出来——装饰音要<b>干脆</b>（音与音间隔越短越好）。没连琴可点目标音键模拟。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>装饰音类型</label>
+        <select id="or-type">
+          <option value="grace">倚音（2 音）</option>
+          <option value="mordent" selected>波音（3 音）</option>
+          <option value="turn">回音（4 音）</option>
+        </select>
+      </div>
+      <div class="param-row"><label>主音</label>
+        <select id="or-main"></select>
+      </div>
+      <div class="param-row" id="or-dir-row"><label>方向</label>
+        <select id="or-dir"><option value="upper" selected>上方（辅音偏高）</option><option value="lower">下方（辅音偏低）</option></select>
+      </div>
+      <div class="param-row"><label>辅音音程</label>
+        <select id="or-iv"><option value="1">小二度（半音）</option><option value="2" selected>大二度（全音）</option></select>
+      </div>
+      <div class="param-row"><label>干脆度要求</label>
+        <select id="or-crisp"><option value="160">轻松（≤160ms）</option><option value="120" selected>标准（≤120ms）</option><option value="80">严格（≤80ms）</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div id="or-seq" class="or-seq"></div>
+      <div id="or-feedback" class="sight-feedback" style="margin-top:12px">点"开始"，然后按目标序列依次弹</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="or-speed" class="sight-stat-num">—</div><div class="sight-stat-lbl">干脆度</div></div>
+      <div class="sight-stat"><div id="or-even" class="sight-stat-num">—</div><div class="sight-stat-lbl">均匀度</div></div>
+      <div class="sight-stat"><div id="or-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">综合分</div></div>
+      <div class="sight-stat"><div id="or-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="or-start" class="big-btn">▶ 开始 / 重来</button>
+      <button id="or-sim" class="big-btn" style="background:var(--panel2)">🎹 模拟弹一遍</button>
+      <span id="or-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  // 主音下拉 C3..C5
+  const mainSel = $('#or-main');
+  for (let n = 48; n <= 72; n++) {
+    const o = document.createElement('option');
+    o.value = String(n); o.textContent = chordNoteName(n);
+    if (n === 60) o.selected = true;
+    mainSel.appendChild(o);
+  }
+
+  let or = null;
+
+  function opts() {
+    return {
+      type: $('#or-type').value,
+      main: +mainSel.value,
+      direction: $('#or-dir').value,
+      interval: +$('#or-iv').value,
+      crisp: +$('#or-crisp').value,
+    };
+  }
+
+  function renderSeq() {
+    const seq = or ? or.seq : (new OrnamentTrainer(opts())).seq;
+    const idx = or ? or.progress : 0;
+    $('#or-seq').innerHTML = seq.map((n, i) => {
+      const cls = i < idx ? 'done' : i === idx && or && !or.done ? 'cur' : '';
+      return `<button class="or-note ${cls}" data-note="${n}">${chordNoteName(n)}</button>`;
+    }).join('<span class="or-arrow">→</span>');
+    // 绑定点击模拟弹该音
+    $('#or-seq').querySelectorAll('.or-note').forEach((b) => {
+      b.onclick = () => { if (!or || or.done) start(); feed(+b.dataset.note); };
+    });
+  }
+
+  function pulse(index) {
+    const btns = $('#or-seq').querySelectorAll('.or-note');
+    const el = btns[index];
+    if (!el) return;
+    el.classList.add('lit');
+    setTimeout(() => el.classList.remove('lit'), 110);
+  }
+
+  function onHit(info) {
+    if (info.kind === 'wrong') {
+      const fb = $('#or-feedback'); fb.className = 'sight-feedback no';
+      fb.textContent = `⚠ 弹错了，下一个应是 ${chordNoteName(info.expected)}`;
+      return;
+    }
+    pulse(info.index);
+    renderSeq();
+  }
+
+  function showResult(r) {
+    $('#or-speed').textContent = r.speed;
+    $('#or-even').textContent = r.evenness;
+    $('#or-score').textContent = r.score;
+    $('#or-best').textContent = or.best;
+    const fb = $('#or-feedback');
+    const label = ORNAMENT_LABELS[r.type] || '装饰音';
+    const extra = r.wrongNotes ? `（错音 ${r.wrongNotes}）` : '，音准全对';
+    if (r.score >= 85) { fb.className = 'sight-feedback ok'; fb.textContent = `🎉 ${label} ${r.score} 分！平均间隔 ${r.meanIoi}ms，干脆利落${extra}`; }
+    else if (r.score >= 60) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${label} ${r.score} 分。平均间隔 ${r.meanIoi}ms${extra}`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${label} ${r.score} 分。平均间隔 ${r.meanIoi}ms${extra}，再快一点更干脆`; }
+    recordPractice('ornament', label, r.notes, Math.round(r.score / 100 * r.notes), or.best);
+    ornamentOnNote = null;
+    $('#or-status').textContent = '完成 · 可重来';
+    renderSeq();
+  }
+
+  function feed(note) {
+    if (!or || or.done) return;
+    or.feed(note, performance.now());
+  }
+
+  function start() {
+    or = new OrnamentTrainer(opts());
+    or.onHit = onHit;
+    or.onComplete = (r) => showResult(r);
+    ornamentOnNote = (note) => feed(note);
+    $('#or-speed').textContent = '—'; $('#or-even').textContent = '—'; $('#or-score').textContent = '—';
+    $('#or-best').textContent = or.best;
+    const fb = $('#or-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = `🎧 按顺序弹：${or.seq.map(chordNoteName).join(' → ')}`;
+    $('#or-status').textContent = '进行中…';
+    renderSeq();
+  }
+
+  // 模拟：按序列每 90ms 弹一个
+  function sim() {
+    if (!or || or.done) start();
+    const seq = or.seq.slice();
+    let i = 0;
+    const step = () => {
+      if (!or || or.done || i >= seq.length) return;
+      or.feed(seq[i], performance.now());
+      i++;
+      if (i < seq.length) setTimeout(step, 90);
+    };
+    step();
+  }
+
+  function refreshDirRow() {
+    // 回音没有方向选项（固定上-主-下-主）
+    $('#or-dir-row').style.display = $('#or-type').value === 'turn' ? 'none' : '';
+  }
+
+  $('#or-type').onchange = () => { refreshDirRow(); or = null; renderSeq(); };
+  mainSel.onchange = () => { or = null; renderSeq(); };
+  $('#or-dir').onchange = () => { or = null; renderSeq(); };
+  $('#or-iv').onchange = () => { or = null; renderSeq(); };
+  $('#or-start').onclick = start;
+  $('#or-sim').onclick = sim;
+
+  refreshDirRow();
+  renderSeq();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -3324,7 +3493,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;
