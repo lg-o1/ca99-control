@@ -47,6 +47,7 @@ import { ScaleFingeringSession, FINGERINGS as SF_FINGERINGS, listScales as sfLis
 import { IntervalBuildGame, INTERVALS as IB_INTERVALS, DIRECTIONS as IB_DIRECTIONS, noteName as ibNoteName } from './interval-build.js';
 import { ModeIdGame, MODES as MID_MODES, modeName as midModeName } from './mode-id.js';
 import { SolfegeGame, DEGREES as SOL_DEGREES, syllable as solSyllable, noteName as solNoteName } from './solfege.js';
+import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } from './chord-quality.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -5939,6 +5940,163 @@ function renderSolfege() {
   };
 }
 
+// ========== 模块 47: 和弦性质听辨（chord quality）==========
+function renderChordQuality() {
+  const root = $('#module-cquality');
+  let game = null;
+  const enabled = new Set(['major', 'minor', 'augmented', 'diminished']);
+  let choiceCount = 4;
+  let playMode = 'both'; // chord | arp | both
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 和弦性质听辨</h2>
+    <p style="color:var(--muted);margin-bottom:14px">🔊 听一个<b>和弦</b>，辨认它的<b>性质/类型</b>：大三/小三/增三/减三（三和弦）或属七/大七/小七/半减七/减七（七和弦）。诀窍：<b>大三明亮、小三忧郁</b>、<b>增三悬浮对称、减三不安想解决</b>、<b>属七想解决（蓝调）、大七柔和明亮（爵士）、减七极度紧张</b>。和"和弦转位"（练同一和弦的排列）不同——这里练<b>和弦色彩/类型</b>，是和声听觉的地基。可先听整块和弦再听琶音。无需连琴（纯听辨多选）。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>和弦范围</label>
+        <div class="ear-chips" id="cq-chips"></div></div>
+      <div class="param-row"><label>播放方式</label>
+        <div class="ear-chips" id="cq-play">
+          <button class="ear-chip" data-p="chord">仅整块</button>
+          <button class="ear-chip" data-p="arp">仅琶音</button>
+          <button class="ear-chip on" data-p="both">整块+琶音</button>
+        </div></div>
+      <div class="param-row"><label>选项数量</label>
+        <select id="cq-cc">
+          <option value="3">3 选 1（入门）</option>
+          <option value="4" selected>4 选 1（进阶）</option>
+          <option value="9">9 选 1（全部）</option>
+        </select></div>
+    </div>
+
+    <div class="sight-stage">
+      <div id="cq-feedback" class="sight-feedback">选好范围，按"开始"出题</div>
+      <div id="cq-hint" class="cq-hint"></div>
+    </div>
+
+    <div class="rotate-bar" style="justify-content:center;margin-bottom:8px">
+      <button id="cq-replay" class="big-btn" disabled>🔊 再听一次</button>
+    </div>
+
+    <div class="ear-answers" id="cq-answers"></div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="cq-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cq-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cq-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cq-acc">—</span><span class="sight-stat-lbl">正确率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="cq-start" class="big-btn">▶ 开始练习</button>
+      <span id="cq-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawChips() {
+    $('#cq-chips').innerHTML = CQ_QUALITIES.map((q) =>
+      `<button class="ear-chip ${enabled.has(q.id) ? 'on' : ''}" data-q="${q.id}">${q.name}</button>`).join('');
+    $('#cq-chips').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (game) return;
+        const q = b.dataset.q;
+        if (enabled.has(q)) { if (enabled.size > 2) enabled.delete(q); } else enabled.add(q);
+        drawChips();
+      };
+    });
+  }
+  function drawPlay() {
+    $('#cq-play').querySelectorAll('.ear-chip').forEach((b) => {
+      b.classList.toggle('on', b.dataset.p === playMode);
+      b.onclick = () => { playMode = b.dataset.p; drawPlay(); };
+    });
+  }
+  drawChips();
+  drawPlay();
+  $('#cq-cc').onchange = () => { if (!game) choiceCount = +$('#cq-cc').value; };
+
+  function refreshStats() {
+    $('#cq-score').textContent = game.score;
+    $('#cq-streak').textContent = game.streak;
+    $('#cq-best').textContent = game.best;
+    $('#cq-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function playChord() {
+    const seq = game.notes();
+    if (playMode === 'chord' || playMode === 'both') {
+      seq.forEach((n) => playTone(midiToFreq(n), 0, 1.1, 0.16));
+    }
+    if (playMode === 'arp' || playMode === 'both') {
+      const delay = playMode === 'both' ? 1.25 : 0;
+      seq.forEach((n, i) => playTone(midiToFreq(n), delay + i * 0.34, 0.4, 0.18));
+    }
+  }
+
+  function drawAnswers() {
+    $('#cq-answers').innerHTML = game.choices().map((c) =>
+      `<button class="ear-ans" data-q="${c.id}">${c.name}${c.symbol ? `<small>${c.symbol}</small>` : '<small>&nbsp;</small>'}</button>`).join('');
+    $('#cq-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      b.onclick = () => answer(b.dataset.q, b);
+    });
+  }
+
+  let answering = false;
+  function answer(qid, btn) {
+    if (!game || !game.current || answering) return;
+    answering = true;
+    const correctId = game.current.quality.id;
+    const correct = game.check(qid);
+    refreshStats();
+    $('#cq-answers').querySelectorAll('.ear-ans').forEach((b) => {
+      const q = b.dataset.q;
+      if (q === correctId) b.classList.add('correct');
+      else if (q === qid) b.classList.add('wrong');
+      b.disabled = true;
+    });
+    $('#cq-hint').textContent = '💡 ' + game.current.quality.hint;
+    const fb = $('#cq-feedback');
+    if (correct) { fb.textContent = `✅ 对了！${cqName(correctId)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    else { fb.textContent = `❌ 不对，正确答案是 ${cqName(correctId)}`; fb.className = 'sight-feedback no'; }
+    setTimeout(() => { if (game) nextQuestion(); }, 1900);
+  }
+
+  function nextQuestion() {
+    answering = false;
+    game.next();
+    drawAnswers();
+    $('#cq-hint').textContent = '';
+    $('#cq-feedback').textContent = '🤔 这是什么和弦？';
+    $('#cq-feedback').className = 'sight-feedback';
+    $('#cq-replay').disabled = false;
+    playChord();
+  }
+
+  $('#cq-replay').onclick = () => { if (game && game.current) playChord(); };
+
+  $('#cq-start').onclick = () => {
+    if (game) {
+      recordPractice('cquality', '和弦性质听辨', game.attempts, game.score, game.best);
+      game = null; answering = false;
+      $('#cq-start').textContent = '▶ 开始练习';
+      $('#cq-start').classList.remove('running');
+      $('#cq-status').textContent = '已停止';
+      $('#cq-answers').innerHTML = '';
+      $('#cq-hint').textContent = '';
+      $('#cq-replay').disabled = true;
+      $('#cq-feedback').textContent = '选好范围，按"开始"出题';
+      $('#cq-feedback').className = 'sight-feedback';
+      drawChips();
+      return;
+    }
+    game = new ChordQualityGame({ qualities: [...enabled], choiceCount });
+    $('#cq-start').textContent = '⏸ 停止练习';
+    $('#cq-start').classList.add('running');
+    $('#cq-status').textContent = '进行中…';
+    refreshStats();
+    nextQuestion();
+  };
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -6075,7 +6233,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

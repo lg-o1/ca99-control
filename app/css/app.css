@@ -691,6 +691,11 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 #sol-answers .ear-ans { display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.3; min-width: 78px; }
 #sol-answers .ear-ans small { font-size: 11px; opacity: .6; font-weight: 400; }
 
+/* ---- 模块 47: 和弦性质听辨 ---- */
+.cq-hint { font-size: 13px; color: var(--muted, #999); margin-top: 6px; min-height: 18px; }
+#cq-answers .ear-ans { display: flex; flex-direction: column; align-items: center; gap: 2px; line-height: 1.3; min-width: 86px; }
+#cq-answers .ear-ans small { font-size: 11px; opacity: .6; font-weight: 400; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 1024px) {
   #sidebar { width: 186px; }
