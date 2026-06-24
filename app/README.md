@@ -128,6 +128,21 @@ app/
 
 > 后续玩法（自动伴奏/灯光同步）作为新模块加入 `app.js` + 侧栏，不另起 app。
 
+### 已知协议坑点
+
+#### 🥁 节奏（鼓点）模块
+
+CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**，单独发 `RhythmSelect` 无效：
+
+| 步骤 | SysEx | 说明 |
+|---|---|---|
+| 1 | `MetronomeMode = Rhythm` (`fn=0x10 v1=0x56 v2=0x0A v4=0x01`) | 切到鼓点模式（默认是普通节拍） |
+| 2 | `RhythmSelect = [index]` (`fn=0x10 v1=0x56 v2=0x09 v4=[0-99]`) | 选节奏型 |
+| 3 | `MetronomeRun = Start` (`fn=0x10 v1=0x56 v2=0x08 v4=0x01`) | 启动 |
+
+切换节奏时需要先 **Stop → Mode → Select → Start**，热切（播放中直接换）无效。
+`ca99.js` 已提供 `buildMetronomeMode(mode)` 和 `buildMetronomeRun(running)` 函数。
+
 ### 模块实现说明
 
 - 每个模块是 `app.js` 里一个 `renderXxx()` 函数，渲染到对应 `#module-xxx` 容器
