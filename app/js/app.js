@@ -31,6 +31,7 @@ import { ArticulationTrainer } from './articulation.js';
 import { PedalTiming, PEDAL_THRESHOLD } from './pedal-timing.js';
 import { TrillTrainer } from './trill.js';
 import { OrnamentTrainer, ORNAMENT_LABELS } from './ornament.js';
+import { LeapTrainer } from './leap.js';
 
 const midi = new MidiCore();
 let SOUNDS = [], SYSEX = [], VT = [], RHYTHM = [];
@@ -61,6 +62,7 @@ let pedalTimeOnNote = null; // 踏板时机的 note-on 回调（模块28注册�
 let pedalTimeOnCC = null;   // 踏板时机的 CC 回调（模块28注册）
 let trillOnNote = null;     // 颤音训练的 note-on 回调（模块29注册）
 let ornamentOnNote = null;  // 装饰音训练的 note-on 回调（模块30注册）
+let leapOnNote = null;      // 大跳准确度的 note-on 回调（模块31注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -205,6 +207,8 @@ function onMidiIn(bytes) {
     if (trillOnNote) trillOnNote(m.note, performance.now());
     // 驱动装饰音训练
     if (ornamentOnNote) ornamentOnNote(m.note, performance.now());
+    // 驱动大跳准确度训练
+    if (leapOnNote) leapOnNote(m.note, performance.now());
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -3362,6 +3366,154 @@ function renderOrnament() {
   renderSeq();
 }
 
+// ---------- 模块31：音程大跳准确度 ----------
+function renderLeap() {
+  const root = $('#module-leap');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎯 音程大跳准确度</h2>
+    <p style="color:var(--muted);margin-bottom:14px">"大跳"指旋律里相邻音相距很远（八度甚至更多）。难点是手要<b>直接跳到位、一次弹准</b>，不能挨个摸索。下方会给一串大跳目标音，请依次跳到每个音上——<b>一次弹准</b>准确度才满分；弹错（摸索）会扣准确度。没连琴可点亮着的目标音模拟。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>音域</label>
+        <select id="lp-range">
+          <option value="48,72">C3–C5（2 个八度）</option>
+          <option value="48,84" selected>C3–C6（3 个八度）</option>
+          <option value="36,96">C2–C7（5 个八度）</option>
+        </select>
+      </div>
+      <div class="param-row"><label>最小跳度</label>
+        <select id="lp-leap">
+          <option value="7">五度（7 半音）</option>
+          <option value="12" selected>八度（12 半音）</option>
+          <option value="16">十度（16 半音）</option>
+        </select>
+      </div>
+      <div class="param-row"><label>目标个数</label>
+        <select id="lp-count"><option value="6">6 个</option><option value="8" selected>8 个</option><option value="12">12 个</option></select>
+      </div>
+    </div>
+
+    <div class="card-panel" style="text-align:center">
+      <div id="lp-seq" class="lp-seq"></div>
+      <div id="lp-feedback" class="sight-feedback" style="margin-top:12px">点"开始"生成一串大跳，然后依次跳准</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="lp-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">一次弹准率</div></div>
+      <div class="sight-stat"><div id="lp-miss" class="sight-stat-num">—</div><div class="sight-stat-lbl">失误数</div></div>
+      <div class="sight-stat"><div id="lp-span" class="sight-stat-num">—</div><div class="sight-stat-lbl">平均跳度</div></div>
+      <div class="sight-stat"><div id="lp-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="lp-start" class="big-btn">▶ 开始 / 换一串</button>
+      <button id="lp-sim" class="big-btn" style="background:var(--panel2)">🎹 模拟全部弹准</button>
+      <span id="lp-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  let lp = null;
+
+  function opts() {
+    const [low, high] = $('#lp-range').value.split(',').map(Number);
+    return { low, high, minLeap: +$('#lp-leap').value, count: +$('#lp-count').value };
+  }
+
+  function renderSeq() {
+    if (!lp) { $('#lp-seq').innerHTML = '<span style="color:var(--muted)">点"开始"生成大跳序列</span>'; return; }
+    const idx = lp.progress;
+    $('#lp-seq').innerHTML = lp.seq.map((n, i) => {
+      const cls = i < idx ? 'done' : i === idx && !lp.done ? 'cur' : '';
+      return `<button class="lp-note ${cls}" data-note="${n}">${chordNoteName(n)}</button>`;
+    }).join('');
+    $('#lp-seq').querySelectorAll('.lp-note').forEach((b) => {
+      b.onclick = () => { if (!lp || lp.done) return; feed(+b.dataset.note); };
+    });
+  }
+
+  function pulse(index, miss) {
+    const btns = $('#lp-seq').querySelectorAll('.lp-note');
+    const el = btns[index];
+    if (!el) return;
+    el.classList.add(miss ? 'missed' : 'lit');
+    setTimeout(() => el.classList.remove(miss ? 'missed' : 'lit'), 130);
+  }
+
+  function onHit(info) {
+    if (info.kind === 'miss') {
+      pulse(info.index, true);
+      const fb = $('#lp-feedback'); fb.className = 'sight-feedback no';
+      fb.textContent = `⚠ 跳错了，目标是 ${chordNoteName(info.expected)} — 别摸索，直接跳`;
+      return;
+    }
+    pulse(info.index, false);
+    const fb = $('#lp-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = info.firstTry ? `✓ ${chordNoteName(info.note)} 一次弹准！` : `○ ${chordNoteName(info.note)} 找到了`;
+    renderSeq();
+  }
+
+  function showResult(r) {
+    $('#lp-acc').textContent = r.accuracy + '%';
+    $('#lp-miss').textContent = r.misses;
+    $('#lp-span').textContent = r.span;
+    $('#lp-best').textContent = lp.best + '%';
+    const fb = $('#lp-feedback');
+    if (r.accuracy >= 85) { fb.className = 'sight-feedback ok'; fb.textContent = `🎉 一次弹准率 ${r.accuracy}%（${r.firstTryHits}/${r.total}），失误 ${r.misses}，平均跳度 ${r.span} 半音`; }
+    else if (r.accuracy >= 60) { fb.className = 'sight-feedback'; fb.textContent = `👍 一次弹准率 ${r.accuracy}%（${r.firstTryHits}/${r.total}），失误 ${r.misses}`; }
+    else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ 一次弹准率 ${r.accuracy}%（${r.firstTryHits}/${r.total}）。先慢一点、看准位置再跳`; }
+    recordPractice('leap', '大跳准确度', r.total, r.firstTryHits, lp.best);
+    leapOnNote = null;
+    $('#lp-status').textContent = '完成 · 可换一串';
+    renderSeq();
+  }
+
+  function feed(note) {
+    if (!lp || lp.done) return;
+    lp.feed(note, performance.now());
+  }
+
+  function start() {
+    lp = new LeapTrainer(opts());
+    lp.onHit = onHit;
+    lp.onComplete = (r) => showResult(r);
+    leapOnNote = (note) => feed(note);
+    $('#lp-acc').textContent = '—'; $('#lp-miss').textContent = '—'; $('#lp-span').textContent = leapSpanShow(lp.seq);
+    $('#lp-best').textContent = lp.best + '%';
+    const fb = $('#lp-feedback'); fb.className = 'sight-feedback';
+    fb.textContent = `🎯 依次跳到：${lp.seq.map(chordNoteName).join(' · ')}`;
+    $('#lp-status').textContent = '进行中…';
+    renderSeq();
+  }
+
+  function leapSpanShow(seq) {
+    if (seq.length < 2) return 0;
+    let s = 0; for (let i = 1; i < seq.length; i++) s += Math.abs(seq[i] - seq[i - 1]);
+    return Math.round(s / (seq.length - 1));
+  }
+
+  // 模拟：按序列每 250ms 弹准一个
+  function sim() {
+    if (!lp || lp.done) start();
+    const seq = lp.seq.slice();
+    let i = 0;
+    const step = () => {
+      if (!lp || lp.done || i >= seq.length) return;
+      lp.feed(seq[i], performance.now());
+      i++;
+      if (i < seq.length) setTimeout(step, 250);
+    };
+    step();
+  }
+
+  $('#lp-range').onchange = () => { lp = null; renderSeq(); };
+  $('#lp-leap').onchange = () => { lp = null; renderSeq(); };
+  $('#lp-count').onchange = () => { lp = null; renderSeq(); };
+  $('#lp-start').onclick = start;
+  $('#lp-sim').onclick = sim;
+
+  renderSeq();
+}
+
 // ---------- 模块切换 ----------
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
@@ -3493,7 +3645,7 @@ function renderDashboard() {
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   $('#connect-btn').onclick = connect;
