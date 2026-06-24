@@ -55,6 +55,7 @@ import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } f
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
 import { SightPhrase, KEYS as SP_KEYS, keyById as spKeyById, keySignatureAccidentals as spKeySig, degreeToMidi as spDegToMidi, durGlyph as spDurGlyph } from './sight-phrase.js';
+import { ChordSight, KEYS as CS_KEYS, keyById as csKeyById, keySignatureAccidentals as csKeySig, CHORD_LEVELS as CS_LEVELS, INVERSION_NAMES as CS_INV } from './chord-sight.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
@@ -103,6 +104,7 @@ let fingOnNote = null;      // 音阶指法提示的 note-on 回调（模块43�
 let ivbOnNote = null;       // 音程构建的 note-on 回调（模块44注册）
 let scfOnNote = null;       // 曲谱跟弹的 note-on 回调（模块45注册，带时间在内部取）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
+let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -275,12 +277,15 @@ function onMidiIn(bytes) {
     if (scfOnNote) scfOnNote(m.note);
     // 驱动乐句视奏
     if (spOnNote) spOnNote(m.note);
+    // 驱动和弦视奏（按下集合）
+    if (chordSightOnNotesChanged) chordSightOnNotesChanged(heldNotes.notes);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
     heldNotes.off(m.note);
     if (chordOnNotesChanged) chordOnNotesChanged(heldNotes.notes);
     if (chordProgOnNotesChanged) chordProgOnNotesChanged(heldNotes.notes);
+    if (chordSightOnNotesChanged) chordSightOnNotesChanged(heldNotes.notes);
     // 驱动连奏/断奏控制（松键）
     if (articOnNoteOff) articOnNoteOff(m.note, performance.now());
     // 驱动手指独立性（note-off，检测按住音是否滑脱）
@@ -8291,6 +8296,244 @@ function renderSightPhrase() {
   drawStaff();
 }
 
+// ---------- 模块49：和弦视奏（chord sight-reading）----------
+function renderChordSight() {
+  const root = $('#module-csight');
+  let game = null;
+  let keyId = 'C';
+  let ctype = 'triad';     // triad|seventh|mixed
+  let inversions = false;
+  let easy = true;         // 忽略八度
+  let active = false;
+  const picked = new Set(); // 屏幕琴键 latched 选择
+  const CLEF = 'treble';
+  const SHARP_POS = { F: 8, C: 5, G: 9, D: 6, A: 3, E: 7, B: 4 };
+  const FLAT_POS  = { B: 4, E: 7, A: 3, D: 6, G: 2, C: 5, F: 1 };
+  const CLEF_GLYPH = { treble: '𝄞', bass: '𝄢' };
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 和弦视奏（Chord Sight-Reading）</h2>
+    <p style="color:var(--muted);margin-bottom:14px">真实钢琴谱里大量的音是<b>竖向叠在一起的和弦</b>。看懂一摞音符（叠置三度）、一眼认出该<b>同时按哪几个键</b>，是从"单音识谱"走向"弹真正乐曲"的核心一步。屏幕在五线谱上画一个<b>叠置和弦</b>（三和弦/七和弦，可带<b>转位</b>、带<b>调号</b>），你在键盘上<b>把整组音同时按下</b>即过关：按对的键变绿、按错闪红、集齐即判分并报出和弦名（如「C 大三和弦」）。和"和弦练习"（给<b>和弦名</b>让你弹）、"和弦性质听辨"（靠<b>耳朵</b>）、"五线谱识谱卡/视奏闪卡"（只<b>单音</b>）、"乐句视奏"（<b>横向单音旋律</b>）都不同——<b>这里读纵向叠置和弦、整组同时按</b>。可选调、和弦类型、是否转位。没接 MIDI 时可<b>逐键点选</b>（再点取消），集齐自动判定。卡住可 🏳 看答案。成绩入仪表盘。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调（含调号）</label>
+        <select id="cs-key"></select></div>
+      <div class="param-row"><label>和弦类型</label>
+        <div class="ear-chips" id="cs-type">
+          <button class="ear-chip on" data-t="triad">三和弦（3 音）</button>
+          <button class="ear-chip" data-t="seventh">七和弦（4 音）</button>
+          <button class="ear-chip" data-t="mixed">混合</button>
+        </div></div>
+      <div class="param-row"><label>转位</label>
+        <div class="ear-chips" id="cs-inv">
+          <button class="ear-chip on" data-i="0">仅原位（好读）</button>
+          <button class="ear-chip" data-i="1">含转位（要弹准低音）</button>
+        </div></div>
+      <div class="param-row"><label>难度</label>
+        <div class="ear-chips" id="cs-easy">
+          <button class="ear-chip on" data-e="1">简单（忽略八度）</button>
+          <button class="ear-chip" data-e="0">标准（按谱面八度）</button>
+        </div></div>
+    </div>
+
+    <div class="sight-stage">
+      <div class="sight-staff-wrap"><div id="cs-staff" class="sp-staff"></div></div>
+      <div id="cs-feedback" class="sight-feedback">选好设置，按"开始"出一个和弦</div>
+      <div id="cs-tip" class="mid-hint"></div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 看着上面的叠置和弦，在这里（或真琴上）<b>把整组音同时按下</b>（屏幕端逐键点选，集齐自动判定）</div>
+      <div id="cs-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="cs-score">0</span><span class="sight-stat-lbl">弹对和弦</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cs-streak">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cs-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="cs-acc">—</span><span class="sight-stat-lbl">一遍过率</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="cs-start" class="big-btn">▶ 开始 / 下一个</button>
+      <button id="cs-reveal" class="scf-mode-btn" disabled>🏳 看答案</button>
+      <span id="cs-status" style="color:var(--muted);margin-left:6px">未开始</span>
+    </div>`;
+
+  $('#cs-key').innerHTML = CS_KEYS.map((k) => `<option value="${k.id}">${k.name}</option>`).join('');
+  $('#cs-key').onchange = () => { if (!active) keyId = $('#cs-key').value; };
+
+  function bindChips(sel, attr, apply) {
+    $(sel).querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => {
+        if (active) return;
+        $(sel).querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+        apply(b.dataset[attr]);
+      };
+    });
+  }
+  bindChips('#cs-type', 't', (v) => { ctype = v; });
+  bindChips('#cs-inv', 'i', (v) => { inversions = (v === '1'); });
+  bindChips('#cs-easy', 'e', (v) => { easy = (v === '1'); });
+
+  const csKb = new PianoKeyboard($('#cs-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => {
+      playTone(midiToFreq(m), 0, 0.7);
+      if (!active) return;
+      if (picked.has(m)) picked.delete(m); else picked.add(m);
+      evaluate();
+    },
+  });
+  csKb.scrollToShow(55, 79);
+
+  // ---- 谱面绘制 ----
+  function drawStaff() {
+    const topY = 56, stepPx = 7;
+    const W = 300, H = 168;
+    const yForPos = (pos) => topY + (8 - pos) * stepPx;
+    const cx0 = 168;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="sp-staff-svg" preserveAspectRatio="xMinYMid meet">`;
+    for (let p = 0; p <= 8; p += 2) {
+      const y = yForPos(p);
+      svg += `<line x1="20" y1="${y}" x2="${W - 14}" y2="${y}" class="staff-line"/>`;
+    }
+    svg += `<text x="26" y="${yForPos(2) + 6}" class="clef-glyph">${CLEF_GLYPH[CLEF]}</text>`;
+    // 调号
+    const key = csKeyById(keyId);
+    const sig = csKeySig(key.sig);
+    let ax = 56;
+    for (const letter of sig.letters) {
+      const pos = (sig.type === 'sharp' ? SHARP_POS : FLAT_POS)[letter];
+      svg += `<text x="${ax}" y="${yForPos(pos) + 5}" class="sp-keysig">${sig.type === 'sharp' ? '♯' : '♭'}</text>`;
+      ax += 11;
+    }
+    if (game && game.chord) {
+      const ch = game.chord;
+      const heldPcs = new Set([...heldNotes.notes, ...picked].map((m) => ((m % 12) + 12) % 12));
+      // 计算每个音的 pos，处理相邻二度的横向错位
+      const notes = ch.midis.map((m) => ({ midi: m, pos: staffPosition(m, CLEF) }))
+        .sort((a, b) => a.pos - b.pos);
+      let prevPos = -99, side = 0;
+      notes.forEach((n) => {
+        const offset = (n.pos - prevPos === 1) ? (side = side ? 0 : 1) : (side = 0);
+        prevPos = n.pos;
+        const cx = cx0 + offset * 13;
+        const cy = yForPos(n.pos);
+        // 加线
+        if (n.pos > 8) for (let p = 10; p <= n.pos; p += 2) svg += `<line x1="${cx0 - 12}" y1="${yForPos(p)}" x2="${cx0 + 25}" y2="${yForPos(p)}" class="ledger-line"/>`;
+        if (n.pos < 0) for (let p = -2; p >= n.pos; p -= 2) svg += `<line x1="${cx0 - 12}" y1="${yForPos(p)}" x2="${cx0 + 25}" y2="${yForPos(p)}" class="ledger-line"/>`;
+        const pc = ((n.midi % 12) + 12) % 12;
+        const done = active && heldPcs.has(pc);
+        svg += `<g transform="translate(${cx},${cy})"><ellipse rx="7" ry="5.4" transform="rotate(-20)" class="sp-head${done ? ' sp-done' : ''}"/></g>`;
+      });
+      // 共用符干（叠置和弦画一根贯穿符干）
+      const lowY = yForPos(notes[0].pos), hiY = yForPos(notes[notes.length - 1].pos);
+      svg += `<line x1="${cx0 + 7}" y1="${hiY}" x2="${cx0 + 7}" y2="${lowY + 30}" class="sp-stem"/>`;
+    }
+    svg += `</svg>`;
+    $('#cs-staff').innerHTML = svg;
+  }
+
+  function flash(ok) {
+    const wrap = $('#cs-staff').closest('.sight-staff-wrap');
+    if (!wrap) return;
+    wrap.classList.remove('flash-ok', 'flash-no');
+    void wrap.offsetWidth;
+    wrap.classList.add(ok ? 'flash-ok' : 'flash-no');
+  }
+
+  function refreshStats() {
+    if (!game) return;
+    $('#cs-score').textContent = game.score;
+    $('#cs-streak').textContent = game.streak;
+    $('#cs-best').textContent = game.best;
+    $('#cs-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+  }
+
+  function paintKb() {
+    if (!game || !game.chord) { csKb.clear(); return; }
+    const target = new Set(game.chord.pcs);
+    const combined = [...new Set([...heldNotes.notes, ...picked])].sort((a, b) => a - b);
+    const items = combined.map((m) => ({
+      midi: m,
+      color: target.has(((m % 12) + 12) % 12) ? '#34d399' : '#f87171',
+    }));
+    csKb.highlightMany(items, { keep: false, scroll: false });
+  }
+
+  function evaluate() {
+    if (!game || !active) return;
+    const combined = [...new Set([...heldNotes.notes, ...picked])].sort((a, b) => a - b);
+    const r = game.check(combined);
+    drawStaff();
+    paintKb();
+    if (r.done && r.correct) {
+      active = false;
+      chordSightOnNotesChanged = null;
+      picked.clear();
+      refreshStats();
+      flash(true);
+      $('#cs-reveal').disabled = true;
+      $('#cs-status').textContent = '完成';
+      const ch = r.chord;
+      const invTxt = ch.inversion ? `（${ch.invName}）` : '';
+      if (r.perfect) {
+        $('#cs-feedback').className = 'sight-feedback ok';
+        $('#cs-feedback').textContent = `🎉 正确！这是 ${ch.label}${invTxt}。连击 ${game.streak}。按"下一个"继续。`;
+        recordPractice('chordsight', '和弦视奏', ch.size, ch.size, game.streak);
+      } else {
+        $('#cs-feedback').className = 'sight-feedback';
+        $('#cs-feedback').textContent = `✅ 集齐了：${ch.label}${invTxt}（中途按过错音，未计满分）。再来一个。`;
+        recordPractice('chordsight', '和弦视奏', ch.size, Math.max(1, ch.size - 1), 0);
+      }
+      $('#cs-tip').textContent = '';
+    } else if (r.bassWrong) {
+      $('#cs-tip').textContent = `🎵 音对了，但这是${game.chord.invName}——最低音要弹 ${CA99.noteName(60 + game.chord.bassPc).replace(/\d+$/, '')}（谱面最下面那个音）。`;
+    } else if (r.wrong && r.wrong.length) {
+      $('#cs-tip').textContent = `❌ 有 ${r.wrong.length} 个音不在这个和弦里（已标红），松开它们。已按对 ${r.correctHeld}/${r.need}。`;
+    } else {
+      $('#cs-tip').textContent = `已按对 ${r.correctHeld}/${r.need} 个音，继续把整组叠置和弦按齐。`;
+    }
+  }
+
+  function newChord() {
+    if (!game) {
+      game = new ChordSight({ key: csKeyById(keyId), type: ctype, inversions, octaveAgnostic: easy });
+    } else {
+      game.key = csKeyById(keyId); game.type = ctype; game.inversions = inversions; game.octaveAgnostic = easy;
+    }
+    game.next();
+    active = true;
+    picked.clear();
+    csKb.clear();
+    const [lo, hi] = game.range();
+    csKb.scrollToShow(Math.max(21, lo - 4), Math.min(108, hi + 4));
+    chordSightOnNotesChanged = () => evaluate();
+    $('#cs-reveal').disabled = false;
+    $('#cs-status').textContent = '读谱中…把整组和弦按齐';
+    $('#cs-feedback').className = 'sight-feedback';
+    $('#cs-feedback').textContent = `📖 看谱：${game.chord.size} 个音叠在一起，把它们${easy ? '（任意八度）' : ''}同时按下。`;
+    $('#cs-tip').textContent = '';
+    drawStaff();
+  }
+
+  function reveal() {
+    if (!game || !game.chord) return;
+    const ch = game.chord;
+    const items = ch.midis.map((m, i) => ({ midi: m, color: '#7c5cff', text: i === 0 ? '低' : '' }));
+    csKb.highlightMany(items, { keep: false });
+    const invTxt = ch.inversion ? `（${ch.invName}）` : '';
+    $('#cs-tip').textContent = `🏳 答案：${ch.label}${invTxt} —— 该按的键已画在键盘上（紫色）。`;
+    game.everWrong = true;
+  }
+
+  $('#cs-start').onclick = newChord;
+  $('#cs-reveal').onclick = reveal;
+
+  drawStaff();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -8431,7 +8674,7 @@ function renderCircleFifths() {
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
