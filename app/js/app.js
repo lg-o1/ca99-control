@@ -3663,6 +3663,11 @@ function renderVoicing() {
 function switchModule(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.module === name));
   document.querySelectorAll('.module').forEach(m => m.classList.toggle('active', m.id === `module-${name}`));
+  const crumb = $('#active-crumb');
+  const btn = document.querySelector(`.nav-btn[data-module="${name}"]`);
+  if (crumb) crumb.textContent = btn ? btn.textContent.trim() : '';
+  const content = $('#content');
+  if (content) content.scrollTop = 0;
   if (name === 'dash' && dashboardOnUpdate) dashboardOnUpdate();
 }
 
@@ -3793,6 +3798,21 @@ async function main() {
   renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
+  // 为每个导航分组标题注入模块数量徽章
+  document.querySelectorAll('.nav-group').forEach(g => {
+    const title = g.querySelector('.nav-group-title');
+    const n = g.querySelectorAll('.nav-btn').length;
+    if (title && n && !title.querySelector('.nav-count')) {
+      const badge = document.createElement('span');
+      badge.className = 'nav-count';
+      badge.textContent = String(n);
+      title.appendChild(badge);
+    }
+  });
+  // 初始化顶栏面包屑为当前激活模块
+  const activeBtn = document.querySelector('.nav-btn.active') || document.querySelector('.nav-btn');
+  const crumb = $('#active-crumb');
+  if (crumb && activeBtn) crumb.textContent = activeBtn.textContent.trim();
   $('#connect-btn').onclick = connect;
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
   $('#input-select').onchange = (e) => { if (e.target.value) midi.selectInput(e.target.value); };
