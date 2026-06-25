@@ -6,6 +6,11 @@
   --grad: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --grad-hi: linear-gradient(135deg, #e94560 0%, #ff6b81 100%);
   --radius: 12px; --shadow: 0 4px 20px rgba(0,0,0,.35);
+  /* ---- 88 键统一配色（dark theme 优化，全练习共用） ---- */
+  --kb-w-rest: linear-gradient(180deg, #e6e8f2 0%, #d4d7e6 72%, #bfc2d6 100%); /* 白键静止：柔和浅灰，不刺眼 */
+  --kb-b-rest: linear-gradient(180deg, #4a4a58 0%, #232330 55%, #0e0e16 100%); /* 黑键静止 */
+  --kb-press-glow: rgba(45,224,255,.85);  /* 按下信号色：霓虹青，dark theme 下最醒目 */
+  --kb-hl: #667eea;                        /* 答案高亮默认色（模块可用 --hl 覆盖） */
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -406,7 +411,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-note.n-miss { background: linear-gradient(#f87171, #b94b4b); opacity: .5; }
 .scf-note.n-left { background: linear-gradient(#c4b5fd, #8b5cf6); box-shadow: 0 0 6px rgba(139,92,246,.5); }
 /* 左手音符落到判定线 → 亮银色（右手是 .n-due 的亮黄；此规则优先级更高，盖过 .n-left 才不会被紫色覆盖） */
-.scf-note.n-left.n-due { background: linear-gradient(#f8fafc, #cbd5e1); box-shadow: 0 0 13px rgba(226,232,240,.9); }
+.scf-note.n-left.n-due { background: linear-gradient(#ffffff, #d3dbe8); box-shadow: 0 0 17px 2px rgba(230,236,246,.95); }
 .scf-note.n-dim { opacity: .22; filter: grayscale(.5); }
 .scf-staff-svg .note-head.nh-left { fill: #a78bfa; stroke: #7c4ddb; }
 /* 下落音符上的音名标签 */
@@ -1149,13 +1154,13 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   transition: transform .05s, box-shadow .12s, filter .12s;
 }
 .kb-white {
-  background: linear-gradient(180deg, #e6e8f2 0%, #d4d7e6 72%, #bfc2d6 100%);
+  background: var(--kb-w-rest);
   border: 1px solid #b0b3c6; border-top: none;
   border-radius: 0 0 6px 6px; z-index: 1;
   box-shadow: inset 0 -5px 8px rgba(90,90,130,.22), 0 2px 3px rgba(0,0,0,.3);
 }
 .kb-black {
-  background: linear-gradient(180deg, #4a4a58 0%, #232330 55%, #0e0e16 100%);
+  background: var(--kb-b-rest);
   border: 1px solid #000; border-top: none;
   border-radius: 0 0 5px 5px; z-index: 3;
   box-shadow: inset 0 -3px 6px rgba(255,255,255,.12), 0 3px 5px rgba(0,0,0,.5);
@@ -1170,36 +1175,51 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 }
 .kb-white .kb-badge { color: #4a3df0; }
 
-/* 按下 / 演示点亮：炫彩发光 */
-.kb-key.kb-press, .kb-key.kb-demo {
-  transform: translateY(2px);
-  filter: brightness(1.06);
-}
-.kb-white.kb-press, .kb-white.kb-demo {
-  background: linear-gradient(180deg, #c7ccff 0%, #9aa2ff 60%, #7c83f0 100%);
-  box-shadow: 0 0 14px 2px rgba(124,131,240,.7), inset 0 -4px 8px rgba(60,40,160,.4);
-}
-.kb-black.kb-press, .kb-black.kb-demo {
-  background: linear-gradient(180deg, #7c83f0 0%, #4a3df0 60%, #2b2199 100%);
-  box-shadow: 0 0 16px 3px rgba(124,131,240,.85), inset 0 -3px 6px rgba(255,255,255,.2);
-}
-
-/* 高亮答案：用 --hl 自定义色描边 + 内发光 */
+/* 高亮答案（"该弹这个键"）：彩色描边光环 + 轻微染色。
+   不再整键填白——dark theme 下不刺眼，且按下色能盖过它（见下方更高优先级的 .kb-press） */
 .kb-key.kb-hl {
-  box-shadow: 0 0 0 2px var(--hl, #667eea) inset, 0 0 12px 1px var(--hl, #667eea);
+  box-shadow: 0 0 0 2px var(--hl, var(--kb-hl)) inset, 0 0 14px 2px var(--hl, var(--kb-hl));
   z-index: 5;
 }
 .kb-white.kb-hl {
-  background: linear-gradient(180deg, #ffffff 0%, color-mix(in srgb, var(--hl, #667eea) 28%, #fff) 100%);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--hl, var(--kb-hl)) 24%, #e6e8f2) 0%,
+    color-mix(in srgb, var(--hl, var(--kb-hl)) 32%, #bfc2d6) 100%);
 }
 .kb-black.kb-hl {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--hl, #667eea) 60%, #2a2a36) 0%, #15151f 100%);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--hl, var(--kb-hl)) 58%, #2a2a36) 0%,
+    color-mix(in srgb, var(--hl, var(--kb-hl)) 28%, #15151f) 100%);
+}
+
+/* 按下 / 演示点亮：霓虹青发光，dark theme 下最醒目、对小孩最"酷炫"。
+   声明在 .kb-hl 之后 + z-index 更高 → 按下永远盖过高亮答案，真实弹键清晰可见
+   （修复与 scf-note 同类的优先级 bug：高亮背景曾盖掉按下色） */
+.kb-key.kb-press, .kb-key.kb-demo {
+  transform: translateY(2px) scaleY(.99);
+  filter: brightness(1.05) saturate(1.12);
+  z-index: 6;
+}
+.kb-white.kb-press, .kb-white.kb-demo {
+  background: linear-gradient(180deg, #aef4ff 0%, #4fd6f3 52%, #1fb4e4 100%);
+  box-shadow: 0 0 18px 3px var(--kb-press-glow), inset 0 2px 4px rgba(255,255,255,.6), inset 0 -5px 9px rgba(8,90,130,.32);
+}
+.kb-black.kb-press, .kb-black.kb-demo {
+  background: linear-gradient(180deg, #5fe4ff 0%, #1ab4e4 55%, #0a6f9e 100%);
+  box-shadow: 0 0 20px 4px var(--kb-press-glow), inset 0 -3px 6px rgba(255,255,255,.28);
+}
+/* 按下瞬间的"弹一下"动效——增加酷炫与反馈感 */
+.kb-key.kb-press { animation: kbPop .15s ease-out; }
+@keyframes kbPop {
+  0%   { transform: translateY(0) scaleY(1); }
+  40%  { transform: translateY(3px) scaleY(.965); }
+  100% { transform: translateY(2px) scaleY(.99); }
 }
 
 @keyframes kbFlash {
-  0% { box-shadow: 0 0 0 0 var(--hl, #7c83f0), 0 0 6px 1px var(--hl, #7c83f0); }
-  60% { box-shadow: 0 0 0 6px rgba(124,131,240,0), 0 0 22px 6px var(--hl, #7c83f0); }
-  100% { box-shadow: 0 0 0 0 rgba(124,131,240,0); }
+  0% { box-shadow: 0 0 0 0 var(--hl, #2dd4ff), 0 0 8px 2px var(--hl, #2dd4ff); }
+  60% { box-shadow: 0 0 0 7px rgba(45,224,255,0), 0 0 24px 7px var(--hl, #2dd4ff); }
+  100% { box-shadow: 0 0 0 0 rgba(45,224,255,0); }
 }
 .kb-key.kb-flash { animation: kbFlash .42s ease-out; }
 
