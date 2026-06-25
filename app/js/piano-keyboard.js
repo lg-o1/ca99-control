@@ -71,11 +71,17 @@ export class PianoKeyboard {
     this.labels = opts.labels ?? 'c';
     this.onNoteOn = opts.onNoteOn || null;
     this.onNoteOff = opts.onNoteOff || null;
+    // 是否让真实 MIDI 输入像点击一样驱动该键盘的识别（"点击即作答"类练习开启）
+    this.recognizeExternal = opts.recognizeExternal || false;
     this.layout = buildLayout(this.first, this.last, opts);
     this._highlights = new Map();
     this._down = new Set();
     this._render();
+    PianoKeyboard.instances.add(this);
   }
+
+  /** 该键盘当前是否显示在屏幕上（隐藏模块的容器 offsetParent 为 null） */
+  isVisible() { return !!(this.container && this.container.offsetParent); }
 
   _render() {
     const L = this.layout;
@@ -211,5 +217,16 @@ export class PianoKeyboard {
     this._scroll.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
   }
 
-  destroy() { if (this.container) this.container.innerHTML = ''; }
+  destroy() { PianoKeyboard.instances.delete(this); if (this.container) this.container.innerHTML = ''; }
 }
+
+/* ---- 全局键盘注册表：真实 MIDI 输入回显到所有"当前可见"的键盘 ----
+ * 早先只有"曲谱跟弹"用 scfKbEcho 把真琴按键点亮到屏幕 88 键；
+ * 这里通用化，让任何练习的键盘都能跟随真实 CA99 按键点亮/抬起。 */
+PianoKeyboard.instances = new Set();
+PianoKeyboard.echoOn = (midi) => {
+  for (const kb of PianoKeyboard.instances) if (kb.isVisible()) kb.press(midi);
+};
+PianoKeyboard.echoOff = (midi) => {
+  for (const kb of PianoKeyboard.instances) if (kb.isVisible()) kb.release(midi);
+};

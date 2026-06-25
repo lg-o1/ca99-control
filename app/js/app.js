@@ -97,6 +97,8 @@ let handsOnNote = null;     // 双手协调的 note-on 回调（模块25注册�
 let arpOnNote = null;       // 琶音跑动的 note-on 回调（模块26注册）
 let articOnNoteOn = null;   // 连奏/断奏的 note-on 回调（模块27注册）
 let articOnNoteOff = null;  // 连奏/断奏的 note-off 回调（模块27注册）
+// true 时抑制合成音：真实 CA99 按键路由到键盘 onNoteOn 做识别时，真琴已发声，避免重音
+let suppressTone = false;
 let pedalTimeOnNote = null; // 踏板时机的 note-on 回调（模块28注册）
 let pedalTimeOnCC = null;   // 踏板时机的 CC 回调（模块28注册）
 let trillOnNote = null;     // 颤音训练的 note-on 回调（模块29注册）
@@ -319,6 +321,16 @@ function onMidiIn(bytes) {
     if (rhythmEchoTap) rhythmEchoTap();
     // 驱动高低音方向感
     if (pitchDirOnNote) pitchDirOnNote(m.note);
+    // 通用键盘回显：真实 CA99 按键点亮所有"当前可见"练习的屏幕 88 键（之前只有曲谱跟弹能亮）
+    PianoKeyboard.echoOn(m.note);
+    // 通用识别：对"点击即作答"且无全局钩子的练习（ni/sr/mpl），让真实按键等价于点击该键
+    for (const kb of PianoKeyboard.instances) {
+      if (kb.recognizeExternal && kb.isVisible() && kb.onNoteOn) {
+        suppressTone = true;
+        try { kb.onNoteOn(m.note); } catch (_) { /* ignore */ }
+        suppressTone = false;
+      }
+    }
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -336,6 +348,8 @@ function onMidiIn(bytes) {
     if (lightShowOffNote) lightShowOffNote(m.note);
     // 曲谱跟弹键盘回显：真实 CA99 松键 → 屏幕键抬起
     if (scfKbEchoOff) scfKbEchoOff(m.note);
+    // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
+    PianoKeyboard.echoOff(m.note);
   }
   else if (m.type === 'cc') {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -1741,6 +1755,7 @@ function renderSight() {
 // ========== 模块 17: 音程听辨 ==========
 function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
 function playTone(freq, startOffset, dur, gainPeak = 0.22) {
+  if (suppressTone) return;
   try {
     _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const ctx = _audioCtx;
@@ -6528,6 +6543,7 @@ function renderNoteId() {
   bindChipGroup('#ni-oct-chips', 'o', (v) => { useOctave = v === '1'; });
   const niKb = new PianoKeyboard($('#ni-kb'), {
     labels: 'c',
+    recognizeExternal: true,
     onNoteOn: (m) => {
       // 试听
       playTone(midiToFreq(m), 0, 0.6);
@@ -6729,6 +6745,7 @@ function renderStaffRead() {
 
   const srKb = new PianoKeyboard($('#sr-kb'), {
     labels: 'c',
+    recognizeExternal: true,
     onNoteOn: (m) => {
       playTone(midiToFreq(m), 0, 0.6);
       if (game && game.current && mode === 'key' && !answering) answerKey(m);
@@ -11273,6 +11290,7 @@ function renderMidiPlayer() {
 
   kb = new PianoKeyboard($('#mpl-kb'), {
     labels: 'c',
+    recognizeExternal: true,
     onNoteOn: (m) => onKey(m),
   });
 
