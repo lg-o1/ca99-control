@@ -235,7 +235,7 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 
 ### 蓝牙 MIDI 桥（Windows）
 
-Windows 上 Chrome/Edge 的 Web MIDI 走 WinMM，**看不到蓝牙 (BLE-MIDI)**。`bridge/` 下提供一个 Python-`winsdk` 桥（走 WinRT，能看到蓝牙且自动重组分片 SysEx）。前端**零改动**复用：打开 app 时加 `?bridge=ws://127.0.0.1:8765`（或 `localStorage.setItem('ca99.bridgeUrl', ...)`），`midi-core.js` 自动切到 WebSocket 传输；没配桥时仍走默认 Web MIDI。USB-B 连接最简单、延迟最低、**不需要桥**。详见 `../bridge/README.md`。
+Windows 上 Chrome/Edge 的 Web MIDI 走 WinMM，**看不到蓝牙 (BLE-MIDI)**。`bridge/` 下提供一个 Python-`winrt` 桥（走 WinRT，能看到蓝牙且自动重组分片 SysEx）。前端**零改动**复用：打开 app 时加 `?bridge=ws://127.0.0.1:8765`（或 `localStorage.setItem('ca99.bridgeUrl', ...)`），`midi-core.js` 自动切到 WebSocket 传输；没配桥时仍走默认 Web MIDI。USB-B 连接最简单、延迟最低、**不需要桥**。详见 `../bridge/README.md`。
 
 ## 前置依赖
 

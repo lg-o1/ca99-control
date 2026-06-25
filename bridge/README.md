@@ -11,7 +11,7 @@ CA99 的 SysEx 协议完整支持。
 ```
 浏览器 app (不变)
   └ midi-core.js  ──ws──>  ca99_midi_bridge.py  ──WinRT──>  CA99 (USB / 蓝牙)
-       7 方法 API            (Python winsdk)
+       7 方法 API            (Python winrt-*)
 ```
 
 ## 何时需要它
@@ -27,7 +27,7 @@ CA99 的 SysEx 协议完整支持。
 pip install -r requirements-bridge.txt
 ```
 
-（`winsdk` 仅 Windows；首次安装会编译 wheel，约 3-5 分钟。）
+（`winrt-*` 仅 Windows；为预编译 wheel，秒级安装、无需编译。）
 
 ## 运行
 
@@ -100,5 +100,5 @@ python ca99_midi_bridge.py --host 0.0.0.0 --port 8765
 ## 其它语言能写桥吗？
 
 可以——协议是语言无关的 WebSocket 字节契约。但**蓝牙必须走 WinRT**
-（C# `Windows.Devices.Midi` 或 Python `winsdk`）。Node/Go/Rust 的 MIDI 库基本都是
-RtMidi = WinMM，**同样看不到 BLE**，所以蓝牙场景不能用 Node。这里选 Python-`winsdk`。
+（C# `Windows.Devices.Midi` 或 Python `winrt-*`）。Node/Go/Rust 的 MIDI 库基本都是
+RtMidi = WinMM，**同样看不到 BLE**，所以蓝牙场景不能用 Node。这里选 Python-`winrt-*`。
