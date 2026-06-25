@@ -30,6 +30,7 @@ import { heatColor as lsHeatColor, pickColor as lsPickColor, sparkSpec as lsSpar
 import { ECHO_LEVELS as ME_LEVELS, levelById as meLevelById, MelodyEcho } from './melody-echo.js';
 import { CR_LEVELS, levelById as crLevelById, CallResponse } from './call-response.js';
 import { RHYTHM_LEVELS as RE_LEVELS, levelById as reLevelById, durName as reDurName, RhythmEcho } from './rhythm-echo.js';
+import { PD_LEVELS, levelById as pdLevelById, dirName as pdDirName, PitchDirection } from './pitch-direction.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -122,6 +123,7 @@ let lightShowOffNote = null; // 自由演奏灯光秀的 note-off 回调（模�
 let melEchoOnNote = null;    // 旋律回声记忆游戏的 note-on 回调（模块60注册）
 let callRespOnNote = null;   // 即兴问答的 note-on 回调（模块61注册）
 let rhythmEchoTap = null;    // 节奏回声的击打回调（模块62注册，任意 note-on 当一次敲击）
+let pitchDirOnNote = null;   // 高低音方向感的 note-on 回调（模块63注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -310,6 +312,8 @@ function onMidiIn(bytes) {
     if (callRespOnNote) callRespOnNote(m.note, m.velocity);
     // 驱动节奏回声（任意音当一次敲击）
     if (rhythmEchoTap) rhythmEchoTap();
+    // 驱动高低音方向感
+    if (pitchDirOnNote) pitchDirOnNote(m.note);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -10711,6 +10715,147 @@ function renderRhythmEcho() {
   rhythmEchoTap = () => onTap();
 }
 
+function renderPitchDirection() {
+  const root = $('#module-pitchdir');
+  let levelId = PD_LEVELS[0].id;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">↕️ 高低音方向感</h2>
+    <p style="color:var(--muted);margin-bottom:14px"><b>零基础音高启蒙</b>：钢琴先弹一个<b>参考音</b>（金色键🟡），再告诉你一个方向——<b>⬆️ 弹个更高的</b> 或 <b>⬇️ 弹个更低的</b>。你在琴上<b>随便弹一个音</b>，只要方向对、又差得<b>够明显</b>就算对！<b>不用找准某个音</b>，怕弹错的孩子也敢探索。这练的是最基础的一课：<b>「高的音在右边、低的音在左边」「这个音比那个高还是低」</b>。答对连击 +1，难度越高，要求你能分辨的高低差越小（大跳→五度→三度→一步之遥），越来越考耳朵。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>难度</label>
+        <div id="pd-levels" class="ear-chips">${PD_LEVELS.map(l => `<button class="ear-chip${l.id === levelId ? ' on' : ''}" data-l="${l.id}">${l.name}</button>`).join('')}</div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="pd-banner" class="me-banner">点 <b>▶ 出题</b>，听参考音再按方向弹一个音 🎹</div>
+      <div id="pd-arrow" class="pd-arrow">↕️</div>
+      <div id="pd-prompt" class="pd-prompt">准备好了吗？</div>
+      <div id="pd-result" class="pd-result" style="display:none"></div>
+      <div id="pd-kb" class="me-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="pd-streak" class="sight-stat-num">0</div><div class="sight-stat-lbl">当前连击</div></div>
+      <div class="sight-stat"><div id="pd-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳连击</div></div>
+      <div class="sight-stat"><div id="pd-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">正确率</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="pd-ask" class="big-btn">▶ 出题</button>
+      <button id="pd-replay" class="big-btn" style="background:#667eea" disabled>🔊 再听参考音</button>
+    </div>`;
+
+  let game = null, kb = null, ac = null;
+  const bannerEl = $('#pd-banner');
+  const arrowEl = $('#pd-arrow'), promptEl = $('#pd-prompt'), resultEl = $('#pd-result');
+  const streakEl = $('#pd-streak'), bestEl = $('#pd-best'), accEl = $('#pd-acc');
+  const askBtn = $('#pd-ask'), replayBtn = $('#pd-replay');
+
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function tone(midi, when, dur, gain = 0.26) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(gain, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function band(cls, html) { bannerEl.className = 'me-banner' + (cls ? ' ' + cls : ''); bannerEl.innerHTML = html; }
+  function curLevel() { return pdLevelById(levelId); }
+
+  function ensureKb() {
+    if (kb) return;
+    kb = new PianoKeyboard($('#pd-kb'), {
+      labels: 'c',
+      onNoteOn: (m) => { try { playTone(midiToFreq(m), 0, 0.5, 0.2); } catch (_) { /* ignore */ } feed(m); },
+    });
+  }
+
+  function paintRef() {
+    if (!kb || !game || !game.prompt) return;
+    kb.clear();
+    const ref = game.prompt.ref;
+    if (kb.scrollToShow) kb.scrollToShow(ref - 12, ref + 12);
+    if (kb.highlightMany) kb.highlightMany([{ midi: ref, color: '#fbbf24', text: '参考' }]);
+  }
+
+  function updateStats() {
+    streakEl.textContent = game ? game.streak : 0;
+    bestEl.textContent = game ? game.best : 0;
+    accEl.textContent = game && game.attempts ? Math.round(game.accuracy() * 100) + '%' : '—';
+  }
+
+  // 播放参考音并亮键，结束后轮到玩家
+  function playRef() {
+    if (!game || !game.prompt) return;
+    const ref = game.prompt.ref;
+    const c = ctx(); tone(ref, c.currentTime + 0.1, 0.7);
+    paintRef();
+    if (kb) setTimeout(() => kb.flash(ref, '#fbbf24'), 100);
+  }
+
+  function ask() {
+    ensureKb();
+    if (!game) game = new PitchDirection({ level: curLevel() });
+    game.setLevel(curLevel());
+    const p = game.next();
+    if (typeof window !== 'undefined') window.__pdGame = game;
+    resultEl.style.display = 'none';
+    arrowEl.textContent = p.dir === 'up' ? '⬆️' : '⬇️';
+    arrowEl.className = 'pd-arrow ' + (p.dir === 'up' ? 'up' : 'down');
+    promptEl.innerHTML = `先听这个<b>参考音</b>，然后<b>弹一个${pdDirName(p.dir)}的音</b>`;
+    band('show', `🟡 参考音响起，记住它的高低…`);
+    playRef();
+    game.ready();
+    band('input', `🎹 轮到你！弹一个 <b>${pdDirName(p.dir)}</b> 的音（差得明显点）`);
+    replayBtn.disabled = false;
+    askBtn.textContent = '▶ 下一题';
+  }
+
+  function feed(note) {
+    if (!game || game.state !== 'answer') return;
+    const j = game.answer(note);
+    if (!j) return;
+    updateStats();
+    if (kb) kb.flash(note, j.correct ? '#34d399' : '#fb7185');
+    resultEl.style.display = '';
+    const dirCN = game.prompt.dir === 'up' ? '更高' : '更低';
+    if (j.correct) {
+      resultEl.className = 'pd-result ok';
+      resultEl.innerHTML = `✅ <b>对！</b>你弹的音确实${dirCN}（相差 ${Math.abs(j.gap)} 个半音）　连击 ${game.streak} 🔥`;
+      band('win', '🌟 方向正确！继续下一题');
+    } else {
+      resultEl.className = 'pd-result no';
+      let why;
+      if (!j.rightDir) why = `方向反了——要弹<b>${dirCN}</b>的音，你弹的却${j.gap > 0 ? '更高' : (j.gap < 0 ? '更低' : '一样高')}`;
+      else why = `方向对，但<b>差得不够明显</b>（只差 ${Math.abs(j.gap)} 个半音，要 ≥ ${game.prompt.minGap}）`;
+      resultEl.innerHTML = `❌ ${why}`;
+      band('show', '🌱 再试一次，注意方向和幅度');
+    }
+    recordPractice('pitchdir', '↕️ 高低音方向感', game.attempts, game.correct, game.best);
+    replayBtn.disabled = true;
+  }
+
+  $('#pd-levels').querySelectorAll('button').forEach(b => b.onclick = () => {
+    levelId = b.dataset.l;
+    $('#pd-levels').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (game) game.setLevel(curLevel());
+  });
+
+  askBtn.onclick = ask;
+  replayBtn.onclick = playRef;
+
+  // 真实 MIDI 驱动
+  pitchDirOnNote = (midi) => feed(midi);
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -11138,7 +11283,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderMidiPlayer(); renderStaffView(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
