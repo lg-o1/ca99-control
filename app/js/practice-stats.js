@@ -131,21 +131,45 @@ export class PracticeStats {
     return newly;
   }
 
-  /** 连续练习天数（含今天，如果今天练过；否则到最近一次的连续段不含今天则为 0） */
-  dayStreak() {
+  /** 连续练习天数（含今天，如果今天练过；否则到最近一次的连续段不含今天则为 0）
+   * @param {object} [opts]
+   * @param {number} [opts.forgive=0] 宽恕额度：允许跨过这么多个「漏练的单日」而不中断连胜（连胜冻结/freeze）。
+   *   forgive=0 时与原严格语义完全一致（成就判定用严格值）；UI 显示可传 forgive=1 让漏 1 天不归零。
+   */
+  dayStreak(opts = {}) {
     const days = Object.keys(this.data.days).sort();
     if (!days.length) return 0;
+    let freezes = Math.max(0, opts.forgive | 0);
     const today = dayKey(this.clock());
     const last = days[days.length - 1];
-    // 若最近练习日不是今天也不是昨天，连续中断
+    // 若最近练习日离今天太远：用宽恕额度填补「漏练的天数」，填不平则连胜中断
     const gapToToday = daysBetween(last, today);
-    if (gapToToday > 1) return 0;
+    if (gapToToday > 1) {
+      const missed = gapToToday - 1;
+      if (missed <= freezes) freezes -= missed; else return 0;
+    }
     let streak = 1;
     for (let i = days.length - 1; i > 0; i--) {
-      if (daysBetween(days[i - 1], days[i]) === 1) streak++;
-      else break;
+      const g = daysBetween(days[i - 1], days[i]);
+      if (g === 1) { streak++; continue; }
+      const missed = g - 1; // 中间漏练的天数
+      if (missed > 0 && missed <= freezes) { freezes -= missed; streak++; continue; }
+      break;
     }
     return streak;
+  }
+
+  /** 今天之前最近一次练习是哪天（YYYY-MM-DD），没有历史返回 null。用于「欢迎回来」判定 */
+  lastActiveBeforeToday() {
+    const today = dayKey(this.clock());
+    const days = Object.keys(this.data.days).filter((d) => d < today).sort();
+    return days.length ? days[days.length - 1] : null;
+  }
+
+  /** 距「今天之前最近一次练习」相隔的天数；没有更早的历史返回 0。gap≥2 表示昨天没练（久别归来） */
+  comebackGap() {
+    const last = this.lastActiveBeforeToday();
+    return last ? daysBetween(last, dayKey(this.clock())) : 0;
   }
 
   /** 派生统计快照（含 dayStreak / modulesPlayed），用于成就判定和 UI */

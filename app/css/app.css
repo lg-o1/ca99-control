@@ -70,6 +70,8 @@ body {
 }
 #daily-strip:empty { display: none; }
 #daily-strip .ds-streak { color: #fbbf24; }
+#daily-strip .ds-welcome { color: #34d399; }
+#daily-strip .ds-shield { font-size: 12px; filter: drop-shadow(0 0 4px rgba(56,189,248,.6)); }
 #daily-strip .ds-today { color: var(--muted); }
 #daily-strip .ds-today b { color: var(--text); }
 #daily-strip .ds-goalwrap { display: inline-flex; align-items: center; gap: 8px; }

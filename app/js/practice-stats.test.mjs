@@ -91,6 +91,51 @@ eq(daysBetween('2025-12-31', '2026-01-01'), 1, '跨年');
   eq(s.dayStreak(), 1, '昨天练过今天还没练，streak 保留');
 }
 
+// ---- #4 连胜宽恕（forgive）+ 欢迎回来 ----
+{
+  const store = new MemoryStorage();
+  let now;
+  const s = new PracticeStats({ storage: store, clock: () => now });
+  now = tsOf(2026, 6, 21); s.record({ moduleId: 'a', attempts: 1, correct: 1, bestStreak: 1 });
+  now = tsOf(2026, 6, 22); s.record({ moduleId: 'a', attempts: 1, correct: 1, bestStreak: 1 });
+  // 漏练 6/23，6/24 再练
+  now = tsOf(2026, 6, 24); s.record({ moduleId: 'a', attempts: 1, correct: 1, bestStreak: 1 });
+  eq(s.dayStreak(), 1, '严格：漏 1 天后重置为 1');
+  eq(s.dayStreak({ forgive: 1 }), 3, '宽恕 1 天：跨过漏练日，连胜 3');
+  eq(s.dayStreak({ forgive: 0 }), 1, 'forgive=0 等同严格');
+
+  // 漏练 2 天（6/25、6/26 都没练），6/27 再练 -> forgive:1 不够补，归 1
+  now = tsOf(2026, 6, 27); s.record({ moduleId: 'a', attempts: 1, correct: 1, bestStreak: 1 });
+  eq(s.dayStreak({ forgive: 1 }), 1, '宽恕 1 天补不平漏 2 天，重置为 1');
+  // 序列 6/21,22,24,27：6/24→6/27 漏 2 天、6/22→6/24 漏 1 天，共漏 3 天
+  eq(s.dayStreak({ forgive: 2 }), 2, '宽恕 2 天只够补 6/24→6/27 那段，连胜 2');
+  eq(s.dayStreak({ forgive: 3 }), 4, '宽恕 3 天补平全部漏练，连胜 4');
+
+  // 今天 6/28 还没练：宽恕 1 天让「昨天练过」的连胜显示保留
+  now = tsOf(2026, 6, 28);
+  eq(s.dayStreak(), 1, '今天没练但昨天练过，严格仍保留 1');
+}
+
+// ---- lastActiveBeforeToday / comebackGap ----
+{
+  const store = new MemoryStorage();
+  let now;
+  const s = new PracticeStats({ storage: store, clock: () => now });
+  eq(s.comebackGap(), 0, '无历史，gap 0');
+  now = tsOf(2026, 6, 20); s.record({ moduleId: 'a', attempts: 1, correct: 1, bestStreak: 1 });
+  now = tsOf(2026, 6, 24);
+  eq(s.lastActiveBeforeToday(), '2026-06-20', '今天之前最近练习日');
+  eq(s.comebackGap(), 4, '距上次练习 4 天');
+  // 今天也练了一次后，「今天之前」仍指向 6/20
+  s.record({ moduleId: 'a', attempts: 1, correct: 1, bestStreak: 1 });
+  eq(s.comebackGap(), 4, '今天练过不影响 comebackGap（看今天之前）');
+  // 没有更早历史时（只有今天）gap=0
+  const s2 = new PracticeStats({ storage: new MemoryStorage(), clock: () => tsOf(2026, 6, 24) });
+  s2.record({ moduleId: 'a', attempts: 1, correct: 1, bestStreak: 1 });
+  eq(s2.comebackGap(), 0, '只有今天，无久别');
+}
+
+
 // ---- 成就解锁：10 次练习 / 连击 / 连续天数 ----
 {
   const store = new MemoryStorage();

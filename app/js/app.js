@@ -139,6 +139,7 @@ let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
 const DAILY_GOAL = 3; // 今日微目标：练 3 次就达成（超小目标，降低抗拒）
 
 // 顶栏下方「每日鼓励横幅」——复用 practice-stats 把连练天数/今日进度点亮出来
+// #4 连胜豁免：显示用「宽恕 1 天」的连胜（漏练 1 天不归零，用 🛡️ 标记冻结生效）+ 久别「欢迎回来」
 function renderDailyStrip() {
   const el = document.getElementById('daily-strip');
   if (!el) return;
@@ -147,9 +148,22 @@ function renderDailyStrip() {
   const pct = Math.min(100, Math.round(today / DAILY_GOAL * 100));
   const done = today >= DAILY_GOAL;
   el.classList.toggle('done', done);
-  const streak = s.dayStreak > 0
-    ? `<span class="ds-streak">🔥 连练 ${s.dayStreak} 天</span>`
-    : `<span class="ds-streak">🌱 今天点亮第一天！</span>`;
+
+  const strict = s.dayStreak;                          // 成就用的严格连胜
+  const shown = practiceStats.dayStreak({ forgive: 1 }); // 显示用：漏 1 天仍续
+  const frozen = shown > strict;                       // 宽恕额度正在保护连胜
+  // 久别归来：今天练过、且最近一次练习在 2 天以前（昨天没练），就温柔地欢迎而非冷冰冰显示
+  const comeback = today > 0 && practiceStats.comebackGap() >= 2;
+
+  let streak;
+  if (comeback) {
+    streak = `<span class="ds-streak ds-welcome">👋 欢迎回来！新的连胜从今天开始 🌟</span>`;
+  } else if (shown > 0) {
+    const shield = frozen ? ' <span class="ds-shield" title="漏练一天已用连胜冻结保护">🛡️</span>' : '';
+    streak = `<span class="ds-streak">🔥 连练 ${shown} 天${shield}</span>`;
+  } else {
+    streak = `<span class="ds-streak">🌱 今天点亮第一天！</span>`;
+  }
   const goal = done
     ? `<span class="ds-msg">🎉 今日目标达成！今天练了 <b>${today}</b> 次，太棒了</span>`
     : `<span class="ds-goalwrap">🎯 今日目标 <span class="ds-bar"><span class="ds-fill" style="width:${pct}%"></span></span> <span class="ds-today"><b>${today}</b>/${DAILY_GOAL}</span></span>`;
