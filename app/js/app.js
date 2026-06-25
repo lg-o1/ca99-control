@@ -136,14 +136,47 @@ const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
 });
 let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
-// 把一次练习成绩记入统计；newly 为新解锁成就，弹个轻提示
+const DAILY_GOAL = 3; // 今日微目标：练 3 次就达成（超小目标，降低抗拒）
+
+// 顶栏下方「每日鼓励横幅」——复用 practice-stats 把连练天数/今日进度点亮出来
+function renderDailyStrip() {
+  const el = document.getElementById('daily-strip');
+  if (!el) return;
+  const s = practiceStats.snapshot();
+  const today = practiceStats.recentDays(1)[0].sessions;
+  const pct = Math.min(100, Math.round(today / DAILY_GOAL * 100));
+  const done = today >= DAILY_GOAL;
+  el.classList.toggle('done', done);
+  const streak = s.dayStreak > 0
+    ? `<span class="ds-streak">🔥 连练 ${s.dayStreak} 天</span>`
+    : `<span class="ds-streak">🌱 今天点亮第一天！</span>`;
+  const goal = done
+    ? `<span class="ds-msg">🎉 今日目标达成！今天练了 <b>${today}</b> 次，太棒了</span>`
+    : `<span class="ds-goalwrap">🎯 今日目标 <span class="ds-bar"><span class="ds-fill" style="width:${pct}%"></span></span> <span class="ds-today"><b>${today}</b>/${DAILY_GOAL}</span></span>`;
+  el.innerHTML = `${streak}${goal}`;
+}
+
+// 解锁成就时主动庆祝（飘字 + 全屏撒花），不再只写日志
+function achievementCelebrate(a) {
+  cheerToast(`🏅 解锁成就：${a.icon} ${a.name}！`, null);
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:35';
+  document.body.appendChild(overlay);
+  cheerBurst(overlay, 100);
+  setTimeout(() => overlay.remove(), 2800);
+}
+
+// 把一次练习成绩记入统计；newly 为新解锁成就，主动弹庆祝
 function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   if (!attempts) return; // 没答过题不记
   const newly = practiceStats.record({ moduleId, label, attempts, correct, bestStreak });
   if (dashboardOnUpdate) dashboardOnUpdate();
-  newly.forEach((id) => {
+  renderDailyStrip();
+  newly.forEach((id, i) => {
     const a = practiceStats.allAchievements().find((x) => x.id === id);
-    if (a) log(`🏆 解锁成就：${a.icon} ${a.name} — ${a.desc}`, 'ok');
+    if (!a) return;
+    log(`🏆 解锁成就：${a.icon} ${a.name} — ${a.desc}`, 'ok');
+    setTimeout(() => achievementCelebrate(a), i * 1400);
   });
 }
 
@@ -1621,7 +1654,7 @@ function renderScale() {
     session = new ScaleSession(seq, { octaveAgnostic: $('#scale-octave').value === '1' });
     session.onAdvance = () => { drawKeys(); paintStatus(); };
     session.onError = (exp) => {
-      $('#scale-status').textContent = `❌ 弹错了，下一个应是 ${chordNoteName(exp)}`;
+      $('#scale-status').textContent = `🤔 再试一次，下一个是 ${chordNoteName(exp)}`;
       $('#scale-status').style.color = 'var(--hi2)';
     };
     session.onComplete = () => {
@@ -1783,7 +1816,7 @@ function renderSight() {
         fb.textContent = `✅ 对了！${sightNoteLabel(info.note)} · 连击 ${info.streak}`;
         fb.className = 'sight-feedback ok';
       } else {
-        fb.textContent = `❌ 不对，正确答案是 ${sightNoteLabel(game.current)}`;
+        fb.textContent = `差一点～正确答案是 ${sightNoteLabel(game.current)}`;
         fb.className = 'sight-feedback no';
       }
       if (game && game.current != null) sightKb.highlightMany([{ midi: game.current, color: ok ? '#34d399' : '#fbbf24', text: ok ? '✓' : '答' }]);
@@ -1966,7 +1999,7 @@ function renderEar() {
     });
     const fb = $('#ear-feedback');
     if (ok) { fb.textContent = `✅ 对了！是${intervalName(correctSemis)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${intervalName(correctSemis)}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${intervalName(correctSemis)}`; fb.className = 'sight-feedback no'; }
     const ns = game.notes();
     if (ns && ns.length >= 2) earKb.highlightMany([{ midi: ns[0], color: '#5b8cff', text: '低' }, { midi: ns[1], color: '#fbbf24', text: '高' }]);
     setTimeout(() => { if (game) nextQuestion(); }, 1100);
@@ -2099,7 +2132,7 @@ function renderDynamics() {
     refreshStats();
     const fb = $('#dyn-feedback');
     if (ok) { fb.textContent = `✅ 命中 ${game.target().sym}！你弹了力度 ${velocity}（${played.sym}）· 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 你弹了 ${played.sym}（力度 ${velocity}），目标是 ${game.target().sym}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `🤔 你弹了 ${played.sym}（力度 ${velocity}），目标是 ${game.target().sym}`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 1200);
   }
 
@@ -2549,7 +2582,7 @@ function renderMelody() {
     } else {
       const fb = $('#mel-feedback');
       fb.className = 'sight-feedback no';
-      fb.textContent = '❌ 不对，再试这个音';
+      fb.textContent = '🤔 再试这个音～';
       if (kb) kb.flash(note, '#fb7185');
     }
   }
@@ -2737,7 +2770,7 @@ function renderChordProg() {
       if (chord) {
         game.miss(); updateStats();
         fb.className = 'sight-feedback no';
-        fb.textContent = `❌ 听到 ${chord.symbol}，目标是 ${r.expected.symbol}`;
+        fb.textContent = `🤔 听到 ${chord.symbol}，目标是 ${r.expected.symbol}`;
       }
     }
   }
@@ -3009,7 +3042,7 @@ function renderHandsSync() {
     const fb = $('#hs-feedback');
     if (!result.bothHands) {
       fb.className = 'sight-feedback no';
-      fb.textContent = result.hasLeft ? '❌ 只弹了左手，右手呢？' : '❌ 只弹了右手，左手呢？';
+      fb.textContent = result.hasLeft ? '🤔 差右手啦，再加上右手！' : '🤔 差左手啦，再加上左手！';
     } else if (result.score >= 80) {
       fb.className = 'sight-feedback ok';
       fb.textContent = `✅ 很整齐！时差仅 ${Math.round(result.spread)}ms`;
@@ -5652,7 +5685,7 @@ function renderChordInversion() {
     invKb.highlightMany(notes.map((n, idx) => ({ midi: n, color: idx === 0 ? '#f472b6' : HL_PALETTE[idx % HL_PALETTE.length], text: idx === 0 ? '低' : String(idx + 1) })));
     const fb = $('#inv-feedback');
     if (ok) { fb.textContent = `✅ 对了！是${q.name}${inversionName(correctInv)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${q.name}${inversionName(correctInv)}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${q.name}${inversionName(correctInv)}`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 1400);
   }
 
@@ -5810,7 +5843,7 @@ function renderKeySignature() {
     $('#ks-hint').textContent = '💡 ' + game.current.hint;
     const fb = $('#ks-feedback');
     if (res.correct) { fb.textContent = `✅ 对了！${labelKey(correct)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${labelKey(correct)}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${labelKey(correct)}`; fb.className = 'sight-feedback no'; }
     playScale(correct);
     const seq = ksScale(correct);
     ksKb.highlightMany(seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String((i % 7) + 1) })));
@@ -6050,7 +6083,7 @@ function renderScaleFingering() {
       drawStaff(); refreshStats();
       if (r.done) finish();
       else if (!r.correct) {
-        $('#fing-feedback').textContent = `❌ 不是这个音，应弹 ${CA99.noteName(session.currentNote())}（${session.currentFinger()} 号指）`;
+        $('#fing-feedback').textContent = `🤔 还差一点，应弹 ${CA99.noteName(session.currentNote())}（${session.currentFinger()} 号指）`;
         $('#fing-feedback').className = 'sight-feedback no';
       } else {
         $('#fing-feedback').textContent = `✅ 下一个：${CA99.noteName(session.currentNote())}（${session.currentFinger()} 号指）`;
@@ -6189,7 +6222,7 @@ function renderIntervalBuild() {
         recordPractice('ivb', '音程构建', 1, 1, 0);
         setTimeout(() => { if (game) nextQuestion(); }, 700);
       } else {
-        $('#ivb-feedback').textContent = `❌ 你弹的是 ${ibNoteName(note)}，目标是 ${ibNoteName(target)}（差 ${note - target > 0 ? '+' : ''}${note - target} 半音）`;
+        $('#ivb-feedback').textContent = `🤔 你弹的是 ${ibNoteName(note)}，目标是 ${ibNoteName(target)}（差 ${note - target > 0 ? '+' : ''}${note - target} 半音）`;
         $('#ivb-feedback').className = 'sight-feedback no';
         recordPractice('ivb', '音程构建', 1, 0, 0);
       }
@@ -6325,7 +6358,7 @@ function renderModeId() {
     if (seq && seq.length) midKb.highlightMany(seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String((i % 7) + 1) })));
     const fb = $('#mid-feedback');
     if (correct) { fb.textContent = `✅ 对了！${midModeName(correctId)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${midModeName(correctId)}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${midModeName(correctId)}`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 1800);
   }
 
@@ -6489,7 +6522,7 @@ function renderCadence() {
     cadKb.highlightMany(items);
     const fb = $('#cad-feedback');
     if (correct) { fb.textContent = `✅ 对了！${info.name}（${info.short}） · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${info.name}（${info.short}）`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${info.name}（${info.short}）`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 2000);
   }
 
@@ -6655,7 +6688,7 @@ function renderNoteId() {
         cheerToast(`连击 ${game.streak}！🔥`, host);
       }
     }
-    else { fb.textContent = `❌ 不对，${game.current.name} 在这里（绿色）`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `🤔 再想想，${game.current.name} 在这里（绿色）`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 1600);
   }
 
@@ -6674,7 +6707,7 @@ function renderNoteId() {
     niKb.highlightMany([{ midi: game.current.midi, color: '#34d399', text: correctName }]);
     const fb = $('#ni-feedback');
     if (correct) { fb.textContent = `✅ 对了！连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${correctName}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${correctName}`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 1600);
   }
 
@@ -6861,7 +6894,7 @@ function renderStaffRead() {
     srKb.highlightMany([{ midi: game.current.midi, color: correct ? '#34d399' : '#fbbf24', text: game.current.name }]);
     const fb = $('#sr-feedback');
     if (correct) { fb.textContent = `✅ 对了！这是 ${game.current.name} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${game.current.name}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${game.current.name}`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 1800);
   }
 
@@ -7067,7 +7100,7 @@ function renderSolfege() {
     const fb = $('#sol-feedback');
     const label = correctDeg + ' ' + solSyllable(correctDeg, scaleType);
     if (correct) { fb.textContent = `✅ 对了！是 ${label} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${label}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${label}`; fb.className = 'sight-feedback no'; }
     const tri = game.triad() || [];
     const tgt = game.target();
     const items = tri.map((n) => ({ midi: n, color: '#5b8cff' }));
@@ -7245,7 +7278,7 @@ function renderChordQuality() {
     $('#cq-hint').textContent = '💡 ' + game.current.quality.hint;
     const fb = $('#cq-feedback');
     if (correct) { fb.textContent = `✅ 对了！${cqName(correctId)} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-    else { fb.textContent = `❌ 不对，正确答案是 ${cqName(correctId)}`; fb.className = 'sight-feedback no'; }
+    else { fb.textContent = `差一点～正确答案是 ${cqName(correctId)}`; fb.className = 'sight-feedback no'; }
     const seq = game.notes() || [];
     cqKb.highlightMany(seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
     setTimeout(() => { if (game) nextQuestion(); }, 1900);
@@ -7431,12 +7464,12 @@ function renderProgressionEar() {
     const fb = $('#pe-feedback');
     if (game.isComplete()) {
       if (correct) { fb.textContent = `✅ ${info.roman} 对了！整段完成 · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
-      else { fb.textContent = `❌ 该和弦是 ${info.roman} · 整段完成`; fb.className = 'sight-feedback no'; }
+      else { fb.textContent = `🤔 这个和弦是 ${info.roman} · 整段完成`; fb.className = 'sight-feedback no'; }
       drawSlots(true);
       setTimeout(() => { if (game) nextProgression(); }, 2100);
     } else {
       if (correct) { fb.textContent = `✅ ${info.roman} 对了！下一个和弦…`; fb.className = 'sight-feedback ok'; }
-      else { fb.textContent = `❌ 该和弦是 ${info.roman}，继续下一个…`; fb.className = 'sight-feedback no'; }
+      else { fb.textContent = `🤔 这个和弦是 ${info.roman}，继续下一个…`; fb.className = 'sight-feedback no'; }
       setTimeout(() => {
         if (!game) return;
         answering = false;
@@ -9819,7 +9852,7 @@ function renderChordSight() {
     } else if (r.bassWrong) {
       $('#cs-tip').textContent = `🎵 音对了，但这是${game.chord.invName}——最低音要弹 ${CA99.noteName(60 + game.chord.bassPc).replace(/\d+$/, '')}（谱面最下面那个音）。`;
     } else if (r.wrong && r.wrong.length) {
-      $('#cs-tip').textContent = `❌ 有 ${r.wrong.length} 个音不在这个和弦里（已标红），松开它们。已按对 ${r.correctHeld}/${r.need}。`;
+      $('#cs-tip').textContent = `🤔 还有 ${r.wrong.length} 个音不在这个和弦里（已标红），松开它们。已按对 ${r.correctHeld}/${r.need}。`;
     } else {
       $('#cs-tip').textContent = `已按对 ${r.correctHeld}/${r.need} 个音，继续把整组叠置和弦按齐。`;
     }
@@ -10332,7 +10365,7 @@ function renderAccompaniment() {
       if (!judging) { game.fail(); updateStats(); }
       judging = true;
       fb.className = 'sight-feedback no';
-      fb.textContent = `❌ 有错音，目标是 ${game.current().names.join(' + ')}`;
+      fb.textContent = `🤔 差一点，目标是 ${game.current().names.join(' + ')}`;
     }
   }
 
@@ -10961,7 +10994,7 @@ function renderMelodyEcho() {
       }
     } else {
       if (kb) { kb.flash(note, '#f43f5e'); kb.flash(r.expected, '#fbbf24'); }
-      band('fail', `❌ 第 <b>${r.reached + 1}</b> 个弹错了！应该是 <b>${CA99.noteName(r.expected)}</b>，你弹了 ${CA99.noteName(note)}。记到了长度 <b>${r.length}</b> ✨`);
+      band('fail', `🤔 第 <b>${r.reached + 1}</b> 个弹错了！应该是 <b>${CA99.noteName(r.expected)}</b>，你弹了 ${CA99.noteName(note)}。记到了长度 <b>${r.length}</b> ✨`);
       recordPractice('melecho', '🔁 旋律回声', game.rounds + 1, game.rounds, game.best);
       paintTrack(true);
       if (kb) kb.highlightMany(game.seq.map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
@@ -11599,7 +11632,7 @@ function renderPitchDirection() {
       let why;
       if (!j.rightDir) why = `方向反了——要弹<b>${dirCN}</b>的音，你弹的却${j.gap > 0 ? '更高' : (j.gap < 0 ? '更低' : '一样高')}`;
       else why = `方向对，但<b>差得不够明显</b>（只差 ${Math.abs(j.gap)} 个半音，要 ≥ ${game.prompt.minGap}）`;
-      resultEl.innerHTML = `❌ ${why}`;
+      resultEl.innerHTML = `🤔 ${why}`;
       band('show', '🌱 再试一次，注意方向和幅度');
     }
     recordPractice('pitchdir', '↕️ 高低音方向感', game.attempts, game.correct, game.best);
@@ -12269,6 +12302,7 @@ async function main() {
   renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
+  renderDailyStrip();
   // 为每个导航分组标题注入模块数量徽章
   document.querySelectorAll('.nav-group').forEach(g => {
     const title = g.querySelector('.nav-group-title');

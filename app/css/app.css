@@ -61,6 +61,29 @@ body {
 }
 .topbar-toggle input { width: 15px; height: 15px; cursor: pointer; accent-color: #8b6cff; }
 
+/* ---- 每日鼓励横幅（顶栏下方细条，复用 practice-stats） ---- */
+#daily-strip {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 8px 20px; font-size: 13px; font-weight: 600;
+  background: linear-gradient(90deg, rgba(124,92,255,.16), rgba(34,211,238,.10) 60%, rgba(74,222,128,.10));
+  border-bottom: 1px solid var(--line); color: var(--text);
+}
+#daily-strip:empty { display: none; }
+#daily-strip .ds-streak { color: #fbbf24; }
+#daily-strip .ds-today { color: var(--muted); }
+#daily-strip .ds-today b { color: var(--text); }
+#daily-strip .ds-goalwrap { display: inline-flex; align-items: center; gap: 8px; }
+#daily-strip .ds-bar {
+  width: 96px; height: 9px; border-radius: 6px; overflow: hidden;
+  background: rgba(255,255,255,.10); border: 1px solid var(--line);
+}
+#daily-strip .ds-fill {
+  height: 100%; border-radius: 6px; transition: width .5s ease;
+  background: linear-gradient(90deg, #34d399, #22d3ee);
+}
+#daily-strip.done .ds-fill { background: linear-gradient(90deg, #fbbf24, #fb7185); }
+#daily-strip .ds-msg { color: var(--ok); }
+
 /* ---- 布局 ---- */
 #layout { display: flex; flex: 1; overflow: hidden; }
 #sidebar {
@@ -368,7 +391,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sight-svg .note-sharp { font-size: 26px; fill: var(--text); font-family: serif; }
 .sight-feedback { font-weight: 700; font-size: 15px; min-height: 22px; color: var(--muted); }
 .sight-feedback.ok { color: var(--ok); }
-.sight-feedback.no { color: var(--hi2); }
+.sight-feedback.no { color: #fbbf24; }
 
 /* ===== 曲谱跟弹（Synthesia 式）===== */
 .scf-stage { margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }
