@@ -21,84 +21,91 @@
 
   <div id="layout">
     <nav id="sidebar">
+      <div id="nav-level-wrap">
+        <div class="nav-level-bar" role="group" aria-label="难度过滤">
+          <button class="nav-level-btn active" data-level-filter="1">🌱 初级</button>
+          <button class="nav-level-btn" data-level-filter="2">🌿 进阶</button>
+          <button class="nav-level-btn" data-level-filter="all">🔥 全部</button>
+        </div>
+      </div>
       <div id="nav-search-wrap">
         <input id="nav-search" type="text" placeholder="🔍 搜索模块…" autocomplete="off" spellcheck="false">
       </div>
       <div class="nav-scroll">
         <div class="nav-group" data-group="控制台">
           <div class="nav-group-title">🎛️ 演奏控制</div>
-          <button class="nav-btn active" data-module="sounds">🎵 音色浏览器</button>
-          <button class="nav-btn" data-module="vt">🔧 VT 调音台</button>
-          <button class="nav-btn" data-module="system">🎛️ 系统/混响</button>
-          <button class="nav-btn" data-module="rhythm">🥁 节奏</button>
-          <button class="nav-btn" data-module="auto">🔄 自动换音色</button>
-          <button class="nav-btn" data-module="morph">🌗 VT 渐变器</button>
-          <button class="nav-btn" data-module="velocity">🎚️ 力度换音色</button>
-          <button class="nav-btn" data-module="velvt">💫 力度→VT联动</button>
-          <button class="nav-btn" data-module="pedal">🦶 踏板控制</button>
-          <button class="nav-btn" data-module="presets">⭐ 演出预设</button>
+          <button class="nav-btn active" data-module="sounds" data-level="1">🎵 音色浏览器</button>
+          <button class="nav-btn" data-module="vt" data-level="2">🔧 VT 调音台</button>
+          <button class="nav-btn" data-module="system" data-level="2">🎛️ 系统/混响</button>
+          <button class="nav-btn" data-module="rhythm" data-level="1">🥁 节奏</button>
+          <button class="nav-btn" data-module="auto" data-level="2">🔄 自动换音色</button>
+          <button class="nav-btn" data-module="morph" data-level="3">🌗 VT 渐变器</button>
+          <button class="nav-btn" data-module="velocity" data-level="3">🎚️ 力度换音色</button>
+          <button class="nav-btn" data-module="velvt" data-level="3">💫 力度→VT联动</button>
+          <button class="nav-btn" data-module="pedal" data-level="2">🦶 踏板控制</button>
+          <button class="nav-btn" data-module="presets" data-level="2">⭐ 演出预设</button>
         </div>
         <div class="nav-group" data-group="练习室">
           <div class="nav-group-title">🎓 练习训练</div>
-          <button class="nav-btn" data-module="chord">🎓 和弦练习</button>
-          <button class="nav-btn" data-module="scale">🎼 音阶练习</button>
-          <button class="nav-btn" data-module="sight">👀 视奏闪卡</button>
-          <button class="nav-btn" data-module="scf">🎹 曲谱跟弹</button>
-          <button class="nav-btn" data-module="play">🎬 演奏台</button>
-          <button class="nav-btn" data-module="ear">👂 音程听辨</button>
-          <button class="nav-btn" data-module="dynamics">💪 力度练习</button>
-          <button class="nav-btn" data-module="transpose">🎹 移调器</button>
-          <button class="nav-btn" data-module="rhythmtrain">🥁 节奏跟拍</button>
-          <button class="nav-btn" data-module="melody">🎼 旋律听写</button>
-          <button class="nav-btn" data-module="chordprog">🎹 和弦进行</button>
-          <button class="nav-btn" data-module="beat">📈 节拍稳定度</button>
-          <button class="nav-btn" data-module="hands">🙌 双手协调</button>
-          <button class="nav-btn" data-module="arp">🎶 琶音跑动</button>
-          <button class="nav-btn" data-module="artic">🎻 连奏断奏</button>
-          <button class="nav-btn" data-module="pedt">🦶 踏板时机</button>
-          <button class="nav-btn" data-module="trill">🪶 颤音速度</button>
-          <button class="nav-btn" data-module="ornament">🎵 装饰音</button>
-          <button class="nav-btn" data-module="leap">🎯 音程大跳</button>
-          <button class="nav-btn" data-module="voicing">🔝 旋律突出</button>
-          <button class="nav-btn" data-module="cresc">🎚️ 力度渐变</button>
-          <button class="nav-btn" data-module="temporamp">🚀 速度渐变</button>
-          <button class="nav-btn" data-module="poly">🥁 复节奏</button>
-          <button class="nav-btn" data-module="even">💧 颗粒性</button>
-          <button class="nav-btn" data-module="finger">🖐️ 手指独立性</button>
-          <button class="nav-btn" data-module="span">🎹 音阶八度跨度</button>
-          <button class="nav-btn" data-module="dict">👂 节奏听写</button>
-          <button class="nav-btn" data-module="trans">🎼 移调视奏</button>
-          <button class="nav-btn" data-module="inv">🎹 和弦转位听辨</button>
-          <button class="nav-btn" data-module="keysig">🎼 调号识别</button>
-          <button class="nav-btn" data-module="fing">🖐️ 音阶指法提示</button>
-          <button class="nav-btn" data-module="ivb">🎯 音程构建</button>
-          <button class="nav-btn" data-module="modeid">🎶 调式识别</button>
-          <button class="nav-btn" data-module="solfege">🎵 唱名听辨</button>
-          <button class="nav-btn" data-module="cquality">🎹 和弦性质听辨</button>
-          <button class="nav-btn" data-module="progear">🎶 和声进行听辨</button>
-          <button class="nav-btn" data-module="cad">🔚 终止式辨认</button>
-          <button class="nav-btn" data-module="noteid">🔤 键盘音名认知</button>
-          <button class="nav-btn" data-module="staffread">🎼 五线谱识谱卡</button>
-          <button class="nav-btn" data-module="sphrase">🎼 乐句视奏</button>
-          <button class="nav-btn" data-module="csight">🎹 和弦视奏</button>
-          <button class="nav-btn" data-module="rsight">🥁 节奏视奏</button>
-          <button class="nav-btn" data-module="accomp">🪗 伴奏音型</button>
-          <button class="nav-btn" data-module="ccolor">🌈 和弦色彩板</button>
-          <button class="nav-btn" data-module="lightshow">🎆 自由演奏灯光秀</button>
-          <button class="nav-btn" data-module="melecho">🔁 旋律回声</button>
-          <button class="nav-btn" data-module="callresp">🎼 即兴问答</button>
-          <button class="nav-btn" data-module="rhyecho">🥁 节奏回声</button>
-          <button class="nav-btn" data-module="pitchdir">↕️ 高低音方向感</button>
-          <button class="nav-btn" data-module="mplayer">🎹 钢琴卷帘播放器</button>
-          <button class="nav-btn" data-module="staffview">🎼 五线谱播放器</button>
+          <button class="nav-btn" data-module="chord" data-level="2">🎓 和弦练习</button>
+          <button class="nav-btn" data-module="scale" data-level="1">🎼 音阶练习</button>
+          <button class="nav-btn" data-module="sight" data-level="1">👀 视奏闪卡</button>
+          <button class="nav-btn" data-module="scf" data-level="1">🎹 曲谱跟弹</button>
+          <button class="nav-btn" data-module="play" data-level="1">🎬 演奏台</button>
+          <button class="nav-btn" data-module="ear" data-level="2">👂 音程听辨</button>
+          <button class="nav-btn" data-module="dynamics" data-level="1">💪 力度练习</button>
+          <button class="nav-btn" data-module="transpose" data-level="2">🎹 移调器</button>
+          <button class="nav-btn" data-module="rhythmtrain" data-level="1">🥁 节奏跟拍</button>
+          <button class="nav-btn" data-module="melody" data-level="3">🎼 旋律听写</button>
+          <button class="nav-btn" data-module="chordprog" data-level="3">🎹 和弦进行</button>
+          <button class="nav-btn" data-module="beat" data-level="2">📈 节拍稳定度</button>
+          <button class="nav-btn" data-module="hands" data-level="2">🙌 双手协调</button>
+          <button class="nav-btn" data-module="arp" data-level="2">🎶 琶音跑动</button>
+          <button class="nav-btn" data-module="artic" data-level="2">🎻 连奏断奏</button>
+          <button class="nav-btn" data-module="pedt" data-level="3">🦶 踏板时机</button>
+          <button class="nav-btn" data-module="trill" data-level="3">🪶 颤音速度</button>
+          <button class="nav-btn" data-module="ornament" data-level="3">🎵 装饰音</button>
+          <button class="nav-btn" data-module="leap" data-level="2">🎯 音程大跳</button>
+          <button class="nav-btn" data-module="voicing" data-level="3">🔝 旋律突出</button>
+          <button class="nav-btn" data-module="cresc" data-level="2">🎚️ 力度渐变</button>
+          <button class="nav-btn" data-module="temporamp" data-level="2">🚀 速度渐变</button>
+          <button class="nav-btn" data-module="poly" data-level="3">🥁 复节奏</button>
+          <button class="nav-btn" data-module="even" data-level="3">💧 颗粒性</button>
+          <button class="nav-btn" data-module="finger" data-level="2">🖐️ 手指独立性</button>
+          <button class="nav-btn" data-module="span" data-level="2">🎹 音阶八度跨度</button>
+          <button class="nav-btn" data-module="dict" data-level="2">👂 节奏听写</button>
+          <button class="nav-btn" data-module="trans" data-level="3">🎼 移调视奏</button>
+          <button class="nav-btn" data-module="inv" data-level="3">🎹 和弦转位听辨</button>
+          <button class="nav-btn" data-module="keysig" data-level="2">🎼 调号识别</button>
+          <button class="nav-btn" data-module="fing" data-level="1">🖐️ 音阶指法提示</button>
+          <button class="nav-btn" data-module="ivb" data-level="2">🎯 音程构建</button>
+          <button class="nav-btn" data-module="modeid" data-level="3">🎶 调式识别</button>
+          <button class="nav-btn" data-module="solfege" data-level="2">🎵 唱名听辨</button>
+          <button class="nav-btn" data-module="cquality" data-level="3">🎹 和弦性质听辨</button>
+          <button class="nav-btn" data-module="progear" data-level="3">🎶 和声进行听辨</button>
+          <button class="nav-btn" data-module="cad" data-level="3">🔚 终止式辨认</button>
+          <button class="nav-btn" data-module="noteid" data-level="1">🔤 键盘音名认知</button>
+          <button class="nav-btn" data-module="staffread" data-level="1">🎼 五线谱识谱卡</button>
+          <button class="nav-btn" data-module="sphrase" data-level="2">🎼 乐句视奏</button>
+          <button class="nav-btn" data-module="csight" data-level="3">🎹 和弦视奏</button>
+          <button class="nav-btn" data-module="rsight" data-level="2">🥁 节奏视奏</button>
+          <button class="nav-btn" data-module="accomp" data-level="3">🪗 伴奏音型</button>
+          <button class="nav-btn" data-module="ccolor" data-level="2">🌈 和弦色彩板</button>
+          <button class="nav-btn" data-module="lightshow" data-level="1">🎆 自由演奏灯光秀</button>
+          <button class="nav-btn" data-module="melecho" data-level="2">🔁 旋律回声</button>
+          <button class="nav-btn" data-module="callresp" data-level="3">🎼 即兴问答</button>
+          <button class="nav-btn" data-module="rhyecho" data-level="1">🥁 节奏回声</button>
+          <button class="nav-btn" data-module="pitchdir" data-level="1">↕️ 高低音方向感</button>
+          <button class="nav-btn" data-module="mplayer" data-level="1">🎹 钢琴卷帘播放器</button>
+          <button class="nav-btn" data-module="staffview" data-level="1">🎼 五线谱播放器</button>
         </div>
         <div class="nav-group" data-group="工具箱">
           <div class="nav-group-title">🛠️ 工具</div>
-          <button class="nav-btn" data-module="cof">🎡 五度圈</button>
-          <button class="nav-btn" data-module="metro">🎵 节拍器</button>
-          <button class="nav-btn" data-module="recorder">⏺ 录制回放</button>
-          <button class="nav-btn" data-module="dash">🏆 成就仪表盘</button>
-          <button class="nav-btn" data-module="monitor">📡 MIDI 监视器</button>
+          <button class="nav-btn" data-module="cof" data-level="2">🎡 五度圈</button>
+          <button class="nav-btn" data-module="metro" data-level="1">🎵 节拍器</button>
+          <button class="nav-btn" data-module="recorder" data-level="1">⏺ 录制回放</button>
+          <button class="nav-btn" data-module="dash" data-level="1">🏆 成就仪表盘</button>
+          <button class="nav-btn" data-module="monitor" data-level="3">📡 MIDI 监视器</button>
         </div>
         <div id="nav-empty" class="nav-empty" hidden>没有匹配的模块</div>
       </div>

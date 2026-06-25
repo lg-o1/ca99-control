@@ -7452,32 +7452,61 @@ function switchModule(name) {
   if (name === 'dash' && dashboardOnUpdate) dashboardOnUpdate();
 }
 
-// 侧边栏模块搜索：按标题文字实时过滤导航按钮，隐藏空分组
+// 侧边栏过滤：难度分级（默认初级，少暴露复杂玩法）+ 标题搜索，二者合并
+// 搜索时跨全部级别（显式搜索意图优先），无搜索时按当前难度级别过滤
+let navLevel = '1';   // '1'=初级 / '2'=初+进阶 / 'all'=全部
 function setupNavSearch() {
   const input = $('#nav-search');
-  if (!input) return;
   const groups = [...document.querySelectorAll('.nav-group')];
   const empty = $('#nav-empty');
+  const levelBtns = [...document.querySelectorAll('.nav-level-btn')];
+  const LEVEL_KEY = 'ca99_nav_level';
+  try { const v = localStorage.getItem(LEVEL_KEY); if (v) navLevel = v; } catch (_) {}
+
+  // 级别匹配：'1' 只显示初级；'2' 显示初级+进阶；'all' 全部
+  const levelOk = (lv) => {
+    if (navLevel === 'all') return true;
+    const n = parseInt(lv || '1', 10);
+    return n <= parseInt(navLevel, 10);
+  };
   const apply = () => {
-    const q = input.value.trim().toLowerCase();
+    const q = input ? input.value.trim().toLowerCase() : '';
+    const searching = q.length > 0;
     let anyVisible = false;
     groups.forEach((g) => {
       let groupHas = false;
       g.querySelectorAll('.nav-btn').forEach((b) => {
-        const match = !q || b.textContent.toLowerCase().includes(q);
-        b.classList.toggle('hide-search', !match);
-        if (match) groupHas = true;
+        const matchText = !q || b.textContent.toLowerCase().includes(q);
+        // 搜索时忽略级别（跨全部找）；不搜索时按级别过滤
+        const matchLevel = searching || levelOk(b.dataset.level);
+        const show = matchText && matchLevel;
+        b.classList.toggle('hide-search', !show);
+        if (show) groupHas = true;
       });
       g.style.display = groupHas ? '' : 'none';
       if (groupHas) anyVisible = true;
     });
     if (empty) empty.hidden = anyVisible;
   };
-  input.addEventListener('input', apply);
-  // Esc 清空搜索
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { input.value = ''; apply(); input.blur(); }
+
+  levelBtns.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.levelFilter === navLevel);
+    btn.onclick = () => {
+      navLevel = btn.dataset.levelFilter;
+      levelBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      try { localStorage.setItem(LEVEL_KEY, navLevel); } catch (_) {}
+      apply();
+    };
   });
+
+  if (input) {
+    input.addEventListener('input', apply);
+    // Esc 清空搜索
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { input.value = ''; apply(); input.blur(); }
+    });
+  }
+  apply();
 }
 
 // ---------- 模块20：练习成就仪表盘 ----------

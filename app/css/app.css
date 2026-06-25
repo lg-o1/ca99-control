@@ -68,6 +68,18 @@ body {
   padding: 12px 0 12px 0; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
 }
 #nav-search-wrap { padding: 0 12px; }
+#nav-level-wrap { padding: 0 12px; }
+.nav-level-bar {
+  display: flex; gap: 4px; background: var(--bg2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 3px;
+}
+.nav-level-btn {
+  flex: 1; background: transparent; color: var(--muted); border: none; cursor: pointer;
+  font-size: 12px; font-weight: 600; padding: 6px 4px; border-radius: 7px;
+  transition: background .15s, color .15s; white-space: nowrap;
+}
+.nav-level-btn:hover { color: var(--text); }
+.nav-level-btn.active { background: var(--grad); color: #fff; box-shadow: 0 2px 8px rgba(102,126,234,.3); }
 #nav-search {
   width: 100%; background: var(--bg2); color: var(--text); border: 1px solid var(--line);
   border-radius: 9px; padding: 9px 12px; font-size: 13px; outline: none; transition: .18s;
@@ -1245,7 +1257,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 }
 @media (max-width: 720px) {
   #sidebar { width: 60px; }
-  #nav-search-wrap, .nav-group-title { display: none; }
+  #nav-search-wrap, #nav-level-wrap, .nav-group-title { display: none; }
   .nav-scroll { padding: 0 6px; }
   .nav-btn { font-size: 0; padding: 12px 0; text-align: center; }
   .nav-btn::first-letter { font-size: 20px; }
