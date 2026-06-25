@@ -1327,3 +1327,60 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 @keyframes meBlink { 0%,100% { box-shadow: 0 0 0 2px rgba(20,184,166,.4); } 50% { box-shadow: 0 0 0 5px rgba(20,184,166,.15); } }
 
 .me-kb { margin-top: 4px; }
+
+/* ===== 🎹 钢琴卷帘播放器（mplayer）===== */
+.mpl-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.mpl-label { color: var(--muted, #9aa3c4); font-size: 13px; }
+.mpl-sep { width: 1px; height: 20px; background: var(--line, #333); margin: 0 4px; }
+.mpl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mpl-chip, .mpl-upload {
+  background: var(--panel2, #262a45); color: var(--text, #e7eaf6);
+  border: 1px solid var(--line, #333); border-radius: 999px;
+  padding: 5px 12px; font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.mpl-chip:hover, .mpl-upload:hover { border-color: #60a5fa; }
+.mpl-chip.on { background: linear-gradient(135deg, #2563eb, #7c3aed); border-color: transparent; color: #fff; }
+.mpl-upload { display: inline-flex; align-items: center; }
+.mpl-btn {
+  background: var(--panel2, #262a45); color: var(--text, #e7eaf6);
+  border: 1px solid var(--line, #333); border-radius: 8px;
+  padding: 7px 16px; font-size: 14px; cursor: pointer; transition: all .15s;
+}
+.mpl-btn:hover { border-color: #60a5fa; }
+.mpl-primary { background: linear-gradient(135deg, #2563eb, #7c3aed); border-color: transparent; color: #fff; font-weight: 600; }
+.mpl-primary.mpl-on { background: linear-gradient(135deg, #db2777, #f59e0b); }
+.mpl-seg { display: inline-flex; border: 1px solid var(--line, #333); border-radius: 8px; overflow: hidden; }
+.mpl-seg button {
+  background: var(--panel, #1e2138); color: var(--muted, #9aa3c4);
+  border: none; padding: 6px 12px; font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.mpl-seg button:hover { color: var(--text, #e7eaf6); }
+.mpl-seg button.on { background: linear-gradient(135deg, #2563eb, #7c3aed); color: #fff; }
+.mpl-check { display: inline-flex; align-items: center; gap: 4px; color: var(--muted, #9aa3c4); font-size: 13px; cursor: pointer; }
+.mpl-mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; color: var(--muted, #9aa3c4); }
+.mpl-info { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; margin: 6px 0; }
+.mpl-acc { font-size: 13px; color: #34d399; font-weight: 600; }
+.mpl-rollwrap {
+  display: flex; height: 320px; margin: 8px 0;
+  background: linear-gradient(180deg, #0d0f1a, #14151f);
+  border: 1px solid var(--line, #333); border-radius: 12px; overflow: hidden;
+  box-shadow: inset 0 2px 16px rgba(0,0,0,.4);
+}
+.mpl-gutter {
+  width: 42px; flex: 0 0 42px; overflow: hidden;
+  border-right: 1px solid rgba(96,165,250,.18);
+  background: rgba(13,15,26,.6);
+}
+.mpl-gline {
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 5px; font-size: 9px; color: rgba(96,165,250,.7);
+  font-family: ui-monospace, monospace; box-sizing: border-box;
+}
+.mpl-rollscroll { flex: 1; overflow: auto; }
+.mpl-svg { display: block; }
+.mpl-n-r { fill: url(#mplGradR); }
+.mpl-svg .mpl-n-r { fill: #3b82f6; stroke: #93c5fd; stroke-width: .5; }
+.mpl-svg .mpl-n-l { fill: #a855f7; stroke: #d8b4fe; stroke-width: .5; }
+.mpl-head { stroke: #f59e0b; stroke-width: 2; filter: drop-shadow(0 0 4px rgba(245,158,11,.8)); }
+.mpl-seek { width: 100%; margin: 4px 0; accent-color: #7c3aed; }
+.mpl-kb { margin-top: 6px; }

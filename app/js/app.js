@@ -62,6 +62,7 @@ import { SightPhrase, KEYS as SP_KEYS, keyById as spKeyById, keySignatureAcciden
 import { ChordSight, KEYS as CS_KEYS, keyById as csKeyById, keySignatureAccidentals as csKeySig, CHORD_LEVELS as CS_LEVELS, INVERSION_NAMES as CS_INV } from './chord-sight.js';
 import { RhythmSight, rhythmGlyph as rsGlyph } from './rhythm-sight.js';
 import { parseMidi, countHand } from './midi-file.js';
+import { DEMO_SONGS, pitchRange as mplPitchRange, totalMs as mplTotalMs, layoutRoll as mplLayoutRoll, isBlackKey as mplIsBlackKey, playheadX as mplPlayheadX, triggered as mplTriggered, activeAt as mplActiveAt, rollStats as mplRollStats } from './midi-player.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
 const midi = new MidiCore();
@@ -10376,11 +10377,298 @@ function renderCircleFifths() {
   refresh();
 }
 
+// ========== 🎹 MIDI 钢琴卷帘播放器（Piano-Roll Player）==========
+function renderMidiPlayer() {
+  const root = $('#module-mplayer');
+  const PX = 0.14;          // px / ms（卷帘水平比例）
+  const ROWH = 11;          // 每个半音的行高
+  let songId = DEMO_SONGS[0].id;
+  const customSongs = [];   // 上传的 MIDI
+  let hand = 'both';        // both | r | l
+  let speed = 1;
+  let soundOn = true;
+  let follow = true;        // 播放头自动滚动
+  let practice = false;     // 跟练（按键命中统计）
+  let raf = null, playing = false;
+  let t = 0, prevT = 0, total = 0, lastNow = 0;
+  let notes = [], view = [], roll = null;
+  let lo = 48, hi = 72;
+  let hits = 0, attempts = 0;
+  let kb = null;
+  const PC = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const noteName = (m) => PC[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  const fmt = (ms) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+  const allSongs = () => [...DEMO_SONGS, ...customSongs];
+  const curSong = () => allSongs().find(s => s.id === songId) || DEMO_SONGS[0];
+
+  root.innerHTML = `
+    <div class="mod-head">
+      <h2>🎹 钢琴卷帘播放器</h2>
+      <p class="mod-sub">把一首 MIDI 完整"画"出来：左右手不同颜色的音块从左向右流过判定线，键盘同步亮灯发声 —— 先看整首怎么弹，再去"跟弹判分"练习。可上传 .mid 文件。</p>
+    </div>
+    <div class="mpl-bar">
+      <span class="mpl-label">曲目</span>
+      <div id="mpl-songs" class="mpl-chips"></div>
+      <label class="mpl-upload">📂 上传 MIDI
+        <input type="file" id="mpl-file" accept=".mid,.midi,audio/midi" style="display:none">
+      </label>
+    </div>
+    <div class="mpl-bar">
+      <button id="mpl-play" class="mpl-btn mpl-primary">▶ 播放</button>
+      <button id="mpl-stop" class="mpl-btn">⏹ 停止</button>
+      <span class="mpl-sep"></span>
+      <span class="mpl-label">手</span>
+      <div class="mpl-seg" id="mpl-hand">
+        <button data-h="both" class="on">双手</button>
+        <button data-h="r">右手</button>
+        <button data-h="l">左手</button>
+      </div>
+      <span class="mpl-sep"></span>
+      <span class="mpl-label">速度</span>
+      <input type="range" id="mpl-speed" min="0.5" max="1.5" step="0.05" value="1">
+      <span id="mpl-speed-v" class="mpl-mono">1.00×</span>
+      <span class="mpl-sep"></span>
+      <label class="mpl-check"><input type="checkbox" id="mpl-sound" checked> 🔊 声音</label>
+      <label class="mpl-check"><input type="checkbox" id="mpl-follow" checked> 🎯 跟随</label>
+      <label class="mpl-check"><input type="checkbox" id="mpl-practice"> 🏓 跟练</label>
+    </div>
+    <div class="mpl-info">
+      <span id="mpl-title" class="mpl-mono"></span>
+      <span id="mpl-time" class="mpl-mono">0:00 / 0:00</span>
+      <span id="mpl-counts" class="mpl-mono"></span>
+      <span id="mpl-acc" class="mpl-acc" style="display:none"></span>
+    </div>
+    <div class="mpl-rollwrap" id="mpl-wrap">
+      <div class="mpl-gutter" id="mpl-gutter"></div>
+      <div class="mpl-rollscroll" id="mpl-scroll">
+        <svg id="mpl-svg" class="mpl-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+    <input type="range" id="mpl-seek" class="mpl-seek" min="0" max="1000" step="1" value="0">
+    <div id="mpl-kb" class="mpl-kb"></div>
+  `;
+
+  const svg = $('#mpl-svg'), scroll = $('#mpl-scroll'), wrap = $('#mpl-wrap');
+  const gutter = $('#mpl-gutter'), seek = $('#mpl-seek');
+  let playhead = null;
+
+  kb = new PianoKeyboard($('#mpl-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => onKey(m),
+  });
+
+  function onKey(m) {
+    if (soundOn) playTone(midiToFreq(m), 0, 0.32, 0.2);
+    kb.flash(m, '#22d3ee');
+    if (practice && playing) {
+      attempts++;
+      const sounding = mpActiveAt(view, t).some(n => n.midi === m);
+      if (sounding) hits++;
+      paintAcc();
+    }
+  }
+
+  function viewNotes(song) {
+    return song.notes.filter(n => hand === 'both' || (n.hand || 'r') === hand);
+  }
+
+  function buildRoll() {
+    const song = curSong();
+    notes = song.notes;
+    view = viewNotes(song);
+    [lo, hi] = mpPitchRange(view.length ? view : notes);
+    roll = mpLayoutRoll(view, { pxPerMs: PX, rowH: ROWH, lo, hi, gap: 1, minW: 4 });
+    total = mpTotalMs(view.length ? view : notes);
+    // SVG 尺寸
+    svg.setAttribute('width', String(Math.max(roll.width + 40, 600)));
+    svg.setAttribute('height', String(roll.height));
+    svg.setAttribute('viewBox', `0 0 ${Math.max(roll.width + 40, 600)} ${roll.height}`);
+    // 背景行（黑键行加深）+ 八度线
+    let bg = '';
+    for (let m = lo; m <= hi; m++) {
+      const y = (hi - m) * ROWH;
+      const isC = (((m % 12) + 12) % 12) === 0;
+      const black = mpIsBlackKey(m);
+      const fill = black ? 'rgba(255,255,255,.025)' : 'transparent';
+      bg += `<rect x="0" y="${y}" width="100%" height="${ROWH}" fill="${fill}"/>`;
+      if (isC) bg += `<line x1="0" y1="${y}" x2="100%" y2="${y}" stroke="rgba(96,165,250,.18)" stroke-width="1"/>`;
+    }
+    // 节拍/秒 竖线
+    let grid = '';
+    for (let ms = 0; ms <= total; ms += 1000) {
+      const x = ms * PX;
+      grid += `<line x1="${x}" y1="0" x2="${x}" y2="${roll.height}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>`;
+    }
+    // 音块
+    let rects = '';
+    for (const r of roll.rects) {
+      const op = (0.4 + 0.6 * Math.min(1, (r.velocity || 96) / 110)).toFixed(2);
+      const cls = r.hand === 'l' ? 'mpl-n-l' : 'mpl-n-r';
+      const rx = Math.min(4, r.h / 2);
+      rects += `<rect class="${cls}" x="${r.x.toFixed(1)}" y="${r.y}" width="${r.w.toFixed(1)}" height="${r.h}" rx="${rx}" opacity="${op}"/>`;
+    }
+    svg.innerHTML = `${bg}${grid}${rects}<line id="mpl-head" x1="0" y1="0" x2="0" y2="${roll.height}" class="mpl-head"/>`;
+    playhead = $('#mpl-head');
+    // 左侧音名（每个 C）
+    let g = '';
+    for (let m = hi; m >= lo; m--) {
+      const isC = (((m % 12) + 12) % 12) === 0;
+      g += `<div class="mpl-gline" style="height:${ROWH}px">${isC ? noteName(m) : ''}</div>`;
+    }
+    gutter.innerHTML = g;
+    // 键盘范围
+    kb.scrollToShow(lo, hi);
+    drawHead(0);
+    paintInfo();
+  }
+
+  function drawHead(time) {
+    const x = mpPlayheadX(time, PX);
+    if (playhead) { playhead.setAttribute('x1', x); playhead.setAttribute('x2', x); }
+    if (follow) {
+      const target = x - wrap.clientWidth * 0.28;
+      scroll.scrollLeft = Math.max(0, target);
+    }
+    seek.value = String(total > 0 ? Math.round((time / total) * 1000) : 0);
+    $('#mpl-time').textContent = `${fmt(time)} / ${fmt(total)}`;
+  }
+
+  function paintInfo() {
+    const st = mpRollStats(view.length ? view : notes, { title: curSong().title, bpm: curSong().bpm });
+    $('#mpl-title').textContent = curSong().title;
+    $('#mpl-counts').textContent = `${st.count} 音 · 右${st.right}/左${st.left}${st.bpm ? ` · ${st.bpm}bpm` : ''}`;
+  }
+  function paintAcc() {
+    const el = $('#mpl-acc');
+    if (!practice) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    const pct = attempts ? Math.round((hits / attempts) * 100) : 0;
+    el.textContent = `🏓 命中 ${hits}/${attempts}（${pct}%）`;
+  }
+
+  function highlightActive(time) {
+    const act = mpActiveAt(view, time);
+    kb.clear();
+    for (const n of act) {
+      kb.highlight(n.midi, { color: (n.hand === 'l') ? '#c084fc' : '#60a5fa' });
+    }
+  }
+
+  function frame(now) {
+    if (!playing) return;
+    const dt = (now - lastNow) * speed;
+    lastNow = now;
+    prevT = t;
+    t += dt;
+    if (t >= total) { t = total; }
+    // 触发新音：发声 + 闪键
+    for (const n of mpTriggered(view, prevT, t)) {
+      if (soundOn) playTone(midiToFreq(n.midi), 0, Math.min(0.6, n.durMs / 1000), 0.18);
+    }
+    highlightActive(t);
+    drawHead(t);
+    if (t >= total) { stop(true); return; }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function play() {
+    if (playing) return;
+    if (t >= total) t = 0;
+    playing = true;
+    $('#mpl-play').innerHTML = '⏸ 暂停';
+    $('#mpl-play').classList.add('mpl-on');
+    lastNow = performance.now();
+    raf = requestAnimationFrame(frame);
+  }
+  function pause() {
+    playing = false;
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    $('#mpl-play').innerHTML = '▶ 播放';
+    $('#mpl-play').classList.remove('mpl-on');
+  }
+  function stop(finished) {
+    pause();
+    t = 0; prevT = 0;
+    kb.clear();
+    drawHead(0);
+    if (finished) {
+      $('#mpl-play').innerHTML = '▶ 重播';
+    }
+  }
+
+  function rebuild(reset = true) {
+    if (reset) { t = 0; prevT = 0; hits = 0; attempts = 0; }
+    buildRoll();
+    paintAcc();
+  }
+
+  function renderChips() {
+    $('#mpl-songs').innerHTML = allSongs().map(s =>
+      `<button class="mpl-chip${s.id === songId ? ' on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
+    $('#mpl-songs').querySelectorAll('.mpl-chip').forEach(b => {
+      b.onclick = () => { songId = b.dataset.id; stop(false); renderChips(); rebuild(true); };
+    });
+  }
+
+  // ---- 事件绑定 ----
+  $('#mpl-play').onclick = () => { playing ? pause() : play(); };
+  $('#mpl-stop').onclick = () => stop(false);
+  $('#mpl-hand').querySelectorAll('button').forEach(b => {
+    b.onclick = () => {
+      hand = b.dataset.h;
+      $('#mpl-hand').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      stop(false); rebuild(true);
+    };
+  });
+  $('#mpl-speed').oninput = (e) => { speed = +e.target.value; $('#mpl-speed-v').textContent = speed.toFixed(2) + '×'; };
+  $('#mpl-sound').onchange = (e) => { soundOn = e.target.checked; };
+  $('#mpl-follow').onchange = (e) => { follow = e.target.checked; if (follow) drawHead(t); };
+  $('#mpl-practice').onchange = (e) => { practice = e.target.checked; hits = 0; attempts = 0; paintAcc(); };
+  $('#mpl-seek').oninput = (e) => {
+    if (!total) return;
+    t = (+e.target.value / 1000) * total; prevT = t;
+    highlightActive(t); drawHead(t);
+  };
+  $('#mpl-file').onchange = async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      const parsed = parseMidi(buf);
+      const id = 'up-' + Date.now();
+      const title = '📂 ' + f.name.replace(/\.midi?$/i, '');
+      customSongs.push({ id, title, bpm: Math.round(parsed.bpm || 0) || null, notes: parsed.notes });
+      songId = id;
+      stop(false); renderChips(); rebuild(true);
+    } catch (err) {
+      alert('MIDI 解析失败：' + (err && err.message ? err.message : err));
+    }
+    e.target.value = '';
+  };
+
+  renderChips();
+  rebuild(true);
+}
+
+// 钢琴卷帘引擎（midi-player.js）适配器：避免与其它模块同名函数冲突
+const mpPitchRange = mplPitchRange;
+const mpTotalMs = mplTotalMs;
+const mpLayoutRoll = mplLayoutRoll;
+const mpIsBlackKey = mplIsBlackKey;
+const mpPlayheadX = mplPlayheadX;
+const mpTriggered = mplTriggered;
+const mpActiveAt = mplActiveAt;
+const mpRollStats = mplRollStats;
+
 // ---------- 初始化 ----------
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderMidiPlayer(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
