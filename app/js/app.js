@@ -11269,6 +11269,219 @@ function renderMidiPlayer() {
   rebuild(true);
 }
 
+// ========== 🎼 五线谱播放器（Grand-Staff Sheet-Music Viewer）==========
+function renderStaffView() {
+  const root = $('#module-staffview');
+  const PX = 0.18;          // px / ms
+  const PAD = 74;           // 左侧谱号留白
+  const HALF = 6;           // 半个谱级 = 6px（线间距 12px）
+  const TOP = 40;           // 上方加线留白
+  const H = TOP + 120 + 40; // 谱表总高（上 + 大谱表 120 + 下）
+  const stepY = (s) => TOP + (10 - s) * HALF;
+  let songId = DEMO_SONGS[0].id;
+  const customSongs = [];
+  let hand = 'both', speed = 1, soundOn = true, follow = true, labels = true;
+  let raf = null, playing = false;
+  let t = 0, prevT = 0, total = 0, lastNow = 0;
+  let view = [], glyphs = [];
+  let kb = null;
+  const allSongs = () => [...DEMO_SONGS, ...customSongs];
+  const curSong = () => allSongs().find(s => s.id === songId) || DEMO_SONGS[0];
+  const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+
+  root.innerHTML = `
+    <div class="mod-head">
+      <h2>🎼 五线谱播放器</h2>
+      <p class="mod-sub">把一首 MIDI <b>排成真正的五线谱</b>（高音谱号 + 低音谱号大谱表，自动加线/升号），<b>橙色光标</b>横扫时键盘同步亮灯发声、当前音符变亮 —— 边听边对着谱学读谱。内置示范曲，<b>可上传 .mid 文件</b>。和"钢琴卷帘"互为表里：卷帘看手位，五线谱看读谱。</p>
+    </div>
+    <div class="mpl-bar">
+      <span class="mpl-label">曲目</span>
+      <div id="sv-songs" class="mpl-chips"></div>
+      <label class="mpl-upload">📂 上传 MIDI<input type="file" id="sv-file" accept=".mid,.midi,audio/midi" style="display:none"></label>
+    </div>
+    <div class="mpl-bar">
+      <button id="sv-play" class="mpl-btn mpl-primary">▶ 播放</button>
+      <button id="sv-stop" class="mpl-btn">⏹ 停止</button>
+      <span class="mpl-sep"></span>
+      <span class="mpl-label">手</span>
+      <div class="mpl-seg" id="sv-hand">
+        <button data-h="both" class="on">双手</button>
+        <button data-h="r">右手</button>
+        <button data-h="l">左手</button>
+      </div>
+      <span class="mpl-sep"></span>
+      <span class="mpl-label">速度</span>
+      <input type="range" id="sv-speed" min="0.5" max="1.5" step="0.05" value="1">
+      <span id="sv-speed-v" class="mpl-mono">1.00×</span>
+      <span class="mpl-sep"></span>
+      <label class="mpl-check"><input type="checkbox" id="sv-sound" checked> 🔊 声音</label>
+      <label class="mpl-check"><input type="checkbox" id="sv-follow" checked> 🎯 跟随</label>
+      <label class="mpl-check"><input type="checkbox" id="sv-labels" checked> 🔤 音名</label>
+    </div>
+    <div class="mpl-info">
+      <span id="sv-title" class="mpl-mono"></span>
+      <span id="sv-time" class="mpl-mono">0:00 / 0:00</span>
+      <span id="sv-counts" class="mpl-mono"></span>
+    </div>
+    <div class="sv-wrap" id="sv-wrap">
+      <div class="sv-scroll" id="sv-scroll">
+        <svg id="sv-svg" class="sv-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+    <input type="range" id="sv-seek" class="mpl-seek" min="0" max="1000" step="1" value="0">
+    <div id="sv-kb" class="mpl-kb"></div>
+  `;
+
+  const svg = $('#sv-svg'), scroll = $('#sv-scroll'), wrap = $('#sv-wrap'), seek = $('#sv-seek');
+  let cursor = null;
+  kb = new PianoKeyboard($('#sv-kb'), { labels: 'c', onNoteOn: (m) => { if (soundOn) playTone(midiToFreq(m), 0, 0.32, 0.2); kb.flash(m, '#22d3ee'); } });
+
+  function viewNotes(song) { return song.notes.filter(n => hand === 'both' || (n.hand || 'r') === hand); }
+
+  function staffLines(x2) {
+    let s = '';
+    // 高音谱表 5 线（step 2..10）+ 低音谱表 5 线（step -2..-10）
+    for (const st of [10, 8, 6, 4, 2, -2, -4, -6, -8, -10]) {
+      const y = stepY(st);
+      s += `<line x1="0" y1="${y}" x2="${x2}" y2="${y}" stroke="rgba(226,232,240,.28)" stroke-width="1"/>`;
+    }
+    // 谱号（unicode 谱号字符）
+    s += `<text x="14" y="${stepY(4) + 6}" class="sv-clef">𝄞</text>`;
+    s += `<text x="16" y="${stepY(-4) + 4}" class="sv-clef sv-clef-b">𝄢</text>`;
+    // 左侧连接括线
+    s += `<line x1="2" y1="${stepY(10)}" x2="2" y2="${stepY(-10)}" stroke="rgba(226,232,240,.4)" stroke-width="2"/>`;
+    return s;
+  }
+
+  function build() {
+    const song = curSong();
+    view = viewNotes(song);
+    const lay = svLayoutStaff(view, { pxPerMs: PX, leftPad: PAD, bpm: song.bpm || 120, beatsPerBar: 4 });
+    glyphs = lay.glyphs;
+    total = svTotalMs(view.length ? view : song.notes);
+    const W = Math.max(lay.width, 640);
+    svg.setAttribute('width', String(W));
+    svg.setAttribute('height', String(H));
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    let body = staffLines(W);
+    // 小节线
+    for (const bx of lay.barlines) {
+      if (bx <= PAD + 1) continue;
+      body += `<line x1="${bx.toFixed(1)}" y1="${stepY(10)}" x2="${bx.toFixed(1)}" y2="${stepY(-10)}" stroke="rgba(148,163,184,.22)" stroke-width="1"/>`;
+    }
+    // 音符
+    glyphs.forEach((g, i) => {
+      const y = stepY(g.step);
+      const cls = g.clef === 'bass' ? 'sv-n-l' : 'sv-n-r';
+      // 加线
+      for (const ls of g.ledgers) {
+        const ly = stepY(ls);
+        body += `<line x1="${(g.x - 9).toFixed(1)}" y1="${ly}" x2="${(g.x + 9).toFixed(1)}" y2="${ly}" stroke="rgba(226,232,240,.5)" stroke-width="1"/>`;
+      }
+      // 符干
+      const stemUp = g.step < (g.clef === 'bass' ? -6 : 6);
+      const sx = stemUp ? g.x + 5.4 : g.x - 5.4;
+      const sy2 = stemUp ? y - 30 : y + 30;
+      body += `<line class="sv-stem" x1="${sx.toFixed(1)}" y1="${y}" x2="${sx.toFixed(1)}" y2="${sy2}" />`;
+      // 升号
+      if (g.accidental) body += `<text x="${(g.x - 16).toFixed(1)}" y="${y + 4}" class="sv-acc">♯</text>`;
+      // 符头
+      body += `<ellipse class="sv-note ${cls}" data-i="${i}" data-midi="${g.midi}" cx="${g.x.toFixed(1)}" cy="${y}" rx="6" ry="4.6" transform="rotate(-18 ${g.x.toFixed(1)} ${y})"/>`;
+      // 音名标签
+      if (labels) body += `<text class="sv-lbl" data-i="${i}" x="${g.x.toFixed(1)}" y="${(stemUp ? y + 16 : y - 12).toFixed(1)}" text-anchor="middle">${svNoteName(g.midi).replace('♯', '#')}</text>`;
+    });
+    body += `<line id="sv-cursor" class="sv-cursor" x1="${PAD}" y1="0" x2="${PAD}" y2="${H}" />`;
+    svg.innerHTML = body;
+    cursor = $('#sv-cursor');
+    kb.scrollToShow(view.length ? Math.min(...view.map(n => n.midi)) : 48, view.length ? Math.max(...view.map(n => n.midi)) : 72);
+    drawCursor(0);
+    paintInfo();
+  }
+
+  function drawCursor(time) {
+    const x = svCursorX(time, { pxPerMs: PX, leftPad: PAD });
+    if (cursor) { cursor.setAttribute('x1', x); cursor.setAttribute('x2', x); }
+    if (follow) scroll.scrollLeft = Math.max(0, x - wrap.clientWidth * 0.32);
+    seek.value = String(total > 0 ? Math.round((time / total) * 1000) : 0);
+    $('#sv-time').textContent = `${fmt(time)} / ${fmt(total)}`;
+  }
+
+  function paintInfo() {
+    const r = view.filter(n => (n.hand || 'r') === 'r').length;
+    const l = view.length - r;
+    $('#sv-title').textContent = curSong().title;
+    $('#sv-counts').textContent = `${view.length} 音 · 右${r}/左${l}${curSong().bpm ? ` · ${curSong().bpm}bpm` : ''}`;
+  }
+
+  function setActiveGlyphs(time) {
+    const act = new Set(svActiveAt(view, time).map(n => n.midi + ':' + n.ms));
+    svg.querySelectorAll('.sv-note').forEach(el => {
+      const i = +el.dataset.i; const g = glyphs[i];
+      el.classList.toggle('on', g && act.has(g.midi + ':' + g.ms));
+    });
+    kb.clear();
+    for (const n of svActiveAt(view, time)) kb.highlight(n.midi, { color: (n.hand === 'l') ? '#c084fc' : '#60a5fa' });
+  }
+
+  function frame(now) {
+    if (!playing) return;
+    const dt = (now - lastNow) * speed; lastNow = now;
+    prevT = t; t += dt;
+    if (t >= total) t = total;
+    for (const n of svTriggered(view, prevT, t)) if (soundOn) playTone(midiToFreq(n.midi), 0, Math.min(0.6, n.durMs / 1000), 0.18);
+    setActiveGlyphs(t); drawCursor(t);
+    if (t >= total) { stop(true); return; }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function play() {
+    if (playing) return;
+    if (t >= total) t = 0;
+    playing = true;
+    $('#sv-play').innerHTML = '⏸ 暂停'; $('#sv-play').classList.add('mpl-on');
+    lastNow = performance.now(); raf = requestAnimationFrame(frame);
+  }
+  function pause() {
+    playing = false; if (raf) cancelAnimationFrame(raf); raf = null;
+    $('#sv-play').innerHTML = '▶ 播放'; $('#sv-play').classList.remove('mpl-on');
+  }
+  function stop(finished) {
+    pause(); t = 0; prevT = 0; kb.clear();
+    svg.querySelectorAll('.sv-note.on').forEach(el => el.classList.remove('on'));
+    drawCursor(0);
+    if (finished) $('#sv-play').innerHTML = '▶ 重播';
+  }
+  function rebuild() { t = 0; prevT = 0; build(); }
+
+  function renderChips() {
+    $('#sv-songs').innerHTML = allSongs().map(s => `<button class="mpl-chip${s.id === songId ? ' on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
+    $('#sv-songs').querySelectorAll('.mpl-chip').forEach(b => { b.onclick = () => { songId = b.dataset.id; stop(false); renderChips(); rebuild(); }; });
+  }
+
+  $('#sv-play').onclick = () => { playing ? pause() : play(); };
+  $('#sv-stop').onclick = () => stop(false);
+  $('#sv-hand').querySelectorAll('button').forEach(b => { b.onclick = () => { hand = b.dataset.h; $('#sv-hand').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); stop(false); rebuild(); }; });
+  $('#sv-speed').oninput = (e) => { speed = +e.target.value; $('#sv-speed-v').textContent = speed.toFixed(2) + '×'; };
+  $('#sv-sound').onchange = (e) => { soundOn = e.target.checked; };
+  $('#sv-follow').onchange = (e) => { follow = e.target.checked; if (follow) drawCursor(t); };
+  $('#sv-labels').onchange = (e) => { labels = e.target.checked; build(); drawCursor(t); };
+  $('#sv-seek').oninput = (e) => { if (!total) return; t = (+e.target.value / 1000) * total; prevT = t; setActiveGlyphs(t); drawCursor(t); };
+  $('#sv-file').onchange = async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try {
+      const buf = new Uint8Array(await f.arrayBuffer());
+      const parsed = parseMidi(buf);
+      const id = 'up-' + Date.now();
+      customSongs.push({ id, title: '📂 ' + f.name.replace(/\.midi?$/i, ''), bpm: Math.round(parsed.bpm || 0) || 120, notes: parsed.notes });
+      songId = id; stop(false); renderChips(); rebuild();
+    } catch (err) { alert('MIDI 解析失败：' + (err && err.message ? err.message : err)); }
+    e.target.value = '';
+  };
+
+  renderChips();
+  rebuild();
+}
+
 // 钢琴卷帘引擎（midi-player.js）适配器：避免与其它模块同名函数冲突
 const mpPitchRange = mplPitchRange;
 const mpTotalMs = mplTotalMs;

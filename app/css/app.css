@@ -1441,3 +1441,23 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 }
 .pd-result.ok { background: rgba(52,211,153,.16); color: #34d399; border: 1px solid rgba(52,211,153,.35); }
 .pd-result.no { background: rgba(244,63,94,.14);  color: #fb7185; border: 1px solid rgba(244,63,94,.32); }
+
+/* ========== 🎼 五线谱播放器（staff-view）========== */
+.sv-wrap {
+  margin: 10px 0 6px; border-radius: 14px; overflow: hidden;
+  background: linear-gradient(180deg, #0f1729 0%, #111c33 100%);
+  border: 1px solid rgba(148,163,184,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+.sv-scroll { overflow-x: auto; overflow-y: hidden; scroll-behavior: smooth; }
+.sv-svg { display: block; }
+.sv-clef { font-size: 52px; fill: rgba(226,232,240,.82); dominant-baseline: middle; }
+.sv-clef-b { font-size: 40px; }
+.sv-note { stroke: rgba(0,0,0,.25); stroke-width: .6; transition: fill .12s, filter .12s; }
+.sv-n-r { fill: #60a5fa; }
+.sv-n-l { fill: #c084fc; }
+.sv-note.on { fill: #fbbf24; filter: drop-shadow(0 0 6px rgba(251,191,36,.9)); }
+.sv-stem { stroke: rgba(203,213,225,.7); stroke-width: 1.4; }
+.sv-acc { font-size: 16px; fill: #fcd34d; dominant-baseline: middle; }
+.sv-lbl { font-size: 9px; fill: rgba(148,163,184,.85); font-family: ui-monospace,Menlo,Consolas,monospace; }
+.sv-cursor { stroke: #fb923c; stroke-width: 2; filter: drop-shadow(0 0 5px rgba(251,146,60,.8)); }
