@@ -28,6 +28,7 @@ import { Accompaniment, PATTERNS as ACCOMP_PATTERNS, getPattern as accompGetPatt
 import { analyzeChord, COLOR_KEYS as CCOLOR_KEYS, tonicTriadPcs as ccolorTonicTriad } from './chord-color.js';
 import { heatColor as lsHeatColor, pickColor as lsPickColor, sparkSpec as lsSparkSpec, beamHeight as lsBeamHeight, stageFrac as lsStageFrac, isMilestone as lsIsMilestone, THEMES as LS_THEMES, ComboCounter as LsCombo } from './light-show.js';
 import { ECHO_LEVELS as ME_LEVELS, levelById as meLevelById, MelodyEcho } from './melody-echo.js';
+import { CR_LEVELS, levelById as crLevelById, CallResponse } from './call-response.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -63,6 +64,7 @@ import { ChordSight, KEYS as CS_KEYS, keyById as csKeyById, keySignatureAccident
 import { RhythmSight, rhythmGlyph as rsGlyph } from './rhythm-sight.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { DEMO_SONGS, pitchRange as mplPitchRange, totalMs as mplTotalMs, layoutRoll as mplLayoutRoll, isBlackKey as mplIsBlackKey, playheadX as mplPlayheadX, triggered as mplTriggered, activeAt as mplActiveAt, rollStats as mplRollStats } from './midi-player.js';
+import { layoutStaff as svLayoutStaff, cursorX as svCursorX, activeAt as svActiveAt, triggered as svTriggered, totalMs as svTotalMs, staffStep as svStaffStep, noteName as svNoteName } from './staff-view.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 
 const midi = new MidiCore();
@@ -117,6 +119,7 @@ let chordColorOnNotesChanged = null; // 和弦色彩板的"按下集合变化"�
 let lightShowOnNote = null;  // 自由演奏灯光秀的 note-on 回调（模块59注册，带力度）
 let lightShowOffNote = null; // 自由演奏灯光秀的 note-off 回调（模块59注册）
 let melEchoOnNote = null;    // 旋律回声记忆游戏的 note-on 回调（模块60注册）
+let callRespOnNote = null;   // 即兴问答的 note-on 回调（模块61注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -301,6 +304,8 @@ function onMidiIn(bytes) {
     if (lightShowOnNote) lightShowOnNote(m.note, m.velocity);
     // 驱动旋律回声记忆游戏
     if (melEchoOnNote) melEchoOnNote(m.note);
+    // 驱动即兴问答（Call & Response）
+    if (callRespOnNote) callRespOnNote(m.note, m.velocity);
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -10241,6 +10246,223 @@ function renderMelodyEcho() {
   melEchoOnNote = (midi) => feed(midi);
 }
 
+function renderCallResponse() {
+  const root = $('#module-callresp');
+  let levelId = CR_LEVELS[0].id;   // 当前难度（音阶/调）
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎼 即兴问答</h2>
+    <p style="color:var(--muted);margin-bottom:14px">音乐对话游戏（<b>Call &amp; Response</b>）：钢琴先弹一句<b>问句</b>——它故意<b>不落在主音上</b>，听起来"还没说完、在等你回答"。你在琴上<b>即兴弹一句答句</b>回应它。<b>不用照抄！</b>只看三件事：① 尽量<b>留在音阶里</b>（用高亮的键）② 最后<b>落回主音</b>（家🏠，给人"说完了"的收束感）③ 有点<b>高低起伏</b>。怎么弹都不算错，越有乐感分越高。这是练<b>即兴 / 乐句感 / 音阶地理</b>的第一步，零基础也能玩。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>调 / 音阶</label>
+        <div id="cresp-levels" class="ear-chips">${CR_LEVELS.map(l => `<button class="ear-chip${l.id === levelId ? ' on' : ''}" data-l="${l.id}">${l.name}</button>`).join('')}</div>
+      </div>
+      <div class="param-row" style="gap:18px;flex-wrap:wrap">
+        <label>速度
+          <input id="cresp-tempo" type="range" min="60" max="160" value="100" class="trans-slider" style="max-width:180px;vertical-align:middle">
+          <span id="cresp-tempo-val" style="color:#667eea;font-weight:700">100/分</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="cresp-banner" class="me-banner">点 <b>▶ 出一句</b>，听问句再<b>即兴回答</b> 🎷</div>
+      <div class="cresp-phrase"><span class="cresp-phrase-lbl">❓ 问句</span><div id="cresp-q" class="me-track"></div></div>
+      <div class="cresp-phrase"><span class="cresp-phrase-lbl">💬 你的答句</span><div id="cresp-a" class="me-track"></div></div>
+      <div id="cresp-score" class="cresp-score" style="display:none"></div>
+      <div id="cresp-kb" class="me-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="cresp-stars" class="sight-stat-num">—</div><div class="sight-stat-lbl">本次评星</div></div>
+      <div class="sight-stat"><div id="cresp-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最高分</div></div>
+      <div class="sight-stat"><div id="cresp-rounds" class="sight-stat-num">0</div><div class="sight-stat-lbl">问答轮数</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="cresp-ask" class="big-btn">▶ 出一句</button>
+      <button id="cresp-replay" class="big-btn" style="background:#667eea" disabled>🔊 再听问句</button>
+      <button id="cresp-done" class="big-btn" style="background:#34d399" disabled>✓ 答好了，评分</button>
+    </div>`;
+
+  let game = null, kb = null, ac = null, playTimers = [];
+  const bannerEl = $('#cresp-banner');
+  const qEl = $('#cresp-q'), aEl = $('#cresp-a'), scoreEl = $('#cresp-score');
+  const starsEl = $('#cresp-stars'), bestEl = $('#cresp-best'), roundsEl = $('#cresp-rounds');
+  const askBtn = $('#cresp-ask'), replayBtn = $('#cresp-replay'), doneBtn = $('#cresp-done');
+
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function tone(midi, when, dur, gain = 0.26) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(gain, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function noteDur() { return 60 / (+$('#cresp-tempo').value); }
+  function clearTimers() { playTimers.forEach(clearTimeout); playTimers = []; }
+  function band(cls, html) { bannerEl.className = 'me-banner' + (cls ? ' ' + cls : ''); bannerEl.innerHTML = html; }
+
+  function curLevel() { return crLevelById(levelId); }
+
+  function ensureKb() {
+    if (kb) return;
+    kb = new PianoKeyboard($('#cresp-kb'), {
+      labels: 'c',
+      onNoteOn: (m) => { try { playTone(midiToFreq(m), 0, 0.5, 0.2); } catch (_) { /* ignore */ } feed(m); },
+    });
+    paintScaleHints();
+  }
+
+  // 把当前音阶的音淡淡标在键上（主音金色），帮助"留在音阶里"
+  function paintScaleHints() {
+    if (!kb) return;
+    const lv = curLevel();
+    const lo = Math.min(...lv.pool), hi = Math.max(...lv.pool);
+    if (kb.scrollToShow) kb.scrollToShow(lo - 2, hi + 2);
+    if (kb.highlightMany) {
+      kb.clear();
+      kb.highlightMany(lv.pool.map(n => ({
+        midi: n,
+        color: (n % 12) === (lv.tonic % 12) ? '#fbbf24' : '#475569',
+        text: (n % 12) === (lv.tonic % 12) ? '家' : '',
+      })));
+    }
+  }
+
+  function paintPhrase(el, seq, opt = {}) {
+    if (!seq || !seq.length) { el.innerHTML = opt.placeholder || ''; return; }
+    el.innerHTML = seq.map((n, i) => {
+      let cls = 'me-dot';
+      if (opt.home && (n % 12) === (curLevel().tonic % 12)) cls += ' filled';
+      else if (opt.masked) cls += ' masked';
+      else cls += ' current';
+      const label = opt.masked ? '♪' : CA99.noteName(n);
+      return `<div class="${cls}" data-i="${i}">${label}</div>`;
+    }).join('');
+  }
+
+  function updateStats() {
+    bestEl.textContent = game ? game.best : 0;
+    roundsEl.textContent = game ? game.rounds : 0;
+  }
+
+  // 播放问句（亮键 + 发声），结束后轮到玩家
+  function playQuestion() {
+    if (!game || !game.question.length) return;
+    clearTimers();
+    game.state = 'question';
+    replayBtn.disabled = true; doneBtn.disabled = true;
+    scoreEl.style.display = 'none';
+    band('show', `👂 听这一句问句（<b>${game.question.length}</b> 个音）…`);
+    paintPhrase(qEl, game.question, { masked: true });
+    aEl.innerHTML = '';
+    const d = noteDur(); const c = ctx(); const start = c.currentTime + 0.18;
+    game.question.forEach((n, i) => {
+      tone(n, start + i * d, d * 0.85);
+      playTimers.push(setTimeout(() => {
+        if (kb) kb.flash(n, '#22d3ee');
+        const dot = qEl.querySelector(`.me-dot[data-i="${i}"]`);
+        if (dot) { dot.classList.add('beat'); setTimeout(() => dot.classList.remove('beat'), 260); }
+      }, 180 + i * d * 1000));
+    });
+    playTimers.push(setTimeout(() => {
+      if (!game) return;
+      game.beginAnswer();
+      paintPhrase(qEl, game.question, { masked: false });   // 答题时把问句音名亮出来
+      band('input', '🎹 轮到你！<b>即兴弹一句</b>回应它，记得最后落回<b>主音🏠</b>');
+      replayBtn.disabled = false; doneBtn.disabled = false;
+    }, 180 + game.question.length * d * 1000 + 200));
+  }
+
+  function feed(note) {
+    if (!game || game.state !== 'answer') return;
+    if (kb) kb.flash(note, '#34d399');
+    game.record(note);
+    paintPhrase(aEl, game.answer, {});
+  }
+
+  function showScore() {
+    if (!game || game.state !== 'answer') return;
+    const s = game.finishAnswer();
+    if (!s) return;
+    updateStats();
+    starsEl.textContent = s.stars ? '⭐'.repeat(s.stars) : '—';
+    const stars = s.stars ? '⭐'.repeat(s.stars) + '☆'.repeat(3 - s.stars) : '☆☆☆';
+    const fb = crFeedback(s);
+    scoreEl.style.display = '';
+    scoreEl.innerHTML = `
+      <div class="cresp-score-stars">${stars}</div>
+      <div class="cresp-score-num">${s.score} 分</div>
+      <div class="cresp-score-bars">
+        <span class="cresp-bar ${s.inScaleRatio >= 0.999 ? 'ok' : 'mid'}">音阶内 ${Math.round(s.inScaleRatio * 100)}%</span>
+        <span class="cresp-bar ${s.resolvesHome ? 'ok' : 'no'}">${s.resolvesHome ? '✓ 落回主音🏠' : '✗ 没落回主音'}</span>
+        <span class="cresp-bar ${s.hasContour ? 'ok' : 'no'}">${s.hasContour ? '✓ 有起伏' : '✗ 缺起伏'}</span>
+      </div>
+      <div class="cresp-score-fb">${fb}</div>`;
+    if (s.stars >= 3) band('win', '🌟 漂亮的对答！');
+    else if (s.stars >= 2) band('input', '👍 不错的回应！');
+    else band('show', '🌱 再试一句会更好');
+    paintPhrase(aEl, game.answer, { home: true });
+    recordPractice('callresp', '🎼 即兴问答', game.rounds, s.stars >= 2 ? game.rounds : game.rounds - 1, game.best);
+    replayBtn.disabled = true; doneBtn.disabled = true;
+    askBtn.textContent = '▶ 下一句';
+  }
+
+  // 评分文案（与引擎 feedbackFor 同义，这里就地实现以便带 HTML 强调）
+  function crFeedback(s) {
+    if (s.stars === 3) return '🌟 太有乐感了！留在音阶里，又漂亮地落回了家（主音）';
+    if (!s.resolvesHome) return '💡 试着<b>最后落回主音🏠</b>，收束感会更强';
+    if (s.inScaleRatio < 1) return '💡 有几个音跑出音阶了，多用<b>高亮</b>的那些键';
+    if (!s.hasContour) return '💡 加点高低起伏，别老停在一个音上';
+    return '不错！再多一点变化会更出彩 ✨';
+  }
+
+  function ask() {
+    ensureKb();
+    const lv = curLevel();
+    if (!game) game = new CallResponse({ pool: lv.pool, tonic: lv.tonic, qlen: lv.qlen });
+    game.pool = lv.pool; game.tonic = lv.tonic; game.qlen = lv.qlen;
+    paintScaleHints();
+    game.newQuestion();
+    if (typeof window !== 'undefined') window.__crGame = game;  // 调试钩子
+    updateStats();
+    starsEl.textContent = '—';
+    playQuestion();
+  }
+
+  $('#cresp-levels').querySelectorAll('button').forEach(b => b.onclick = () => {
+    levelId = b.dataset.l;
+    $('#cresp-levels').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (game) { const lv = curLevel(); game.pool = lv.pool; game.tonic = lv.tonic; game.qlen = lv.qlen; }
+    paintScaleHints();
+  });
+  $('#cresp-tempo').oninput = (e) => { $('#cresp-tempo-val').textContent = e.target.value + '/分'; };
+
+  // 纯音频重播问句（不改游戏状态，不清除已弹答句）
+  function replayQuestionAudio() {
+    if (!game || !game.question.length) return;
+    const d = noteDur(); const c = ctx(); const start = c.currentTime + 0.12;
+    game.question.forEach((n, i) => {
+      tone(n, start + i * d, d * 0.85);
+      setTimeout(() => { if (kb) kb.flash(n, '#22d3ee'); }, 120 + i * d * 1000);
+    });
+  }
+
+  askBtn.onclick = ask;
+  replayBtn.onclick = replayQuestionAudio;
+  doneBtn.onclick = showScore;
+
+  // 真实 MIDI 驱动（钢琴自己发声，这里只记录答句）
+  callRespOnNote = (midi) => feed(midi);
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -10668,7 +10890,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderMidiPlayer(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderMidiPlayer(); renderStaffView(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

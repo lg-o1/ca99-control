@@ -1384,3 +1384,19 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .mpl-head { stroke: #f59e0b; stroke-width: 2; filter: drop-shadow(0 0 4px rgba(245,158,11,.8)); }
 .mpl-seek { width: 100%; margin: 4px 0; accent-color: #7c3aed; }
 .mpl-kb { margin-top: 6px; }
+
+/* ===== 🎼 即兴问答 Call & Response（模块61） ===== */
+.cresp-phrase { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.cresp-phrase-lbl { flex: 0 0 78px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.cresp-phrase .me-track { flex: 1; margin: 0; min-height: 38px; }
+.cresp-score { margin: 12px 0 4px; padding: 14px 16px; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(102,126,234,.14), rgba(52,211,153,.12));
+  border: 1px solid rgba(102,126,234,.3); text-align: center; }
+.cresp-score-stars { font-size: 30px; letter-spacing: 4px; line-height: 1; }
+.cresp-score-num { font-size: 22px; font-weight: 800; color: #667eea; margin: 4px 0 10px; }
+.cresp-score-bars { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 8px; }
+.cresp-bar { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+.cresp-bar.ok  { background: rgba(52,211,153,.22); color: #34d399; }
+.cresp-bar.mid { background: rgba(251,191,36,.20); color: #fbbf24; }
+.cresp-bar.no  { background: rgba(244,63,94,.18);  color: #fb7185; }
+.cresp-score-fb { font-size: 13px; color: var(--text); opacity: .92; }
