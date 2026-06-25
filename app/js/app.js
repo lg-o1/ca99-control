@@ -119,6 +119,8 @@ let ivbOnNote = null;       // 音程构建的 note-on 回调（模块44注册�
 let scfOnNote = null;       // 曲谱跟弹的 note-on 回调（模块45注册，带时间在内部取）
 let scfKbEcho = null;       // 曲谱跟弹键盘回显：真实 MIDI note-on → 屏幕 88 键点亮（任何模式都生效）
 let scfKbEchoOff = null;    // 曲谱跟弹键盘回显：真实 MIDI note-off → 屏幕键抬起
+let playStageOnNote = null; // 🎬 演奏台跟弹判分的 note-on 回调（演奏台模块注册）
+let playStageOnNoteOff = null; // 🎬 演奏台的 note-off 回调（真琴松键 → 屏幕键抬起）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -299,6 +301,8 @@ function onMidiIn(bytes) {
     if (ivbOnNote) ivbOnNote(m.note);
     // 驱动曲谱跟弹
     if (scfOnNote) scfOnNote(m.note, m.velocity);
+    // 驱动 🎬 演奏台跟弹判分
+    if (playStageOnNote) playStageOnNote(m.note, m.velocity);
     // 曲谱跟弹键盘回显：任何模式下，真实 CA99 按键都点亮屏幕 88 键（初学者"屏幕镜像真琴"）
     if (scfKbEcho) scfKbEcho(m.note, m.velocity);
     // 驱动乐句视奏
@@ -348,6 +352,8 @@ function onMidiIn(bytes) {
     if (lightShowOffNote) lightShowOffNote(m.note);
     // 曲谱跟弹键盘回显：真实 CA99 松键 → 屏幕键抬起
     if (scfKbEchoOff) scfKbEchoOff(m.note);
+    // 🎬 演奏台：真琴松键 → 屏幕键抬起
+    if (playStageOnNoteOff) playStageOnNoteOff(m.note);
     // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
     PianoKeyboard.echoOff(m.note);
   }
@@ -8785,6 +8791,430 @@ function renderScoreFollow() {
   renderHistory();   // ⑥ 初始渲染练习足迹
 }
 
+// ---------- 模块：🎬 演奏台（纯净 Synthesia 跟弹，触屏友好）----------
+// 复用 ScoreFollow 引擎 + parseMidi + PianoKeyboard，只显示「五线谱 / 落下高速路 / 88 键」三块，
+// 上方一行控制 + 弹出式选曲（📚 内置曲库 / 🎵 我的 MIDI / 📤 上传）。预听默认在 CA99 真琴发声。
+// 与「曲谱跟弹」共享同一份曲库数据，但 UI 精简、为手指点击优化；不改动原模块。
+function renderPlayStage() {
+  const root = $('#module-play');
+  if (!root) return;
+  const LEAD_MS = 1900, LOOK_MS = 2200, HW_H = 248;
+  const PC = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const CLEF_GLYPH = { treble: '𝄞', bass: '𝄢' };
+  const midiName = (m) => PC[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  let sf = null, raf = null, t0 = 0, mode = null;     // 'demo' | 'follow'
+  let song = SCF_SONGS[0];
+  let realPiano = true;                                // 🎹 默认在 CA99 真琴发声
+  let labelsOn = true;
+  let layout = null, centerX = new Map();
+  let kbFirst = 60, kbLast = 72;
+  let demoPlayed = new Set();
+  const realOn = new Set();
+  let builtinCatalog = null, userCatalog = null;
+
+  root.innerHTML = `
+    <div class="ps-wrap">
+      <div class="ps-bar">
+        <button class="ps-load" id="ps-load">🎵 选择歌曲</button>
+        <span class="ps-title" id="ps-title">—</span>
+        <span class="ps-spacer"></span>
+        <button class="ps-mbtn" id="ps-demo">▶ 预听</button>
+        <button class="ps-mbtn primary" id="ps-follow">🎯 跟弹</button>
+        <button class="ps-mbtn" id="ps-stop" disabled>⏸ 停止</button>
+        <label class="ps-toggle" title="开启后预听/示范会同时让连接的 CA99 真琴发声"><input type="checkbox" id="ps-real" checked> 🎹 真琴发声</label>
+        <label class="ps-toggle"><input type="checkbox" id="ps-labels" checked> 🔤 音名</label>
+        <span class="ps-stat" id="ps-stat"></span>
+      </div>
+      <div class="ps-staff-wrap scf-staff-wrap"><div id="ps-staff"></div></div>
+      <div class="ps-hw-wrap scf-highway-wrap" style="height:${HW_H}px">
+        <div class="ps-judge"></div>
+        <div id="ps-hw" class="scf-highway"></div>
+        <div id="ps-pop" class="scf-pop"></div>
+      </div>
+      <div class="ps-kb-wrap"><div id="ps-kb"></div></div>
+    </div>
+    <div class="ps-modal" id="ps-modal" hidden>
+      <div class="ps-modal-card">
+        <div class="ps-modal-head">
+          <div class="ps-tabs">
+            <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
+            <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
+            <button class="ps-tab" data-tab="upload">📤 上传</button>
+          </div>
+          <button class="ps-modal-x" id="ps-modal-x">✕</button>
+        </div>
+        <div class="ps-pane" id="ps-pane-lib">
+          <input class="ps-search" id="ps-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…">
+          <div class="ps-cats" id="ps-cats"></div>
+          <div class="ps-songlist" id="ps-songlist"></div>
+        </div>
+        <div class="ps-pane" id="ps-pane-upload" hidden>
+          <p class="ps-up-tip">选择电脑上的 .mid / .midi 文件，立刻载入演奏台：</p>
+          <input type="file" id="ps-file" accept=".mid,.midi,audio/midi">
+        </div>
+        <div class="ps-modal-status" id="ps-modal-status"></div>
+      </div>
+    </div>`;
+
+  const kb = new PianoKeyboard($('#ps-kb'), { first: kbFirst, last: kbLast, onNoteOn: (m) => onClickKey(m) });
+
+  // ---- CA99 真琴发声（与原模块同逻辑：durMs 后自动 Note Off）----
+  function midiOutReady() {
+    try {
+      if (typeof midi === 'undefined' || !midi) return false;
+      if (midi.mode === 'websocket') return !!(midi._client && midi._connected);
+      return !!midi.output;
+    } catch (_) { return false; }
+  }
+  function realNoteOn(m, velocity, durMs) {
+    if (!realPiano || typeof kbMidiOn !== 'function' || !midiOutReady()) return false;
+    const vel = (velocity != null) ? Math.max(1, Math.min(127, velocity)) : 82;
+    if (realOn.has(m)) kbMidiOff(m, 0);
+    kbMidiOn(m, 0, vel); realOn.add(m);
+    const hold = Math.max(120, Math.min(2200, durMs || 400));
+    setTimeout(() => { if (realOn.has(m)) { kbMidiOff(m, 0); realOn.delete(m); } }, hold);
+    return true;
+  }
+  function allRealOff() {
+    if (typeof kbMidiOff === 'function') realOn.forEach((m) => kbMidiOff(m, 0));
+    realOn.clear();
+  }
+  // 统一发声：真琴可用就走真琴（更真实音色），否则退回浏览器 Web Audio
+  function voice(m, durMs, velocity) {
+    const onPiano = realNoteOn(m, velocity, durMs);
+    if (!onPiano) playTone(midiToFreq(m), 0, Math.min(0.9, (durMs || 400) / 1000), 0.2);
+  }
+
+  // ---- 载入一首曲目（统一入口）----
+  function loadSong(s) {
+    song = s;
+    sf = new ScoreFollow(song, { timeScale: 1, octaveAgnostic: false });
+    let [lo, hi] = sf.range;
+    lo = Math.max(21, lo - ((lo % 12 === 0) ? 0 : (lo % 12)));
+    hi = Math.min(108, hi + (11 - (hi % 12)));
+    kbFirst = lo; kbLast = hi;
+    kb.first = lo; kb.last = hi; kb.layout = kbBuildLayout(lo, hi); kb._render();
+    layout = kbBuildLayout(lo, hi);
+    centerX = new Map();
+    layout.keys.forEach((k) => centerX.set(k.midi, k.x + k.w / 2));
+    $('#ps-hw').style.width = layout.width + 'px';
+    $('#ps-title').textContent = song.title || '未命名';
+    demoPlayed = new Set();
+    drawStaff(-LEAD_MS); drawHighway(-LEAD_MS); refreshStat();
+  }
+
+  // ---- 五线谱 ----
+  function drawStaff(t) {
+    if (!sf) return;
+    const leftPad = 50, beatPx = 26, topY = 30, stepPx = 7, rightPad = 24;
+    const W = leftPad + sf.totalBeats * beatPx + rightPad, H = 150;
+    const yForPos = (pos) => topY + (8 - pos) * stepPx;
+    const xForBeat = (beat) => leftPad + beat * beatPx;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="scf-staff-svg" preserveAspectRatio="xMinYMid meet">`;
+    for (let p = 0; p <= 8; p += 2) { const y = yForPos(p); svg += `<line x1="${leftPad - 14}" y1="${y}" x2="${W - 8}" y2="${y}" class="staff-line"/>`; }
+    svg += `<text x="${leftPad - 44}" y="${yForPos(2) + 6}" class="clef-glyph">${CLEF_GLYPH[sf.clef] || CLEF_GLYPH.treble}</text>`;
+    for (const n of sf.notes) {
+      const pos = staffPosition(n.midi, sf.clef);
+      const cy = yForPos(pos), cx = xForBeat(n.beat);
+      if (pos > 8) for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
+      if (pos < 0) for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
+      let cls = 'note-head';
+      if (n.grade === SCF_GRADE.PERFECT) cls += ' nh-perfect';
+      else if (n.grade === SCF_GRADE.GOOD) cls += ' nh-good';
+      else if (n.grade === SCF_GRADE.MISS) cls += ' nh-miss';
+      else if (n.hand === 'l') cls += ' nh-left';
+      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${cls}"/></g>`;
+    }
+    const cursorBeat = Math.max(0, sf.beatAt(t)), curX = xForBeat(cursorBeat);
+    svg += `<line x1="${curX}" y1="14" x2="${curX}" y2="${H - 10}" class="scf-cursor-line"/></svg>`;
+    const wrap = $('#ps-staff'); wrap.innerHTML = svg;
+    const sw = wrap.parentElement;
+    if (sw) sw.scrollLeft = Math.max(0, curX - sw.clientWidth / 2);
+  }
+
+  // ---- 下落高速路（Synthesia）----
+  function drawHighway(t) {
+    if (!sf) return;
+    const pxPerMs = HW_H / LOOK_MS;
+    let html = '';
+    for (const n of sf.notes) {
+      const dt = n.ms - t;
+      if (dt > LOOK_MS || dt < -260) continue;
+      const cx = centerX.get(n.midi);
+      if (cx == null) continue;
+      const isBlack = [1, 3, 6, 8, 10].includes(((n.midi % 12) + 12) % 12);
+      const w = isBlack ? layout.blackW : layout.whiteW - 3;
+      const h = Math.max(14, n.durMs * pxPerMs);
+      const top = HW_H - dt * pxPerMs - h;
+      let cls = 'scf-note';
+      if (n.hand === 'l') cls += ' n-left';
+      if (n.grade === SCF_GRADE.PERFECT) cls += ' n-perfect';
+      else if (n.grade === SCF_GRADE.GOOD) cls += ' n-good';
+      else if (n.grade === SCF_GRADE.MISS) cls += ' n-miss';
+      else if (Math.abs(dt) <= sf.goodMs) cls += ' n-due';
+      const lbl = (labelsOn && h >= 15) ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
+      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px;">${lbl}</div>`;
+    }
+    $('#ps-hw').innerHTML = html;
+    // 键盘高亮：判定窗内的音 → 提示该弹的键
+    const cue = sf.active(t);
+    if (cue.length) {
+      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: n.hand === 'l' ? '#cbd5e1' : '#fbbf24', text: '▶' })), { scroll: false });
+    } else kb.clear();
+  }
+
+  function refreshStat() {
+    if (!sf) { $('#ps-stat').textContent = ''; return; }
+    if (mode === 'follow') {
+      const st = sf.stars;
+      $('#ps-stat').textContent = `★${'★'.repeat(st)}${'☆'.repeat(Math.max(0, 3 - st))}　${sf.judgedCount}/${sf.total}　连对 ${sf.combo}`;
+    } else {
+      $('#ps-stat').textContent = `共 ${sf.notes.length} 音　${Math.round(sf.durationMs / 1000)}s`;
+    }
+  }
+
+  let popTimer = null;
+  function popGrade(grade) {
+    const pop = $('#ps-pop');
+    const map = { perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'], miss: ['MISS', '#f87171'] };
+    const [txt, color] = map[grade] || ['', '#fff'];
+    pop.textContent = sf.combo > 1 && grade !== 'miss' ? `${txt}  ×${sf.combo}` : txt;
+    pop.style.color = color;
+    pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show');
+    clearTimeout(popTimer); popTimer = setTimeout(() => pop.classList.remove('show'), 520);
+  }
+
+  // ---- 输入：屏幕点键 / 真琴按键 ----
+  function onClickKey(m) {
+    if (mode === 'follow') { judge(m, 90, true); return; }
+    // 非跟弹：当作试听，点哪个键响哪个键（真琴优先）
+    voice(m, 500, 90);
+    kb.flash(m, '#22d3ee');
+  }
+  function judge(m, vel, fromScreen) {
+    if (!sf || mode !== 'follow') return;
+    const t = performance.now() - t0;
+    const r = sf.judge(m, t);
+    if (r.grade) {
+      popGrade(r.grade);
+      kb.flash(m, r.grade === 'perfect' ? '#34d399' : '#22d3ee');
+      // 屏幕点击 → 浏览器发声试听；真琴按键本身已响，不重复发声
+      if (fromScreen) voice(m, 360, vel);
+    } else if (fromScreen) {
+      voice(m, 300, vel);
+    }
+    refreshStat();
+  }
+
+  // ---- 播放循环 ----
+  function frame() {
+    const t = performance.now() - t0;
+    if (mode === 'demo') {
+      for (const n of sf.notes) {
+        if (!demoPlayed.has(n.i) && t >= n.ms) {
+          demoPlayed.add(n.i);
+          voice(n.midi, n.durMs, n.velocity);
+          kb.flash(n.midi, n.hand === 'l' ? '#a78bfa' : '#22d3ee');
+        }
+      }
+    } else if (mode === 'follow') {
+      sf.expire(t).forEach(() => popGrade('miss'));
+    }
+    drawHighway(t); drawStaff(t); refreshStat();
+    if (t > sf.durationMs + sf.goodMs + 700) { stop(true); return; }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function setRunUI(which) {
+    $('#ps-demo').disabled = which && which !== 'demo';
+    $('#ps-follow').disabled = which && which !== 'follow';
+    $('#ps-stop').disabled = !which;
+    $('#ps-demo').classList.toggle('running', which === 'demo');
+    $('#ps-follow').classList.toggle('running', which === 'follow');
+  }
+
+  function start(which) {
+    if (mode) { stop(); return; }
+    if (!sf) return;
+    loadSong(song);   // 重置判定状态
+    mode = which;
+    demoPlayed = new Set();
+    t0 = performance.now() + LEAD_MS;
+    if (which === 'follow') { playStageOnNote = (m, v) => judge(m, v, false); }
+    else { playStageOnNote = null; }
+    setRunUI(which);
+    raf = requestAnimationFrame(frame);
+  }
+
+  function stop(finished) {
+    if (raf) cancelAnimationFrame(raf);
+    raf = null;
+    allRealOff();
+    const wasFollow = mode === 'follow';
+    mode = null; playStageOnNote = null;
+    setRunUI(null);
+    kb.clear();
+    if (wasFollow && sf && sf.judgedCount > 0) {
+      const s = sf.summary();
+      const star = '★'.repeat(s.stars) + '☆'.repeat(3 - s.stars);
+      $('#ps-stat').textContent = `🎉 ${star}　正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}`;
+      try { recordPractice('playstage', '演奏台', s.total, s.perfect + s.good, s.maxCombo); } catch (_) {}
+    } else {
+      drawHighway(-LEAD_MS); drawStaff(-LEAD_MS); refreshStat();
+    }
+  }
+
+  // ---- 选曲弹窗 ----
+  function openModal() { $('#ps-modal').hidden = false; if (!builtinCatalog) loadBuiltin(); }
+  function closeModal() { $('#ps-modal').hidden = true; }
+  function setModalStatus(msg, cls) { const el = $('#ps-modal-status'); el.textContent = msg || ''; el.className = 'ps-modal-status' + (cls ? ' ' + cls : ''); }
+
+  // 内置曲库 = 🐣 启蒙小曲（SCF_SONGS，内存直载）+ 📚 CA99 自带曲库（midi/catalog.json，fetch 载入）
+  async function loadBuiltin() {
+    const starter = {
+      slug: '__starter', emoji: '🐣', label: '启蒙小曲', count: SCF_SONGS.length,
+      _songs: SCF_SONGS.map((s) => ({ title: s.title, _scfId: s.id, composer: '', cat: '启蒙' })),
+    };
+    let cats = [starter], songs = [...starter._songs.map((x) => ({ ...x, fn: '__starter' }))];
+    try {
+      const r = await fetch('midi/catalog.json', { cache: 'no-cache' });
+      if (r.ok) {
+        const cj = await r.json();
+        (cj.categories || []).forEach((c) => cats.push(c));
+        (cj.songs || []).forEach((s) => songs.push(s));
+      }
+    } catch (_) { /* 无 CA99 曲库也能用启蒙小曲 */ }
+    builtinCatalog = { categories: cats, songs };
+    renderLib(builtinCatalog, '📚 ');
+  }
+
+  async function loadUser() {
+    setModalStatus('⏳ 正在扫描「data/」下你整理的 MIDI…');
+    const base = 'data';
+    try {
+      // 先 manifest，再目录索引
+      let cat = null;
+      try {
+        const r = await fetch(base + '/userlib.json', { cache: 'no-cache' });
+        if (r.ok) { const c = catalogFromManifest(await r.json()); if (c && c.total) cat = c; }
+      } catch (_) {}
+      if (!cat) {
+        const rootHtml = await (await fetch(base + '/', { cache: 'no-cache' })).text();
+        const { dirs, files } = parseDirListing(rootHtml);
+        const scanDirs = [];
+        for (const d of dirs) {
+          try {
+            const sub = await (await fetch(`${base}/${encodeURIComponent(d)}/`, { cache: 'no-cache' })).text();
+            const f = parseDirListing(sub).files;
+            if (f.length) scanDirs.push({ name: d, files: f });
+          } catch (_) {}
+        }
+        cat = buildUserCatalog({ base, rootFiles: files, dirs: scanDirs });
+      }
+      if (!cat || !cat.total) { setModalStatus('📭「data/」下还没找到 .mid。把曲子按 data/<分类>/歌曲.mid 放好后重开弹窗。'); userCatalog = null; renderLib({ categories: [], songs: [] }); return; }
+      userCatalog = cat;
+      renderLib(cat, '🎵 ');
+      setModalStatus(`共 ${cat.total} 首你自己的曲目。`);
+    } catch (err) {
+      setModalStatus('⚠️ 无法扫描 data/：' + (err && err.message ? err.message : err) + '（从 app/ 目录启动服务后重试）', 'err');
+      userCatalog = null; renderLib({ categories: [], songs: [] });
+    }
+  }
+
+  // 渲染分类 chips + 列表（内置 / 我的 共用）
+  let libState = { catalog: null, prefix: '', curFn: null, query: '' };
+  function renderLib(catalog, prefix) {
+    libState = { catalog, prefix, curFn: (catalog.categories[0] || {}).slug || null, query: '' };
+    $('#ps-search').value = '';
+    drawCats(); drawList();
+  }
+  function matches(s, q) {
+    return s.title.toLowerCase().includes(q) || (s.composer || '').toLowerCase().includes(q) || (s.cat || '').toLowerCase().includes(q);
+  }
+  function drawCats() {
+    const { catalog, curFn, query } = libState;
+    $('#ps-cats').innerHTML = (catalog.categories || []).map((c) =>
+      `<button class="scf-lib-cat${(c.slug === curFn && !query.trim()) ? ' on' : ''}" data-fn="${c.slug}">${c.emoji || '🎵'} ${escH(c.label)} <em>${c.count}</em></button>`).join('');
+    $('#ps-cats').querySelectorAll('.scf-lib-cat').forEach((b) => {
+      b.onclick = () => { libState.curFn = b.dataset.fn; libState.query = ''; $('#ps-search').value = ''; drawCats(); drawList(); };
+    });
+  }
+  function drawList() {
+    const { catalog, curFn, query } = libState;
+    const songs = catalog.songs || [];
+    const q = query.trim().toLowerCase();
+    const vis = q ? songs.filter((s) => matches(s, q)).slice(0, 400) : songs.filter((s) => s.fn === curFn);
+    let html = '', lastCat = null;
+    vis.forEach((s) => {
+      if (s.cat !== lastCat) { lastCat = s.cat; if (s.cat) html += `<div class="scf-lib-sub">${escH(s.cat)}</div>`; }
+      html += `<button class="scf-lib-item ps-lib-item" data-sid="${escH(s._scfId || '')}" data-path="${escH(s.path || '')}" data-title="${escH(s.title)}">`
+        + `<span class="scf-lib-t">${escH(s.title)}</span>`
+        + (s.composer ? `<span class="scf-lib-c">${escH(s.composer)}</span>` : '') + `</button>`;
+    });
+    $('#ps-songlist').innerHTML = html || '<div class="scf-lib-empty">没有匹配的曲子</div>';
+    $('#ps-songlist').querySelectorAll('.ps-lib-item').forEach((b) => {
+      b.onclick = () => {
+        if (b.dataset.sid) { const s = SCF_SONGS.find((x) => x.id === b.dataset.sid); if (s) { loadSong(s); closeModal(); } }
+        else if (b.dataset.path) loadPath(b.dataset.path, b.dataset.title);
+      };
+    });
+  }
+  async function loadPath(path, title) {
+    setModalStatus('⏳ 载入「' + title + '」…');
+    try {
+      const url = String(path).split('/').map(encodeURIComponent).join('/');
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const parsed = parseMidi(await r.arrayBuffer());
+      if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
+      loadSong(scfFromMidi(parsed, { id: 'ps-' + Date.now(), title }));
+      closeModal();
+    } catch (err) {
+      setModalStatus('❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）', 'err');
+    }
+  }
+
+  // ---- 事件绑定 ----
+  $('#ps-load').onclick = openModal;
+  $('#ps-modal-x').onclick = closeModal;
+  $('#ps-modal').onclick = (e) => { if (e.target === $('#ps-modal')) closeModal(); };
+  $('#ps-demo').onclick = () => start('demo');
+  $('#ps-follow').onclick = () => start('follow');
+  $('#ps-stop').onclick = () => stop();
+  $('#ps-real').onchange = (e) => { realPiano = e.target.checked; if (!realPiano) allRealOff(); };
+  $('#ps-labels').onchange = (e) => { labelsOn = e.target.checked; };
+  $('#ps-search').oninput = (e) => { libState.query = e.target.value; drawCats(); drawList(); };
+  $('#ps-file').onchange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const parsed = parseMidi(await file.arrayBuffer());
+      if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
+      loadSong(scfFromMidi(parsed, { id: 'ps-up-' + Date.now(), title: '📄 ' + file.name.replace(/\.(midi?|MIDI?)$/i, '') }));
+      closeModal();
+    } catch (err) { setModalStatus('❌ MIDI 解析失败：' + (err && err.message ? err.message : err), 'err'); }
+    e.target.value = '';
+  };
+  root.querySelectorAll('.ps-tab').forEach((tab) => {
+    tab.onclick = () => {
+      root.querySelectorAll('.ps-tab').forEach((t) => t.classList.toggle('on', t === tab));
+      const which = tab.dataset.tab;
+      $('#ps-pane-lib').hidden = which === 'upload';
+      $('#ps-pane-upload').hidden = which !== 'upload';
+      setModalStatus('');
+      if (which === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog, '📚 '); else loadBuiltin(); }
+      else if (which === 'user') { if (userCatalog) renderLib(userCatalog, '🎵 '); else loadUser(); }
+    };
+  });
+
+  // 真琴松键 → 屏幕键抬起（跟弹/试听时同步；通用 echo 也会处理，这里兜底）
+  playStageOnNoteOff = (m) => { try { kb.release(m); } catch (_) {} };
+
+  loadSong(song);   // 初始即载入第一首启蒙小曲
+}
+
 // ---------- 模块48：乐句视奏（phrase sight-reading）----------
 function renderSightPhrase() {
   const root = $('#module-sphrase');
@@ -11715,7 +12145,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章
