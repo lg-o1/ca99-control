@@ -12213,7 +12213,13 @@ function renderStaffView() {
     pause(); t = 0; prevT = 0; kb.clear();
     svg.querySelectorAll('.sv-note.on').forEach(el => el.classList.remove('on'));
     drawCursor(0);
-    if (finished) $('#sv-play').innerHTML = '▶ 重播';
+    if (finished) {
+      $('#sv-play').innerHTML = '▶ 重播';
+      const host = $('#sv-wrap');
+      cheerBurst(host, 70);
+      const title = ($('#sv-title').textContent || '').trim();
+      cheerToast(title ? `🎵 ${title} 播完啦！` : '🎵 播完啦！', host);
+    }
   }
   function rebuild() { t = 0; prevT = 0; build(); }
 
