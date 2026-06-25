@@ -29,6 +29,7 @@ import { analyzeChord, COLOR_KEYS as CCOLOR_KEYS, tonicTriadPcs as ccolorTonicTr
 import { heatColor as lsHeatColor, pickColor as lsPickColor, sparkSpec as lsSparkSpec, beamHeight as lsBeamHeight, stageFrac as lsStageFrac, isMilestone as lsIsMilestone, THEMES as LS_THEMES, ComboCounter as LsCombo } from './light-show.js';
 import { ECHO_LEVELS as ME_LEVELS, levelById as meLevelById, MelodyEcho } from './melody-echo.js';
 import { CR_LEVELS, levelById as crLevelById, CallResponse } from './call-response.js';
+import { RHYTHM_LEVELS as RE_LEVELS, levelById as reLevelById, durName as reDurName, RhythmEcho } from './rhythm-echo.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -120,6 +121,7 @@ let lightShowOnNote = null;  // 自由演奏灯光秀的 note-on 回调（模块
 let lightShowOffNote = null; // 自由演奏灯光秀的 note-off 回调（模块59注册）
 let melEchoOnNote = null;    // 旋律回声记忆游戏的 note-on 回调（模块60注册）
 let callRespOnNote = null;   // 即兴问答的 note-on 回调（模块61注册）
+let rhythmEchoTap = null;    // 节奏回声的击打回调（模块62注册，任意 note-on 当一次敲击）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -306,6 +308,8 @@ function onMidiIn(bytes) {
     if (melEchoOnNote) melEchoOnNote(m.note);
     // 驱动即兴问答（Call & Response）
     if (callRespOnNote) callRespOnNote(m.note, m.velocity);
+    // 驱动节奏回声（任意音当一次敲击）
+    if (rhythmEchoTap) rhythmEchoTap();
   }
   else if (m.type === 'noteoff') {
     addMonitorLine(`音符 OFF ${CA99.noteName(m.note)}`);
@@ -10463,6 +10467,250 @@ function renderCallResponse() {
   callRespOnNote = (midi) => feed(midi);
 }
 
+function renderRhythmEcho() {
+  const root = $('#module-rhyecho');
+  let levelId = RE_LEVELS[0].id;   // 当前难度
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🥁 节奏回声</h2>
+    <p style="color:var(--muted);margin-bottom:14px">节奏记忆游戏（节奏版的 <b>Simon</b>）：app 用<b>亮灯 + 打点</b>播放一段节奏型（长长短短…），你在<b>琴键 / 空格 / 敲击区</b>把它<b>拍回来</b>。拍对了，节奏型就<b>加长一个音</b>，越来越长 🎶。判定<b>与速度无关</b>——不要求你卡死在某个 BPM，只看你拍出来的<b>长短比例</b>对不对。这是「旋律回声」的<b>节奏姊妹篇</b>：那个练音高记忆，这个练<b>时值记忆 + 内在拍感</b>，零基础也能玩。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>难度 / 时值</label>
+        <div id="rhe-levels" class="ear-chips">${RE_LEVELS.map(l => `<button class="ear-chip${l.id === levelId ? ' on' : ''}" data-l="${l.id}">${l.name}</button>`).join('')}</div>
+      </div>
+      <div class="param-row" style="gap:18px;flex-wrap:wrap">
+        <label>示范速度
+          <input id="rhe-tempo" type="range" min="50" max="140" value="84" class="trans-slider" style="max-width:180px;vertical-align:middle">
+          <span id="rhe-tempo-val" style="color:#667eea;font-weight:700">84/分</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="rhe-banner" class="me-banner">点 <b>▶ 开始</b>，听一段节奏再<b>拍回来</b> 🥁</div>
+      <div class="cresp-phrase"><span class="cresp-phrase-lbl">🥁 节奏型</span><div id="rhe-seq" class="me-track"></div></div>
+      <div class="cresp-phrase"><span class="cresp-phrase-lbl">👏 你拍的</span><div id="rhe-taps" class="me-track"></div></div>
+      <div id="rhe-score" class="cresp-score" style="display:none"></div>
+      <button id="rhe-pad" class="rhe-pad" disabled>👏 敲这里（或按空格 / 任意琴键）</button>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="rhe-stars" class="sight-stat-num">—</div><div class="sight-stat-lbl">本次评星</div></div>
+      <div class="sight-stat"><div id="rhe-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最长节奏</div></div>
+      <div class="sight-stat"><div id="rhe-rounds" class="sight-stat-num">0</div><div class="sight-stat-lbl">连过轮数</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="rhe-start" class="big-btn">▶ 开始</button>
+      <button id="rhe-replay" class="big-btn" style="background:#667eea" disabled>🔊 再听一遍</button>
+      <button id="rhe-restart" class="big-btn" style="background:#f59e0b" disabled>↺ 重新挑战</button>
+    </div>`;
+
+  let game = null, ac = null, playTimers = [];
+  let taps = [];        // 本轮敲击时间戳（performance.now()）
+  let capturing = false;
+  const bannerEl = $('#rhe-banner');
+  const seqEl = $('#rhe-seq'), tapsEl = $('#rhe-taps'), scoreEl = $('#rhe-score');
+  const starsEl = $('#rhe-stars'), bestEl = $('#rhe-best'), roundsEl = $('#rhe-rounds');
+  const padEl = $('#rhe-pad');
+  const startBtn = $('#rhe-start'), replayBtn = $('#rhe-replay'), restartBtn = $('#rhe-restart');
+
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  // 节奏打点用一个短促的木鱼/click 音（噪声脉冲 + 高频三角）
+  function tick(when, accent = false) {
+    try {
+      const c = ctx();
+      const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = accent ? 1320 : 880;
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(accent ? 0.4 : 0.28, when + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + 0.12);
+      o.start(when); o.stop(when + 0.14);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function beatMs() { return 60000 / (+$('#rhe-tempo').value); }
+  function clearTimers() { playTimers.forEach(clearTimeout); playTimers = []; }
+  function band(cls, html) { bannerEl.className = 'me-banner' + (cls ? ' ' + cls : ''); bannerEl.innerHTML = html; }
+  function curLevel() { return reLevelById(levelId); }
+
+  // 把节奏型画成一排"长短块"（块宽 ∝ 时值），可选高亮当前敲到第几个
+  function paintSeq(el, seq, opt = {}) {
+    if (!seq || !seq.length) { el.innerHTML = opt.placeholder || ''; return; }
+    el.innerHTML = seq.map((d, i) => {
+      const w = Math.round(20 + d * 26);   // 时值越长，块越宽
+      let cls = 'rhe-block';
+      if (opt.litUpTo != null && i < opt.litUpTo) cls += ' done';
+      if (opt.err != null && i === opt.err) cls += ' err';
+      return `<div class="${cls}" data-i="${i}" style="width:${w}px">${reDurName(d)}</div>`;
+    }).join('');
+  }
+
+  // 把玩家敲的次数画成等宽点（实时反馈"已敲 k 个"）
+  function paintTaps(el, k, total) {
+    let html = '';
+    for (let i = 0; i < total; i++) html += `<div class="rhe-tap${i < k ? ' hit' : ''}"></div>`;
+    el.innerHTML = html;
+  }
+
+  function updateStats() {
+    bestEl.textContent = game ? game.best : 0;
+    roundsEl.textContent = game ? game.rounds : 0;
+  }
+
+  // 播放当前节奏型（亮块 + 打点），结束后轮到玩家
+  function playSeq() {
+    if (!game || !game.seq.length) return;
+    clearTimers();
+    capturing = false;
+    padEl.disabled = true;
+    replayBtn.disabled = true; restartBtn.disabled = true;
+    scoreEl.style.display = 'none';
+    starsEl.textContent = '—';
+    band('show', `👂 听这段节奏（<b>${game.seq.length}</b> 个音）…`);
+    paintSeq(seqEl, game.seq, { masked: true });
+    paintTaps(tapsEl, 0, game.seq.length);
+    const bm = beatMs(); const c = ctx(); const start = c.currentTime + 0.25;
+    let acc = 0;  // 累计拍数（用于排起拍点）
+    game.seq.forEach((d, i) => {
+      const whenMs = 250 + acc * bm;
+      tick(start + acc * (bm / 1000), i === 0);
+      playTimers.push(setTimeout(() => {
+        const blk = seqEl.querySelector(`.rhe-block[data-i="${i}"]`);
+        if (blk) { blk.classList.add('beat'); setTimeout(() => blk.classList.remove('beat'), Math.min(260, d * bm)); }
+      }, whenMs));
+      acc += d;
+    });
+    // 播放总时长 = 累计拍 * beatMs（最后一个音的时值也算延音）
+    const totalMs = 250 + acc * bm + 160;
+    playTimers.push(setTimeout(() => {
+      if (!game) return;
+      game.ready();
+      taps = [];
+      capturing = true;
+      padEl.disabled = false;
+      replayBtn.disabled = false; restartBtn.disabled = false;
+      band('input', `👏 轮到你！把这段节奏<b>拍 ${game.seq.length} 下</b>拍回来（速度随你，长短对就行）`);
+    }, totalMs));
+  }
+
+  // 一次敲击
+  function onTap() {
+    if (!capturing || !game || game.state !== 'input') return;
+    taps.push(performance.now());
+    padEl.classList.remove('rhe-pad-hit'); void padEl.offsetWidth; padEl.classList.add('rhe-pad-hit');
+    paintTaps(tapsEl, taps.length, game.seq.length);
+    tick(ctx().currentTime, false);
+    if (taps.length >= game.seq.length) {
+      capturing = false;
+      padEl.disabled = true;
+      // 稍等一拍让最后一下"落定"，再评分
+      playTimers.push(setTimeout(submitTaps, 80));
+    }
+  }
+
+  function submitTaps() {
+    if (!game) return;
+    const g = game.submit(taps);
+    if (!g) return;
+    updateStats();
+    const acc = Math.round(g.accuracy * 100);
+    let stars = 0;
+    if (g.allOk) stars = g.accuracy >= 0.85 ? 3 : 2;
+    else if (g.countOk && g.accuracy >= 0.6) stars = 1;
+    starsEl.textContent = stars ? '⭐'.repeat(stars) : '—';
+    const starStr = stars ? '⭐'.repeat(stars) + '☆'.repeat(3 - stars) : '☆☆☆';
+    scoreEl.style.display = '';
+    let detail;
+    if (!g.countOk) {
+      detail = `<span class="cresp-bar no">✗ 拍了 ${g.actualTaps} 下，应是 ${g.expectedTaps} 下</span>`;
+    } else {
+      detail = `<span class="cresp-bar ${g.allOk ? 'ok' : 'no'}">${g.allOk ? '✓ 长短全对' : '✗ 第 ' + (g.firstError + 1) + ' 段长短不对'}</span>
+                <span class="cresp-bar ${acc >= 80 ? 'ok' : 'mid'}">节奏准度 ${acc}%</span>`;
+    }
+    scoreEl.innerHTML = `
+      <div class="cresp-score-stars">${starStr}</div>
+      <div class="cresp-score-num">${g.allOk ? '过关！' : '再来一次'}</div>
+      <div class="cresp-score-bars">${detail}</div>
+      <div class="cresp-score-fb">${rheFeedback(g, stars)}</div>`;
+    paintSeq(seqEl, game.seq, g.allOk ? {} : { err: g.firstError });
+    recordPractice('rhyecho', '🥁 节奏回声', game.rounds + (g.allOk ? 0 : 1), game.rounds, game.best);
+    replayBtn.disabled = true;
+    if (g.allOk) {
+      band('win', `🌟 拍对了！节奏长到 <b>${game.seq.length + 1}</b> 个音，继续…`);
+      restartBtn.disabled = true;
+      startBtn.disabled = true;
+      playTimers.push(setTimeout(() => {
+        if (!game) return;
+        game.grow();
+        startBtn.disabled = false;
+        playSeq();
+      }, 1100));
+    } else {
+      band('show', `🌱 差一点！最长记录 <b>${game.best}</b> 个音。点「↺ 重新挑战」再来`);
+      restartBtn.disabled = false;
+      startBtn.textContent = '▶ 开始';
+      startBtn.disabled = false;
+    }
+  }
+
+  function rheFeedback(g, stars) {
+    if (!g.countOk) return '💡 数一数节奏里有几个音，<b>拍同样的次数</b>哦';
+    if (stars === 3) return '🌟 节奏感超棒！长短比例拿捏得很稳';
+    if (g.allOk) return '👍 长短都对！再稳一点就满星了';
+    return `💡 注意第 <b>${g.firstError + 1}</b> 段——${g.perGap[g.firstError] && g.perGap[g.firstError].actMs > g.scale * g.perGap[g.firstError].expBeat ? '拍得太慢（太长）' : '拍得太快（太短）'}了`;
+  }
+
+  function startGame() {
+    const lv = curLevel();
+    if (!game) game = new RhythmEcho({ pool: lv.pool, startLen: lv.startLen, tol: lv.tol });
+    game.pool = lv.pool; game.startLen = lv.startLen; game.tol = lv.tol;
+    game.start();
+    if (typeof window !== 'undefined') window.__rheGame = game;  // 调试钩子
+    updateStats();
+    startBtn.textContent = '▶ 重新开始';
+    playSeq();
+  }
+
+  $('#rhe-levels').querySelectorAll('button').forEach(b => b.onclick = () => {
+    levelId = b.dataset.l;
+    $('#rhe-levels').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    // 切换难度后下一局生效
+  });
+  $('#rhe-tempo').oninput = (e) => { $('#rhe-tempo-val').textContent = e.target.value + '/分'; };
+
+  // 纯音频重播（不改状态、不清空已敲）
+  function replaySeqAudio() {
+    if (!game || !game.seq.length) return;
+    const bm = beatMs(); const c = ctx(); const start = c.currentTime + 0.12; let acc = 0;
+    game.seq.forEach((d, i) => {
+      tick(start + acc * (bm / 1000), i === 0);
+      const blk0 = seqEl.querySelector(`.rhe-block[data-i="${i}"]`);
+      setTimeout(() => { if (blk0) { blk0.classList.add('beat'); setTimeout(() => blk0.classList.remove('beat'), 200); } }, 120 + acc * bm);
+      acc += d;
+    });
+  }
+
+  startBtn.onclick = startGame;
+  replayBtn.onclick = replaySeqAudio;
+  restartBtn.onclick = () => { if (!game) return; game.restart(); updateStats(); playSeq(); };
+  padEl.onclick = onTap;
+
+  // 空格键当一次敲击（只在本模块可见时）
+  document.addEventListener('keydown', (e) => {
+    if (e.code !== 'Space') return;
+    const sec = $('#module-rhyecho');
+    if (!sec || !sec.classList.contains('active')) return;
+    e.preventDefault();
+    onTap();
+  });
+
+  // 真实 MIDI 驱动：任意 note-on 当一次敲击
+  rhythmEchoTap = () => onTap();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -10890,7 +11138,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderMidiPlayer(); renderStaffView(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderMidiPlayer(); renderStaffView(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   // 为每个导航分组标题注入模块数量徽章

@@ -1400,3 +1400,29 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .cresp-bar.mid { background: rgba(251,191,36,.20); color: #fbbf24; }
 .cresp-bar.no  { background: rgba(244,63,94,.18);  color: #fb7185; }
 .cresp-score-fb { font-size: 13px; color: var(--text); opacity: .92; }
+
+/* 🥁 节奏回声 (Rhythm Echo) */
+.rhe-block {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 38px; border-radius: 8px; font-size: 16px; color: #e2e8f0;
+  background: linear-gradient(135deg,#334155,#475569); border: 1px solid rgba(255,255,255,.12);
+  transition: transform .12s ease, box-shadow .12s ease, background .15s ease;
+}
+.rhe-block.beat { transform: translateY(-6px) scale(1.08); box-shadow: 0 6px 16px rgba(34,211,238,.5);
+  background: linear-gradient(135deg,#0891b2,#22d3ee); color: #06222b; }
+.rhe-block.done { background: linear-gradient(135deg,#15803d,#22c55e); color: #fff; border-color: transparent; }
+.rhe-block.err  { background: linear-gradient(135deg,#9f1239,#fb7185); color: #fff; border-color: transparent; }
+.rhe-tap {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+  transition: background .1s ease, transform .1s ease;
+}
+.rhe-tap.hit { background: linear-gradient(135deg,#f59e0b,#fbbf24); border-color: transparent; transform: scale(1.15); }
+.rhe-pad {
+  width: 100%; margin-top: 12px; padding: 22px; border: none; border-radius: 14px;
+  font-size: 18px; font-weight: 800; color: #fff; cursor: pointer;
+  background: linear-gradient(135deg,#7c3aed,#a855f7); box-shadow: 0 6px 18px rgba(124,58,237,.35);
+  transition: transform .08s ease, box-shadow .08s ease, opacity .15s ease;
+}
+.rhe-pad:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+.rhe-pad-hit { transform: scale(.97); box-shadow: 0 2px 8px rgba(124,58,237,.5); }
