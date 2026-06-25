@@ -34,6 +34,7 @@ reference/                  ← 所有调研与逆向成果（参考资料）
     其他 JSON 数据表
   midi/                     ← 1543 个内置 SMF MIDI（解密自 Kawai-default.xxx）
                               示范曲/Concert Magic/Lesson/音阶和弦琶音练习
+                              → 由 scripts/build_midi_catalog.py 分类复制进 app/midi/ 供曲库浏览器用
   research/                 ← browserctl 社区调研汇总
     app-arch-summary.md     ← 架构选型（PWA+WebMIDI 最优）
     midi-light-summary.md   ← MIDI/音频→灯光项目
@@ -42,11 +43,14 @@ reference/                  ← 所有调研与逆向成果（参考资料）
     piano-creative-summary.md ← 创意玩法清单
 app/                        ← PWA + Web MIDI 应用（64 个模块已实现）
   js/bridge-protocol.js     ← WebSocket 桥接协议契约 + BridgeClient 状态机
+  midi/                     ← 📚 生成产物：1543 首 CA99 自带曲库（按 function 分 7 类）
+                              catalog.json + <类别>/*.mid，曲谱跟弹模块的"CA99 曲库"浏览器即读它
 bridge/                     ← Windows 蓝牙 MIDI 桥（WinRT → WebSocket）
   ca99_midi_bridge.py       ← Python winsdk 桥接服务（pip install winsdk）
   README.md                 ← 桥详细说明 + 协议 + 已知坑
 scripts/                    ← 辅助脚本
   validate_ca99_usb.py      ← USB 真机协议验证（mido + python-rtmidi）
+  build_midi_catalog.py     ← 用 reference/.../music.json 把 1543 首内置曲分类生成 app/midi/ 曲库
 docs/
   PLAYBOOK.md               ← 玩法规划（10个不带灯 + 结合灯）
 ```

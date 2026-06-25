@@ -517,6 +517,53 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   box-shadow: 0 2px 8px rgba(102,126,234,.35); transition: transform .12s, box-shadow .12s;
 }
 .scf-upload-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(102,126,234,.5); }
+/* 📚 CA99 自带曲库浏览器 */
+.scf-lib { display: flex; flex-direction: column; gap: 10px; max-width: 720px; width: 100%; }
+.scf-lib-cats { display: flex; flex-wrap: wrap; gap: 7px; }
+.scf-lib-cat {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
+  padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border); background: var(--card); color: var(--text);
+  transition: transform .1s, box-shadow .1s, background .1s;
+}
+.scf-lib-cat:hover { transform: translateY(-1px); }
+.scf-lib-cat em { font-style: normal; font-size: 11px; opacity: .7; }
+.scf-lib-cat.on {
+  color: #fff; border-color: transparent;
+  background: linear-gradient(135deg, #7c5cff, #5566d6);
+  box-shadow: 0 3px 12px rgba(102,126,234,.45);
+}
+.scf-lib-cat.on em { opacity: .85; }
+.scf-lib-search-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.scf-lib-search {
+  flex: 1; min-width: 220px; padding: 8px 12px; font-size: 14px;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+}
+.scf-lib-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.scf-lib-list {
+  max-height: 300px; overflow-y: auto; border: 1px solid var(--border);
+  border-radius: 12px; background: var(--card); padding: 6px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.scf-lib-sub {
+  position: sticky; top: -6px; z-index: 1;
+  font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+  color: var(--muted); background: var(--card);
+  padding: 7px 8px 3px; margin-top: 2px;
+}
+.scf-lib-item {
+  display: flex; align-items: baseline; gap: 10px; cursor: pointer; text-align: left;
+  padding: 7px 10px; border-radius: 8px; border: 1px solid transparent;
+  background: transparent; color: var(--text); font-size: 13.5px; width: 100%;
+  transition: background .1s, border-color .1s;
+}
+.scf-lib-item:hover { background: rgba(124,92,255,.12); border-color: rgba(124,92,255,.35); }
+.scf-lib-t { flex: 1; }
+.scf-lib-c { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.scf-lib-empty { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
+.scf-lib-status { font-size: 13px; color: var(--muted); line-height: 1.5; }
+.scf-lib-status.ok { color: #16a34a; }
+.scf-lib-status.err { color: #ef4444; }
 /* ⑤ 拍谱识别（OMR） */
 .scf-omr { display: flex; flex-direction: column; gap: 8px; max-width: 560px; }
 .scf-omr-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

@@ -7691,6 +7691,16 @@ function renderScoreFollow() {
           </label>
           <span style="color:var(--muted);font-size:13px">支持标准 MIDI 文件（多轨/和弦/双手/变速）</span>
         </div></div>
+      <div class="param-row" style="align-items:flex-start"><label>📚 CA99 曲库</label>
+        <div class="scf-lib" id="scf-lib">
+          <div class="scf-lib-cats" id="scf-lib-cats"></div>
+          <div class="scf-lib-search-row">
+            <input type="text" id="scf-lib-search" class="scf-lib-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…" spellcheck="false" autocomplete="off">
+            <span class="scf-lib-count" id="scf-lib-count"></span>
+          </div>
+          <div class="scf-lib-list" id="scf-lib-list"></div>
+          <div class="scf-lib-status" id="scf-lib-status">正在载入 CA99 自带曲库…</div>
+        </div></div>
       <div class="param-row" style="align-items:flex-start"><label>📷 拍谱识别</label>
         <div class="scf-omr">
           <div class="scf-omr-line">
@@ -7837,6 +7847,7 @@ function renderScoreFollow() {
     });
   }
   drawSongChips();
+  setupCa99Library();   // 📚 异步载入 CA99 自带曲库浏览器
   bindChips('#scf-speed', 's', (v) => { speed = parseFloat(v); prepare(); });
   bindChips('#scf-easy', 'e', (v) => { easy = (v === '1'); });
   bindChips('#scf-hand', 'h', (v) => { hand = v; prepare(); });
@@ -8130,11 +8141,11 @@ function renderScoreFollow() {
   };
 
   // 从 MIDI 字节流载入一首跟弹曲目（上传 / OMR 识别共用）
-  function loadMidiBuffer(buf, rawTitle) {
+  function loadMidiBuffer(buf, rawTitle, prefix = '📄 ') {
     const parsed = parseMidi(buf);
     if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
-    const id = 'midi-' + Date.now();
-    const title = '📄 ' + rawTitle;
+    const id = 'midi-' + Date.now() + '-' + Math.floor(Math.random() * 1e4);
+    const title = prefix + rawTitle;
     const song = scfFromMidi(parsed, { id, title });
     customSongs.push(song);
     songId = id;
@@ -8144,6 +8155,89 @@ function renderScoreFollow() {
     const rc = countHand(parsed, 'r'), lc = countHand(parsed, 'l');
     const handTxt = parsed.hasHands ? `，右手 ${rc} / 左手 ${lc}` : '';
     return { title, notes: parsed.notes.length, handTxt, bpm: parsed.bpm };
+  }
+
+  // 📚 CA99 自带曲库：读取 app/midi/catalog.json（由 scripts/build_midi_catalog.py 生成），
+  // 按 function 分大类 + category 子类浏览/搜索，点击即 fetch 对应 .mid 复用 loadMidiBuffer 载入跟弹。
+  async function setupCa99Library() {
+    const root = $('#scf-lib');
+    const statusEl = $('#scf-lib-status');
+    if (!root || !statusEl) return;
+    const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    let catalog;
+    try {
+      const r = await fetch('midi/catalog.json', { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      catalog = await r.json();
+    } catch (err) {
+      statusEl.textContent = '⚠️ 曲库未载入（请从 app/ 目录启动服务，确保 midi/catalog.json 可访问）：' + (err && err.message ? err.message : err);
+      statusEl.className = 'scf-lib-status err';
+      return;
+    }
+    const songs = catalog.songs || [];
+    const cats = catalog.categories || [];
+    if (!songs.length || !cats.length) {
+      statusEl.textContent = '⚠️ 曲库为空';
+      statusEl.className = 'scf-lib-status err';
+      return;
+    }
+    let curFn = cats[0].slug;
+    let query = '';
+
+    const matches = (s, q) => s.title.toLowerCase().includes(q)
+      || (s.composer || '').toLowerCase().includes(q)
+      || (s.cat || '').toLowerCase().includes(q);
+    function visible() {
+      const q = query.trim().toLowerCase();
+      if (q) return songs.filter((s) => matches(s, q)).slice(0, 400);
+      return songs.filter((s) => s.fn === curFn);
+    }
+    function drawCats() {
+      $('#scf-lib-cats').innerHTML = cats.map((c) =>
+        `<button class="scf-lib-cat${(c.slug === curFn && !query.trim()) ? ' on' : ''}" data-fn="${c.slug}">${c.emoji} ${escH(c.label)} <em>${c.count}</em></button>`).join('');
+      root.querySelectorAll('#scf-lib-cats .scf-lib-cat').forEach((b) => {
+        b.onclick = () => { curFn = b.dataset.fn; query = ''; $('#scf-lib-search').value = ''; drawCats(); drawList(); };
+      });
+    }
+    function drawList() {
+      const vis = visible();
+      const q = query.trim().toLowerCase();
+      const total = q ? songs.filter((s) => matches(s, q)).length : songs.filter((s) => s.fn === curFn).length;
+      $('#scf-lib-count').textContent = `${vis.length} 首` + (vis.length < total ? ` / 共 ${total}（请用搜索缩小）` : '');
+      let html = '', lastCat = null;
+      vis.forEach((s) => {
+        if (s.cat !== lastCat) { lastCat = s.cat; if (s.cat) html += `<div class="scf-lib-sub">${escH(s.cat)}</div>`; }
+        html += `<button class="scf-lib-item" data-path="${encodeURI(s.path)}" data-title="${escH(s.title)}">`
+          + `<span class="scf-lib-t">${escH(s.title)}</span>`
+          + (s.composer ? `<span class="scf-lib-c">${escH(s.composer)}</span>` : '')
+          + `</button>`;
+      });
+      $('#scf-lib-list').innerHTML = html || '<div class="scf-lib-empty">没有匹配的曲子</div>';
+      root.querySelectorAll('#scf-lib-list .scf-lib-item').forEach((b) => {
+        b.onclick = () => loadLibrarySong(b.dataset.path, b.dataset.title);
+      });
+    }
+    async function loadLibrarySong(path, title) {
+      statusEl.textContent = '⏳ 载入「' + title + '」…';
+      statusEl.className = 'scf-lib-status';
+      try {
+        const r = await fetch(path, { cache: 'no-cache' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const buf = await r.arrayBuffer();
+        const info = loadMidiBuffer(buf, title, '📚 ');
+        statusEl.textContent = `✅ 已载入「${title}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。下面选一档训练开始。`;
+        statusEl.className = 'scf-lib-status ok';
+        const sec = $('#module-scf'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        statusEl.textContent = '❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）';
+        statusEl.className = 'scf-lib-status err';
+      }
+    }
+    $('#scf-lib-search').oninput = (e) => { query = e.target.value; drawCats(); drawList(); };
+    statusEl.textContent = `共 ${catalog.total} 首 CA99 自带曲目，选分类或搜索后点击即可载入练习。`;
+    statusEl.className = 'scf-lib-status';
+    drawCats();
+    drawList();
   }
 
   // ⑤ 拍谱识别（OMR）：把乐谱图片 POST 给本机 OMR 服务，返回 MIDI 后自动导入
