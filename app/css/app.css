@@ -394,7 +394,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   border-radius: 14px; background: linear-gradient(#0c1024, #161b34);
   border: 2px solid var(--line);
 }
-.scf-highway { position: absolute; left: 0; top: 0; height: 100%; }
+.scf-highway { position: absolute; left: 50%; transform: translateX(-50%); top: 0; height: 100%; }
 .scf-note {
   position: absolute; border-radius: 5px;
   background: linear-gradient(#7d8cf0, #5566d6);
@@ -632,7 +632,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   100% { opacity: 0; transform: translateX(-50%) scale(1) translateY(-18px); }
 }
 /* ✨ 击中特效层：火花 / 判定线发光 / 连击飘字 / 手指号 */
-.scf-fx { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 4; }
+.scf-fx { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); pointer-events: none; overflow: visible; z-index: 4; }
 .scf-spark {
   position: absolute; bottom: 4px; width: 7px; height: 7px; border-radius: 50%;
   margin-left: -3.5px; opacity: 1; pointer-events: none;

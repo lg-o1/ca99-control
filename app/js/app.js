@@ -7940,6 +7940,8 @@ function renderScoreFollow() {
       fxLayer.className = 'scf-fx';
       host.appendChild(fxLayer);
     }
+    // 火花层与音块层同宽且同样居中，保证 centerX 坐标一一对应（和下方键盘对齐）
+    if (layout) fxLayer.style.width = layout.width + 'px';
     return fxLayer;
   }
   // 力度→热力配色：轻=冷蓝，重=橙红（把 MIDI velocity 直接画成火花颜色）
