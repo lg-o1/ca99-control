@@ -8,7 +8,7 @@ REM --- auto-detect this machine's LAN IP (the adapter that has a default gatewa
 set LAN_IP=
 for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-NetIPConfiguration ^| Where-Object { $_.IPv4DefaultGateway -ne $null -and $_.NetAdapter.Status -eq 'Up' } ^| Select-Object -First 1 -ExpandProperty IPv4Address ^| Select-Object -ExpandProperty IPAddress" 2^>nul') do set LAN_IP=%%i
 if "%LAN_IP%"=="" set LAN_IP=127.0.0.1
-set APP_URL=http://%LAN_IP%:%APP_PORT%/?bridge=ws://%LAN_IP%:%BRIDGE_PORT%
+set APP_URL=http://%LAN_IP%:%APP_PORT%/
 
 set SCOOP_PY=%USERPROFILE%\scoop\apps\python\current\python.exe
 if exist "%SCOOP_PY%" (set PYTHON=%SCOOP_PY%) else (set PYTHON=python)

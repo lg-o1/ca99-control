@@ -8,14 +8,18 @@
  *                  支持 Web MIDI 看不到的 BLE-MIDI。见 bridge/ 与 bridge-protocol.js。
  *
  * 传输选择（new MidiCore() 无需传参，自动探测）：
- *   - URL ?bridge=ws://127.0.0.1:8765  → 用 websocket
- *   - localStorage 'ca99.bridgeUrl'    → 用 websocket
- *   - 否则 → webmidi
+ *   - 从局域网 IP 打开页面（非 localhost）→ 自动用 ws://<本页host>:8765 桥，
+ *     所以远程设备只需打开 http://<机器IP>:8099/，不必再手填 ?bridge=。
+ *   - URL ?bridge=1 / ?bridge=8765 / ?bridge=ws://host:port → 用 websocket
+ *   - URL ?bridge=0 → 强制 webmidi（关闭桥）
+ *   - localStorage 'ca99.bridgeUrl' → 用 websocket
+ *   - 本机 localhost 且无以上配置 → webmidi（USB 直连）
  *   也可显式 new MidiCore({ bridgeUrl }) 或 new MidiCore({ mode:'webmidi' }) 强制。
  */
 import { BridgeClient } from './bridge-protocol.js';
 
-export const DEFAULT_BRIDGE_URL = 'ws://127.0.0.1:8765';
+export const DEFAULT_BRIDGE_PORT = 8765;
+export const DEFAULT_BRIDGE_URL = 'ws://127.0.0.1:' + DEFAULT_BRIDGE_PORT;
 
 export class MidiCore {
   constructor(opts = {}) {
@@ -35,7 +39,7 @@ export class MidiCore {
       this.bridgeUrl = opts.bridgeUrl;
     } else if (opts.mode === 'websocket') {
       this.mode = 'websocket';
-      this.bridgeUrl = detected || DEFAULT_BRIDGE_URL;
+      this.bridgeUrl = detected || MidiCore.bridgeForHost();
     } else if (detected) {
       this.mode = 'websocket';
       this.bridgeUrl = detected;
@@ -51,19 +55,48 @@ export class MidiCore {
     this._connected = false;
   }
 
-  /** 探测是否配置了桥接地址（URL query 或 localStorage） */
+  /** 由当前页面主机推导桥地址：ws://<本页host>:8765。
+   *  Node/无 location 时回退到 127.0.0.1。 */
+  static bridgeForHost() {
+    try {
+      if (typeof location !== 'undefined' && location.hostname) {
+        return `ws://${location.hostname}:${DEFAULT_BRIDGE_PORT}`;
+      }
+    } catch (e) { /* ignore */ }
+    return DEFAULT_BRIDGE_URL;
+  }
+
+  /** 探测桥地址。优先级：?bridge= → localStorage → 非本机访问时自动推导 → null(用 Web MIDI)。
+   *  ?bridge 接受：1/true(=本页host:8765)、0/false(强制 Web MIDI)、纯端口、纯主机、完整 ws:// URL。 */
   static detectBridgeUrl() {
     try {
       if (typeof location !== 'undefined' && location.href) {
         const u = new URL(location.href);
-        const q = u.searchParams.get('bridge');
-        if (q) return (q === '1' || q === 'true') ? DEFAULT_BRIDGE_URL : q;
+        if (u.searchParams.has('bridge')) {
+          const q = (u.searchParams.get('bridge') || '').trim();
+          if (q === '0' || q === 'false' || q === 'off') return null;          // 强制 Web MIDI
+          if (q === '' || q === '1' || q === 'true') return MidiCore.bridgeForHost();
+          if (/^\d+$/.test(q)) return `ws://${location.hostname}:${q}`;          // 只给端口
+          if (/^wss?:\/\//i.test(q)) return q;                                   // 完整 URL
+          if (!q.includes(':')) return `ws://${q}:${DEFAULT_BRIDGE_PORT}`;        // 只给主机
+          return q.includes('://') ? q : `ws://${q}`;                            // host:port
+        }
       }
     } catch (e) { /* ignore */ }
     try {
       if (typeof localStorage !== 'undefined') {
         const ls = localStorage.getItem('ca99.bridgeUrl');
         if (ls) return ls;
+      }
+    } catch (e) { /* ignore */ }
+    // 未显式配置：若页面从非本机地址（局域网 IP）打开，远程浏览器无法直接 Web MIDI，
+    // 自动切到同主机的桥；本机 localhost 则保持 Web MIDI（USB 直连）。
+    try {
+      if (typeof location !== 'undefined' && location.hostname) {
+        const h = location.hostname;
+        if (h !== 'localhost' && h !== '127.0.0.1' && h !== '::1' && h !== '') {
+          return MidiCore.bridgeForHost();
+        }
       }
     } catch (e) { /* ignore */ }
     return null;
