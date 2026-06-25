@@ -147,6 +147,34 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   });
 }
 
+// ---------- 通用庆祝特效（撒花 + 鼓励飘字）：任意模块可复用 ----------
+const CHEER_WORDS = ['太棒了！', '完美！', '好厉害！', '继续保持！', '你真行！', '超级棒！', '弹得真好！', '漂亮！🎵'];
+function cheerBurst(host, n = 70) {
+  if (!host) return;
+  if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  const colors = ['#34d399', '#22d3ee', '#fbbf24', '#fb7185', '#a78bfa', '#f472b6', '#60a5fa'];
+  const layer = document.createElement('div');
+  layer.className = 'scf-confetti';
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('i');
+    const x = Math.random() * 100, dx = (Math.random() * 2 - 1) * 120;
+    const delay = Math.random() * 0.25, dur = 1.1 + Math.random() * 0.9;
+    const rot = Math.floor(Math.random() * 360);
+    p.style.cssText = `left:${x}%;background:${colors[i % colors.length]};--dx:${dx}px;--rot:${rot}deg;animation-delay:${delay}s;animation-duration:${dur}s`;
+    layer.appendChild(p);
+  }
+  host.appendChild(layer);
+  setTimeout(() => layer.remove(), 2600);
+}
+function cheerToast(text, host) {
+  const el = document.createElement('div');
+  el.className = 'cheer-toast';
+  el.textContent = text || CHEER_WORDS[Math.floor(Math.random() * CHEER_WORDS.length)];
+  if (host && getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  (host || document.body).appendChild(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
 // ---------- 工具 ----------
 const $ = (s) => document.querySelector(s);
 
@@ -389,6 +417,7 @@ function renderSounds() {
         <option value="0">Main1</option><option value="1">Main2</option>
         <option value="8">Layer</option><option value="9">Lower</option>
       </select></label>
+      <button id="sound-random" class="ghost-btn" title="随机选一个音色并试听">🎲 随机</button>
     </div>
     <div class="sound-grid" id="sound-grid"></div>
     <div class="kb-wrap">
@@ -426,6 +455,14 @@ function renderSounds() {
   };
   $('#sound-search').oninput = draw;
   $('#sound-cat').onchange = draw;
+  $('#sound-random').onclick = () => {
+    const cards = [...grid.querySelectorAll('.sound-card')];
+    if (!cards.length) { log('没有可随机的音色', 'warn'); return; }
+    const card = cards[Math.floor(Math.random() * cards.length)];
+    card.click();
+    card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    playTone(midiToFreq(60), 0, 0.7); // 试听一下新音色
+  };
   draw();
 }
 
@@ -1524,7 +1561,7 @@ function renderScale() {
     <div class="scale-keys" id="scale-keys"></div>
 
     <div class="kb-wrap">
-      <div class="kb-cap">🎹 整条音阶画在 88 键上 — <span class="kb-legend" style="color:#5b8cff"><i></i>音阶音</span> <span class="kb-legend" style="color:#fbbf24"><i></i>▶ 下一个该弹的键</span>（点键可试听）</div>
+      <div class="kb-cap">🎹 整条音阶画在 88 键上 — <span class="kb-legend" style="color:#7ea8ff"><i></i>音阶音</span> <span class="kb-legend" style="color:#fbbf24"><i></i>▶ 下一个该弹的键</span>（点键可试听）</div>
       <div id="scale-kb"></div>
     </div>
 
@@ -1539,7 +1576,7 @@ function renderScale() {
   });
   function paintKb(seq, idx) {
     const map = new Map();
-    seq.forEach((n) => { if (!map.has(n)) map.set(n, { midi: n, color: '#5b8cff' }); });
+    seq.forEach((n) => { if (!map.has(n)) map.set(n, { midi: n, color: '#7ea8ff' }); });
     if (idx >= 0 && idx < seq.length) map.set(seq[idx], { midi: seq[idx], color: '#fbbf24', text: '▶' });
     kb.highlightMany([...map.values()], { scroll: false });
     if (seq.length) kb.scrollToShow(Math.min(...seq), Math.max(...seq));
@@ -1594,6 +1631,9 @@ function renderScale() {
       $('#scale-start').classList.remove('running');
       const done = session;
       recordPractice('scale', '音阶练习', done.sequence.length + done.errors, done.sequence.length, 0);
+      const host = root.querySelector('.kb-wrap');
+      cheerBurst(host, done.errors === 0 ? 90 : 50);
+      cheerToast(done.errors === 0 ? '完美！一个都没错 🌟' : '完成啦，继续加油！', host);
       session = null; scaleOnNote = null;
       drawKeysFor(done.sequence, done.sequence.length);
       log(`音阶练习完成：错误 ${done.errors} 次`, 'ok');
@@ -5969,6 +6009,9 @@ function renderScaleFingering() {
     const fb = $('#fing-feedback');
     fb.textContent = `🎉 完成！${SF_FINGERINGS[scaleId].name}（${hand === 'rh' ? '右手' : '左手'}）正确率 ${sum.accuracy}%`;
     fb.className = 'sight-feedback ok';
+    const host = $('#module-fing').querySelector('.kb-wrap');
+    cheerBurst(host, sum.accuracy >= 100 ? 90 : 50);
+    cheerToast(sum.accuracy >= 100 ? '指法全对！👏' : `正确率 ${sum.accuracy}%，再接再厉！`, host);
     fingOnNote = null;
     $('#fing-start').textContent = '▶ 开始跟弹';
     $('#fing-start').classList.remove('running');
@@ -6605,7 +6648,13 @@ function renderNoteId() {
     const items = [{ midi: tgt, color: '#34d399', text: game.current.name }];
     if (!correct && m !== tgt) items.push({ midi: m, color: '#f87171', text: '✗' });
     niKb.highlightMany(items);
-    if (correct) { fb.textContent = `✅ 对了！这就是 ${game.current.name} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok'; }
+    if (correct) { fb.textContent = `✅ 对了！这就是 ${game.current.name} · 连击 ${game.streak}`; fb.className = 'sight-feedback ok';
+      if (game.streak > 0 && game.streak % 5 === 0) {
+        const host = $('#module-noteid').querySelector('.kb-wrap');
+        cheerBurst(host, 60);
+        cheerToast(`连击 ${game.streak}！🔥`, host);
+      }
+    }
     else { fb.textContent = `❌ 不对，${game.current.name} 在这里（绿色）`; fb.className = 'sight-feedback no'; }
     setTimeout(() => { if (game) nextQuestion(); }, 1600);
   }
@@ -11883,7 +11932,7 @@ function renderMidiPlayer() {
     const act = mpActiveAt(view, time);
     kb.clear();
     for (const n of act) {
-      kb.highlight(n.midi, { color: (n.hand === 'l') ? '#c084fc' : '#60a5fa' });
+      kb.highlight(n.midi, { color: (n.hand === 'l') ? '#d59bff' : '#60a5fa' });
     }
   }
 
@@ -12135,7 +12184,7 @@ function renderStaffView() {
       el.classList.toggle('on', g && act.has(g.midi + ':' + g.ms));
     });
     kb.clear();
-    for (const n of svActiveAt(view, time)) kb.highlight(n.midi, { color: (n.hand === 'l') ? '#c084fc' : '#60a5fa' });
+    for (const n of svActiveAt(view, time)) kb.highlight(n.midi, { color: (n.hand === 'l') ? '#d59bff' : '#60a5fa' });
   }
 
   function frame(now) {
