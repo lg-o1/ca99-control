@@ -114,6 +114,8 @@ let transOnNote = null;     // 移调视奏的 note-on 回调（模块40注册�
 let fingOnNote = null;      // 音阶指法提示的 note-on 回调（模块43注册）
 let ivbOnNote = null;       // 音程构建的 note-on 回调（模块44注册）
 let scfOnNote = null;       // 曲谱跟弹的 note-on 回调（模块45注册，带时间在内部取）
+let scfKbEcho = null;       // 曲谱跟弹键盘回显：真实 MIDI note-on → 屏幕 88 键点亮（任何模式都生效）
+let scfKbEchoOff = null;    // 曲谱跟弹键盘回显：真实 MIDI note-off → 屏幕键抬起
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -294,6 +296,8 @@ function onMidiIn(bytes) {
     if (ivbOnNote) ivbOnNote(m.note);
     // 驱动曲谱跟弹
     if (scfOnNote) scfOnNote(m.note, m.velocity);
+    // 曲谱跟弹键盘回显：任何模式下，真实 CA99 按键都点亮屏幕 88 键（初学者"屏幕镜像真琴"）
+    if (scfKbEcho) scfKbEcho(m.note, m.velocity);
     // 驱动乐句视奏
     if (spOnNote) spOnNote(m.note);
     // 驱动和弦视奏（按下集合）
@@ -329,6 +333,8 @@ function onMidiIn(bytes) {
     if (fingerOffNote) fingerOffNote(m.note, performance.now());
     // 驱动自由演奏灯光秀（松键）
     if (lightShowOffNote) lightShowOffNote(m.note);
+    // 曲谱跟弹键盘回显：真实 CA99 松键 → 屏幕键抬起
+    if (scfKbEchoOff) scfKbEchoOff(m.note);
   }
   else if (m.type === 'cc') {
     addMonitorLine(`CC ${m.controller} = ${m.value}`);
@@ -7755,7 +7761,7 @@ function renderScoreFollow() {
     </div>
 
     <div class="kb-wrap">
-      <div class="kb-cap">🎹 落到判定线的音符对应这里高亮的键；点屏幕琴键也可作答（接 CA99 则直接弹真琴）</div>
+      <div class="kb-cap">🎹 接上 CA99 后，<b>任何时候</b>弹真琴，这里对应的键都会<b>实时点亮</b>（屏幕镜像真琴）；落到判定线的音符也会在这里高亮；点屏幕琴键同样可作答</div>
       <div id="scf-kb"></div>
     </div>
 
@@ -7788,6 +7794,11 @@ function renderScoreFollow() {
     labels: 'c',
     onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); if (scfOnNote) scfOnNote(m, 96); },
   });
+
+  // 键盘回显：真实 CA99 按键 → 屏幕 88 键实时点亮（任何模式都生效，初学者"屏幕镜像真琴"）。
+  // 计分模式下 judge 仍会另用绿/红闪反馈；这里只负责"按下/抬起"的视觉回显，互不冲突。
+  scfKbEcho = (midi) => { scfKb.press(midi); };
+  scfKbEchoOff = (midi) => { scfKb.release(midi); };
 
   function allSongs() { return [...SCF_SONGS, ...customSongs]; }
   function getCurrentSong() { return allSongs().find((s) => s.id === songId) || SCF_SONGS[0]; }
