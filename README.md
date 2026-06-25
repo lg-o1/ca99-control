@@ -51,6 +51,7 @@ bridge/                     ← Windows 蓝牙 MIDI 桥（WinRT → WebSocket）
 scripts/                    ← 辅助脚本
   validate_ca99_usb.py      ← USB 真机协议验证（mido + python-rtmidi）
   build_midi_catalog.py     ← 用 reference/.../music.json 把 1543 首内置曲分类生成 app/midi/ 曲库
+  build_user_catalog.py     ← 扫 app/<root>/ 子目录生成 userlib.json 清单（自定义曲库，兼容静态主机）
 docs/
   PLAYBOOK.md               ← 玩法规划（10个不带灯 + 结合灯）
 ```
