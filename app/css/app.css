@@ -54,6 +54,12 @@ body {
 #topbar button:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(233,69,96,.45); }
 #topbar button:active { transform: translateY(0); }
 #conn-status { margin-left: auto; }
+.topbar-toggle {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+  color: var(--text); cursor: pointer; user-select: none; white-space: nowrap;
+  padding: 5px 10px; border-radius: 8px; border: 1px solid var(--line); background: rgba(124,92,255,.08);
+}
+.topbar-toggle input { width: 15px; height: 15px; cursor: pointer; accent-color: #8b6cff; }
 
 /* ---- 布局 ---- */
 #layout { display: flex; flex: 1; overflow: hidden; }

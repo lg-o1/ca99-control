@@ -1760,8 +1760,47 @@ function renderSight() {
 
 // ========== 模块 17: 音程听辨 ==========
 function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+
+// 预听是否同时在 CA99 真琴上发声（默认开）。多数练习的「预听/示范」原本只走 Web Audio
+// 振荡器，从不发 MIDI out，所以钢琴连着也只有电脑出声。现在只要输出端口就绪，playTone 会
+// 把同一个音同步发到真琴（音色更真实），未连接才回退电脑发声。可用顶栏开关关闭。
+let previewOnPiano = true;
+let suppressMidiEcho = false;   // true 时 playTone 不发 MIDI（给"自己已管真琴发声"的模块用，避免重音）
+const _previewTimers = new Map();   // midi -> note-off 定时器，处理重叠同音
+
+// 输出端口是否就绪：webmidi 看 output；websocket 桥接看 client+connected
+function midiOutReady() {
+  try {
+    if (typeof midi === 'undefined' || !midi) return false;
+    if (midi.mode === 'websocket') return !!(midi._client && midi._connected);
+    return !!midi.output;
+  } catch (_) { return false; }
+}
+
+// 把一次 playTone 预听同步成真琴 MIDI：note-on 立即（+startOffset），note-off 在 dur 后。
+// 返回是否真的发往钢琴（true → playTone 跳过电脑振荡器，避免电脑音盖过真琴音色）。
+function emitPreviewMidi(freq, startOffset = 0, dur = 0.4, gainPeak = 0.22) {
+  if (!previewOnPiano || suppressMidiEcho || suppressTone) return false;
+  if (typeof kbMidiOn !== 'function' || !midiOutReady()) return false;
+  const midiNote = Math.round(69 + 12 * Math.log2(freq / 440));
+  if (!(midiNote >= 21 && midiNote <= 108)) return false;
+  const vel = Math.max(20, Math.min(120, Math.round(40 + gainPeak * 240)));
+  const onMs = Math.max(0, (startOffset || 0) * 1000);
+  const holdMs = Math.max(120, (dur || 0.4) * 1000);
+  const fire = () => {
+    const prev = _previewTimers.get(midiNote);
+    if (prev) { clearTimeout(prev); kbMidiOff(midiNote, 0); }
+    kbMidiOn(midiNote, 0, vel);
+    const tid = setTimeout(() => { kbMidiOff(midiNote, 0); _previewTimers.delete(midiNote); }, holdMs);
+    _previewTimers.set(midiNote, tid);
+  };
+  if (onMs < 8) fire(); else setTimeout(fire, onMs);
+  return true;
+}
+
 function playTone(freq, startOffset, dur, gainPeak = 0.22) {
   if (suppressTone) return;
+  if (emitPreviewMidi(freq, startOffset, dur, gainPeak)) return;   // 已在真琴上响 → 不再用电脑发声
   try {
     _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const ctx = _audioCtx;
@@ -5312,20 +5351,7 @@ function renderSightTranspose() {
   });
   stKb.scrollToShow(55, 79);
 
-  function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
-  function playTone(freq, when, dur) {
-    try {
-      _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = _audioCtx;
-      const o = ctx.createOscillator(); const g = ctx.createGain();
-      o.type = 'triangle'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, ctx.currentTime + when);
-      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + when + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + when + dur);
-      o.connect(g); g.connect(ctx.destination);
-      o.start(ctx.currentTime + when); o.stop(ctx.currentTime + when + dur + 0.02);
-    } catch (e) { /* 无音频时静默 */ }
-  }
+  // 复用全局 midiToFreq/playTone（已支持预听同步到 CA99 真琴），不再本地遮蔽
   function playSeq(seq) { const step = 0.36; seq.forEach((n, i) => playTone(midiToFreq(n), i * step, 0.32)); }
 
   function chips(container, seq, cls) {
@@ -7576,7 +7602,7 @@ function renderScoreFollow() {
   let loopOn = false;       // ③ 区间循环开关
   let velViz = true;        // ② 力度可视化（上传 MIDI 的 velocity → 音符块亮度）
   let fxOn = true;          // ✨ 击中特效（粒子迸发 / 判定线发光 / 连击闪光）
-  let realPiano = false;    // ④ 示范/提示在 CA99 真琴发声
+  let realPiano = true;    // ④ 示范/提示默认在 CA99 真琴发声（与其他模块预听一致；可点开关关闭）
   const realOn = new Set(); // ④ 已发 Note On 待关闭的音（防漏关）
   let loopFrom = 1, loopTo = 1;        // 循环起止小节（1-based，含）
   let loopStartBeat = 0, loopEndBeat = 0, loopStartMs = 0, loopEndMs = 0;
@@ -8087,8 +8113,14 @@ function renderScoreFollow() {
     const g = groups[waitIdx]; if (!g) return;
     hintUntil = performance.now() + 3000;
     g.notes.filter((n) => !n.judged).forEach((n) => {
-      scfKb.flash(n.midi, '#22d3ee'); playTone(midiToFreq(n.midi), 0, 0.5, 0.16);
-      realNoteOn(n.midi, n.velocity, 480);   // ④ 提示也在真琴上响
+      scfKb.flash(n.midi, '#22d3ee');
+      if (realPiano && midiOutReady()) {
+        realNoteOn(n.midi, n.velocity, 480);     // 真琴就绪 → 仅真琴发声
+      } else {
+        suppressMidiEcho = true;                  // 真琴开关关闭/未连接 → 仅电脑发声
+        playTone(midiToFreq(n.midi), 0, 0.5, 0.16);
+        suppressMidiEcho = false;
+      }
     });
   }
 
@@ -8606,9 +8638,14 @@ function renderScoreFollow() {
       for (const n of sf.notes) {
         if (!demoPlayed.has(n.i) && !(loopOn && n.judged && n.grade == null) && t >= n.ms) {
           demoPlayed.add(n.i);
-          playTone(midiToFreq(n.midi), 0, Math.min(0.9, n.durMs / 1000), 0.2);
           scfKb.flash(n.midi, n.hand === 'l' ? '#a78bfa' : '#22d3ee');
-          realNoteOn(n.midi, n.velocity, n.durMs);   // ④ 同步在 CA99 真琴发声
+          if (realPiano && midiOutReady()) {
+            realNoteOn(n.midi, n.velocity, n.durMs);   // 真琴就绪 → 仅真琴发声（音色更真）
+          } else {
+            suppressMidiEcho = true;                    // 真琴开关关闭/未连接 → 仅电脑发声
+            playTone(midiToFreq(n.midi), 0, Math.min(0.9, n.durMs / 1000), 0.2);
+            suppressMidiEcho = false;
+          }
         }
       }
     }
@@ -12164,6 +12201,20 @@ async function main() {
   const crumb = $('#active-crumb');
   if (crumb && activeBtn) crumb.textContent = activeBtn.textContent.trim();
   $('#connect-btn').onclick = connect;
+  // 🎹 全局「预听走真琴」开关（默认开，记忆到 localStorage）
+  (() => {
+    const KEY = 'ca99_preview_on_piano';
+    const el = $('#preview-piano-toggle');
+    if (el) {
+      try { const v = localStorage.getItem(KEY); if (v != null) previewOnPiano = v === '1'; } catch (_) {}
+      el.checked = previewOnPiano;
+      el.onchange = (e) => {
+        previewOnPiano = e.target.checked;
+        if (!previewOnPiano) { _previewTimers.forEach((tid, m) => { clearTimeout(tid); kbMidiOff(m, 0); }); _previewTimers.clear(); }
+        try { localStorage.setItem(KEY, previewOnPiano ? '1' : '0'); } catch (_) {}
+      };
+    }
+  })();
   $('#output-select').onchange = (e) => { if (e.target.value) midi.selectOutput(e.target.value); };
   $('#input-select').onchange = (e) => { if (e.target.value) midi.selectInput(e.target.value); };
   log('App 已加载。点"连接"开始（需 Chrome/Edge + 已连接 CA99）。');
