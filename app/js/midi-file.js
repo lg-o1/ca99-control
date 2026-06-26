@@ -59,6 +59,8 @@ export function parseMidi(input) {
   const tempos = []; // {tick, usPerBeat}
   let timeSig = null;
   const rawTracks = [];
+  const channelPrograms = {}; // channel -> 首个 GM program 号
+  const trackPrograms = [];   // 每轨首个 program 号（无则 null）
 
   for (let t = 0; t < ntracks; t++) {
     if (p + 8 > data.length) break;
@@ -71,6 +73,7 @@ export function parseMidi(input) {
     let tick = 0;
     let status = 0;
     let trackName = '';
+    let trackProgram = null;
     const open = new Map(); // channel*128+note -> {startTick, velocity}
     const notes = [];
 
@@ -106,8 +109,12 @@ export function parseMidi(input) {
         if (on) { notes.push({ midi: note, startTick: on.startTick, endTick: tick, velocity: on.velocity, channel }); open.delete(key); }
       } else if (type === 0xa0 || type === 0xb0 || type === 0xe0) {
         p += 2; // 双数据字节
-      } else if (type === 0xc0 || type === 0xd0) {
-        p += 1; // 单数据字节
+      } else if (type === 0xc0) { // program change（音色）
+        const prog = data[p]; p += 1;
+        if (channelPrograms[channel] == null) channelPrograms[channel] = prog;
+        if (trackProgram == null) trackProgram = prog;
+      } else if (type === 0xd0) {
+        p += 1; // channel pressure：单数据字节
       } else {
         p = end; break; // 未知，放弃该轨剩余
       }
@@ -118,6 +125,7 @@ export function parseMidi(input) {
     }
     p = end;
     rawTracks.push({ name: trackName, notes });
+    trackPrograms.push(trackProgram);
   }
 
   // ---- tempo map ----
@@ -202,6 +210,8 @@ export function parseMidi(input) {
     bpm,
     tempos: tempos.slice(),
     trackNames: rawTracks.map((t) => t.name),
+    channelPrograms,
+    trackPrograms,
     hasHands: noteTrackIdx.length >= 2 || splitPoint != null || (handForTrack && handForTrack.__byChannel),
     notes,
     durationMs,

@@ -69,6 +69,7 @@ import { ChordSight, KEYS as CS_KEYS, keyById as csKeyById, keySignatureAccident
 import { RhythmSight, rhythmGlyph as rsGlyph } from './rhythm-sight.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { parseDirListing, buildUserCatalog, catalogFromManifest } from './userlib.js';
+import { splitParts as bbSplitParts, suggestMyPart as bbSuggestMyPart, buildSchedule as bbBuildSchedule, familyInfo as bbFamilyInfo } from './backing-band.js';
 import { DEMO_SONGS, pitchRange as mplPitchRange, totalMs as mplTotalMs, layoutRoll as mplLayoutRoll, isBlackKey as mplIsBlackKey, playheadX as mplPlayheadX, triggered as mplTriggered, activeAt as mplActiveAt, rollStats as mplRollStats } from './midi-player.js';
 import { layoutStaff as svLayoutStaff, cursorX as svCursorX, activeAt as svActiveAt, triggered as svTriggered, totalMs as svTotalMs, staffStep as svStaffStep, noteName as svNoteName } from './staff-view.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
@@ -130,6 +131,8 @@ let scfKbEcho = null;       // 曲谱跟弹键盘回显：真实 MIDI note-on �
 let scfKbEchoOff = null;    // 曲谱跟弹键盘回显：真实 MIDI note-off → 屏幕键抬起
 let playStageOnNote = null; // 🎬 演奏台跟弹判分的 note-on 回调（演奏台模块注册）
 let playStageOnNoteOff = null; // 🎬 演奏台的 note-off 回调（真琴松键 → 屏幕键抬起）
+let bandOnNote = null;      // 🎸 乐队伴奏：真琴 note-on（跟着乐队弹 → 命中反馈）
+let bandOnNoteOff = null;   // 🎸 乐队伴奏：真琴 note-off（屏幕键抬起兜底）
 let bossOnNote = null;      // 🐉 Boss 战的 note-on 回调（Boss 战模块注册）
 let bossOnNoteOff = null;   // 🐉 Boss 战的 note-off 回调（真琴松键 → 屏幕键抬起）
 let speedRunOnNote = null;  // 🚀 极速挑战的 note-on 回调（极速挑战模块注册）
@@ -477,6 +480,8 @@ function onMidiIn(bytes) {
     if (scfOnNote) scfOnNote(m.note, m.velocity);
     // 驱动 🎬 演奏台跟弹判分
     if (playStageOnNote) playStageOnNote(m.note, m.velocity);
+    // 驱动 🎸 乐队伴奏跟弹（命中反馈，无压力）
+    if (bandOnNote) bandOnNote(m.note, m.velocity);
     // 曲谱跟弹键盘回显：任何模式下，真实 CA99 按键都点亮屏幕 88 键（初学者"屏幕镜像真琴"）
     if (scfKbEcho) scfKbEcho(m.note, m.velocity);
     // 驱动乐句视奏
@@ -528,6 +533,8 @@ function onMidiIn(bytes) {
     if (scfKbEchoOff) scfKbEchoOff(m.note);
     // 🎬 演奏台：真琴松键 → 屏幕键抬起
     if (playStageOnNoteOff) playStageOnNoteOff(m.note);
+    // 🎸 乐队伴奏：真琴松键 → 屏幕键抬起
+    if (bandOnNoteOff) bandOnNoteOff(m.note);
     // 🐉 Boss 战：真琴松键 → 屏幕键抬起
     if (bossOnNoteOff) bossOnNoteOff(m.note);
     // 🚀 极速挑战：真琴松键 → 屏幕键抬起
@@ -9561,6 +9568,422 @@ function renderPlayStage() {
   loadSong(song);   // 初始即载入第一首启蒙小曲
 }
 
+// ---------- 模块74：🎸 乐队伴奏（Tomplay 式 backing band）----------
+// 解析多轨 MIDI → 拆声部 → Lily 选一个声部自己在 CA99 上弹（静音），其余声部由电脑
+// 用不同音色当“乐队”一起演奏。乐队声部走 Web Audio（不发往真琴，真琴留给 Lily 弹）。
+function renderBackingBand() {
+  const root = $('#module-band');
+  if (!root) return;
+  const HW_H = 240, LOOK_MS = 2100;
+  const PC = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  const midiName = (m) => PC[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  let parsed = null, title = '—', parts = [], myPart = null;
+  let schedule = { backing: [], mine: [], durationMs: 0 };
+  let rate = 1, includeDrums = true, loopOn = false, countIn = true, masterVol = 0.5;
+  let layout = null, centerX = new Map(), kbFirst = 60, kbLast = 72;
+  let bandCtx = null, bandGain = null, scheduled = [], rafB = null, perfT0 = 0, playing = false;
+  let hits = 0;
+  let builtinCatalog = null, userCatalog = null;
+
+  root.innerHTML = `
+    <div class="bb-wrap">
+      <div class="bb-bar">
+        <button class="bb-load" id="bb-load">🎵 选择歌曲</button>
+        <span class="bb-title" id="bb-title">—</span>
+        <span class="bb-spacer"></span>
+        <button class="bb-mbtn primary" id="bb-play">▶ 和乐队一起弹</button>
+        <button class="bb-mbtn" id="bb-stop" disabled>⏸ 停止</button>
+        <span class="bb-stat" id="bb-stat"></span>
+      </div>
+      <div class="bb-ctrls">
+        <label class="bb-ctl">🐢 速度 <span id="bb-rate-v">100%</span><input type="range" id="bb-rate" min="50" max="120" step="5" value="100"></label>
+        <label class="bb-ctl">🔊 乐队音量 <input type="range" id="bb-vol" min="0" max="100" step="5" value="50"></label>
+        <label class="bb-toggle"><input type="checkbox" id="bb-count" checked> 🥢 预备拍</label>
+        <label class="bb-toggle"><input type="checkbox" id="bb-loop"> 🔁 循环</label>
+        <label class="bb-toggle"><input type="checkbox" id="bb-drums" checked> 🥁 含鼓</label>
+      </div>
+      <div class="bb-parts" id="bb-parts"></div>
+      <div class="bb-hw-wrap scf-highway-wrap" style="height:${HW_H}px">
+        <div class="bb-judge"></div>
+        <div id="bb-hw" class="scf-highway"></div>
+        <div id="bb-pop" class="scf-pop"></div>
+      </div>
+      <div class="bb-kb-wrap"><div id="bb-kb"></div></div>
+    </div>
+    <div class="ps-modal" id="bb-modal" hidden>
+      <div class="ps-modal-card">
+        <div class="ps-modal-head">
+          <div class="ps-tabs">
+            <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
+            <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
+            <button class="ps-tab" data-tab="upload">📤 上传</button>
+          </div>
+          <button class="ps-modal-x" id="bb-modal-x">✕</button>
+        </div>
+        <div class="ps-pane" id="bb-pane-lib">
+          <input class="ps-search" id="bb-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…">
+          <div class="ps-cats" id="bb-cats"></div>
+          <div class="ps-songlist" id="bb-songlist"></div>
+        </div>
+        <div class="ps-pane" id="bb-pane-upload" hidden>
+          <p class="ps-up-tip">选一首多轨 .mid（最好含旋律 + 伴奏），让电脑当乐队陪你弹：</p>
+          <input type="file" id="bb-file" accept=".mid,.midi,audio/midi">
+        </div>
+        <div class="ps-modal-status" id="bb-modal-status"></div>
+      </div>
+    </div>`;
+
+  const kb = new PianoKeyboard($('#bb-kb'), { first: kbFirst, last: kbLast, onNoteOn: (m) => onClickKey(m) });
+
+  // ---- Web Audio 乐队合成（绝不发往 CA99，真琴留给 Lily 弹）----
+  function ctx() {
+    if (!bandCtx) {
+      try { bandCtx = (typeof _audioCtx !== 'undefined' && _audioCtx) ? _audioCtx : new (window.AudioContext || window.webkitAudioContext)(); _audioCtx = bandCtx; } catch (_) { bandCtx = null; }
+    }
+    if (bandCtx && !bandGain) { bandGain = bandCtx.createGain(); bandGain.gain.value = masterVol; bandGain.connect(bandCtx.destination); }
+    return bandCtx;
+  }
+  function setVol(v) { masterVol = v; if (bandGain) bandGain.gain.value = v; }
+  function clickAt(whenSec, accent) {
+    const c = ctx(); if (!c) return;
+    const osc = c.createOscillator(), g = c.createGain();
+    osc.type = 'square'; osc.frequency.value = accent ? 1500 : 1000;
+    g.gain.setValueAtTime(0.0001, whenSec);
+    g.gain.exponentialRampToValueAtTime(0.25, whenSec + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, whenSec + 0.07);
+    osc.connect(g); g.connect(bandGain); osc.start(whenSec); osc.stop(whenSec + 0.09);
+    scheduled.push(osc);
+  }
+  function bandVoice(rec, whenSec) {
+    const c = ctx(); if (!c) return;
+    const fam = bbFamilyInfo(rec.family);
+    const peak = Math.max(0.0008, masterVol * fam.gain * Math.max(0.35, Math.min(1, (rec.velocity || 80) / 100)));
+    if (fam.wave === 'noise') { // 打击乐：噪声爆破
+      const dur = 0.13;
+      const buf = c.createBuffer(1, Math.max(1, Math.floor(c.sampleRate * dur)), c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+      const src = c.createBufferSource(); src.buffer = buf;
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = rec.midi <= 41 ? 130 : (rec.midi >= 49 ? 6500 : 2200);
+      const g = c.createGain(); g.gain.value = peak;
+      src.connect(bp); bp.connect(g); g.connect(bandGain);
+      src.start(whenSec); src.stop(whenSec + dur); scheduled.push(src);
+    } else {
+      const osc = c.createOscillator(), g = c.createGain();
+      osc.type = fam.wave; osc.frequency.value = midiToFreq(rec.midi);
+      const durS = Math.max(0.08, Math.min(2.2, (rec.durMs || 200) / 1000));
+      g.gain.setValueAtTime(0.0001, whenSec);
+      g.gain.exponentialRampToValueAtTime(peak, whenSec + (fam.attack || 0.005));
+      g.gain.exponentialRampToValueAtTime(0.0001, whenSec + durS + (fam.release || 0.2));
+      osc.connect(g); g.connect(bandGain);
+      osc.start(whenSec); osc.stop(whenSec + durS + (fam.release || 0.2) + 0.03); scheduled.push(osc);
+    }
+  }
+  function stopNodes() { scheduled.forEach((n) => { try { n.stop(0); } catch (_) {} }); scheduled = []; }
+
+  // ---- 一个离线多声部示范曲（小星星 + 贝斯 + 鼓），保证不联网也能玩 ----
+  function makeBandDemo() {
+    const beat = 545; // ~110 BPM
+    const mel = [60, 60, 67, 67, 69, 69, 67, 65, 65, 64, 64, 62, 62, 60]; // Twinkle
+    const dur = [1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2];
+    const notes = []; let tBeat = 0;
+    mel.forEach((m, i) => {
+      notes.push({ midi: m, ms: tBeat * beat, durMs: dur[i] * beat * 0.92, beat: tBeat, dur: dur[i], velocity: 92, hand: 'r', track: 0, channel: 0 });
+      tBeat += dur[i];
+    });
+    const totalBeats = tBeat;
+    // 贝斯：每两拍一个根音
+    const bassSeq = [48, 53, 57, 53, 48, 50, 55, 43];
+    for (let b = 0, k = 0; b < totalBeats; b += 2, k++) {
+      notes.push({ midi: bassSeq[k % bassSeq.length], ms: b * beat, durMs: 2 * beat * 0.9, beat: b, dur: 2, velocity: 78, hand: 'l', track: 1, channel: 1 });
+    }
+    // 鼓：每拍一下（低音鼓 36 / 军鼓 38 交替 + 踩镲 42）
+    for (let b = 0; b < totalBeats; b++) {
+      notes.push({ midi: (b % 2 === 0) ? 36 : 38, ms: b * beat, durMs: 120, beat: b, dur: 0.25, velocity: 96, hand: 'l', track: 2, channel: 9 });
+      notes.push({ midi: 42, ms: (b + 0.5) * beat, durMs: 80, beat: b + 0.5, dur: 0.25, velocity: 60, hand: 'l', track: 2, channel: 9 });
+    }
+    notes.sort((a, b) => a.ms - b.ms);
+    return {
+      format: 1, ntracks: 3, ticksPerBeat: 480, timeSig: { num: 4, den: 4 }, bpm: 110,
+      trackNames: ['Melody', 'Bass', 'Drums'], channelPrograms: { 0: 0, 1: 33, 9: 0 }, trackPrograms: [0, 33, 0],
+      hasHands: true, notes, durationMs: Math.max(...notes.map((n) => n.ms + n.durMs)), durationBeats: totalBeats,
+    };
+  }
+
+  // ---- 载入解析后的曲目 ----
+  function drumPartIds() { return parts.filter((p) => p.isDrum).map((p) => p.id); }
+  function rebuildSchedule() {
+    if (!parsed) { schedule = { backing: [], mine: [], durationMs: 0 }; return; }
+    schedule = bbBuildSchedule(parsed, { myPart, rate, mutedParts: includeDrums ? [] : drumPartIds() });
+  }
+  function loadParsed(p, name) {
+    parsed = p; title = name || '未命名';
+    parts = bbSplitParts(parsed);
+    myPart = bbSuggestMyPart(parts);
+    applyPart();
+    $('#bb-title').textContent = title;
+  }
+  // 仅切换“我的声部”/重建计划/重排键盘（不重新推荐 myPart）
+  function applyPart() {
+    if (!parsed) return;
+    rebuildSchedule();
+    const mineNotes = schedule.mine.length ? schedule.mine : parsed.notes;
+    let lo = Math.min(...mineNotes.map((n) => n.midi));
+    let hi = Math.max(...mineNotes.map((n) => n.midi));
+    lo = Math.max(21, lo - ((lo % 12 === 0) ? 0 : (lo % 12)));
+    hi = Math.min(108, hi + (11 - (hi % 12)));
+    if (hi - lo < 12) hi = Math.min(108, lo + 12);
+    kbFirst = lo; kbLast = hi;
+    kb.first = lo; kb.last = hi; kb.layout = kbBuildLayout(lo, hi); kb._render();
+    layout = kbBuildLayout(lo, hi);
+    centerX = new Map(); layout.keys.forEach((k) => centerX.set(k.midi, k.x + k.w / 2));
+    $('#bb-hw').style.width = layout.width + 'px';
+    drawParts(); drawHighway(-1500); refreshStat();
+  }
+
+  function drawParts() {
+    const el = $('#bb-parts');
+    if (!parts.length) { el.innerHTML = '<span class="bb-parts-hint">载入一首多轨曲子，这里会列出各声部。点一个当“我来弹”，其余由乐队演奏。</span>'; return; }
+    el.innerHTML = parts.map((p) => {
+      const mineSel = p.id === myPart;
+      const muted = !mineSel && !includeDrums && p.isDrum;
+      let cls = 'bb-part';
+      if (mineSel) cls += ' mine';
+      else if (muted) cls += ' muted';
+      const role = mineSel ? '🎹 我来弹' : (muted ? '🔇 静音' : '🎶 乐队');
+      return `<button class="${cls}" data-pid="${escH(p.id)}">`
+        + `<span class="bb-part-emoji">${p.emoji}</span>`
+        + `<span class="bb-part-name">${escH(p.label)}</span>`
+        + `<span class="bb-part-meta">${p.count} 音 · ${role}</span></button>`;
+    }).join('');
+    el.querySelectorAll('.bb-part').forEach((b) => {
+      b.onclick = () => { if (playing) stop(); myPart = b.dataset.pid; applyPart(); };
+    });
+  }
+
+  function drawHighway(t) {
+    if (!parsed) { $('#bb-hw').innerHTML = ''; return; }
+    const pxPerMs = HW_H / LOOK_MS;
+    let html = '';
+    for (const n of schedule.mine) {
+      const dt = n.ms - t;
+      if (dt > LOOK_MS || dt < -260) continue;
+      const cx = centerX.get(n.midi);
+      if (cx == null) continue;
+      const isBlack = [1, 3, 6, 8, 10].includes(((n.midi % 12) + 12) % 12);
+      const w = isBlack ? layout.blackW : layout.whiteW - 3;
+      const h = Math.max(14, n.durMs * pxPerMs);
+      const top = HW_H - dt * pxPerMs - h;
+      let cls = 'scf-note';
+      if (Math.abs(dt) <= 180) cls += ' n-due';
+      const lbl = h >= 15 ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
+      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px;">${lbl}</div>`;
+    }
+    $('#bb-hw').innerHTML = html;
+    // 键盘高亮“现在该弹的键”
+    const cue = schedule.mine.filter((n) => Math.abs(n.ms - t) <= 160);
+    if (cue.length) kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: '#fbbf24', text: '▶' })), { scroll: false });
+    else kb.clear();
+  }
+
+  function refreshStat() {
+    if (!parsed) { $('#bb-stat').textContent = ''; return; }
+    const band = parts.filter((p) => p.id !== myPart && !(p.isDrum && !includeDrums));
+    const names = band.map((p) => p.emoji).join('');
+    $('#bb-stat').textContent = playing
+      ? `🎶 乐队演奏中… 命中 ${hits}`
+      : `${schedule.mine.length} 音是你弹 · 乐队 ${band.length} 个声部 ${names}`;
+  }
+
+  let popTimer = null;
+  function popHit() {
+    const pop = $('#bb-pop');
+    const msgs = ['👍', '🎵', '棒!', '跟上了!', '🔥', '⭐'];
+    pop.textContent = msgs[hits % msgs.length];
+    pop.style.color = '#34d399';
+    pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show');
+    clearTimeout(popTimer); popTimer = setTimeout(() => pop.classList.remove('show'), 420);
+  }
+
+  function onClickKey(m) { // 屏幕点键 = 试听这个键（电脑发声，便于无琴时也能玩）
+    playTone(midiToFreq(m), 0, 0.5, 0.2); kb.flash(m, '#22d3ee');
+    if (playing) registerHit(m);
+  }
+  function registerHit(m) {
+    const t = performance.now() - perfT0;
+    const near = schedule.mine.find((n) => Math.abs(n.ms - t) <= 320 && n.midi === m);
+    if (near) { hits++; kb.flash(m, '#34d399'); popHit(); refreshStat(); }
+  }
+
+  function setRunUI(on) {
+    $('#bb-play').disabled = on; $('#bb-stop').disabled = !on;
+    $('#bb-play').classList.toggle('running', on);
+  }
+
+  function frame() {
+    const t = performance.now() - perfT0;
+    drawHighway(t);
+    if (t > schedule.durationMs + 800) {
+      if (loopOn) { restart(); return; }
+      stop(true); return;
+    }
+    rafB = requestAnimationFrame(frame);
+  }
+
+  function restart() {
+    stopNodes(); if (rafB) cancelAnimationFrame(rafB);
+    beginPlayback();
+  }
+  function beginPlayback() {
+    const c = ctx(); if (!c) { $('#bb-stat').textContent = '⚠️ 此浏览器不支持 Web Audio'; return; }
+    if (c.resume) { try { c.resume(); } catch (_) {} }
+    rebuildSchedule();
+    stopNodes();
+    const lead = 0.25;
+    const beatSec = (60 / (parsed.bpm || 100)) / rate;
+    const beatsPerBar = (parsed.timeSig && parsed.timeSig.num) || 4;
+    const countBeats = countIn ? beatsPerBar : 0;
+    const startAt = c.currentTime + lead + countBeats * beatSec;
+    for (let i = 0; i < countBeats; i++) clickAt(c.currentTime + lead + i * beatSec, i === 0);
+    for (const rec of schedule.backing) bandVoice(rec, startAt + rec.ms / 1000);
+    perfT0 = performance.now() + (startAt - c.currentTime) * 1000;
+    playing = true; hits = 0;
+    setRunUI(true);
+    bandOnNote = (m) => registerHit(m);
+    bandOnNoteOff = (m) => { try { kb.release(m); } catch (_) {} };
+    refreshStat();
+    rafB = requestAnimationFrame(frame);
+  }
+
+  function start() {
+    if (playing) { stop(); return; }
+    if (!parsed) { openModal(); return; }
+    if (!schedule.mine.length && !schedule.backing.length) { $('#bb-stat').textContent = '这首没有可用的声部，换一首试试'; return; }
+    beginPlayback();
+  }
+  function stop(finished) {
+    if (rafB) cancelAnimationFrame(rafB); rafB = null;
+    stopNodes();
+    playing = false; bandOnNote = null; bandOnNoteOff = null;
+    setRunUI(false); kb.clear();
+    drawHighway(-1500);
+    if (finished && hits > 0) {
+      $('#bb-stat').textContent = `🎉 和乐队合奏完成！命中 ${hits} 次，太棒了～`;
+      try { recordPractice('backingband', '乐队伴奏', Math.max(hits, schedule.mine.length), hits, hits); } catch (_) {}
+    } else refreshStat();
+  }
+
+  // ---- 选曲弹窗（内置 CA99 曲库 / 我的 MIDI / 上传）----
+  function openModal() { $('#bb-modal').hidden = false; if (!builtinCatalog) loadBuiltin(); }
+  function closeModal() { $('#bb-modal').hidden = true; }
+  function setModalStatus(msg, cls) { const el = $('#bb-modal-status'); el.textContent = msg || ''; el.className = 'ps-modal-status' + (cls ? ' ' + cls : ''); }
+
+  async function loadBuiltin() {
+    let cats = [{ slug: '__demo', emoji: '🎼', label: '示范合奏', count: 1 }];
+    let songs = [{ title: '小星星（旋律+贝斯+鼓）', _demo: true, fn: '__demo', cat: '示范', composer: '' }];
+    try {
+      const r = await fetch('midi/catalog.json', { cache: 'no-cache' });
+      if (r.ok) { const cj = await r.json(); (cj.categories || []).forEach((c) => cats.push(c)); (cj.songs || []).forEach((s) => songs.push(s)); }
+    } catch (_) {}
+    builtinCatalog = { categories: cats, songs };
+    renderLib(builtinCatalog);
+  }
+  async function loadUser() {
+    setModalStatus('⏳ 正在扫描「data/」下你整理的 MIDI…');
+    const base = 'data';
+    try {
+      let cat = null;
+      try { const r = await fetch(base + '/userlib.json', { cache: 'no-cache' }); if (r.ok) { const c = catalogFromManifest(await r.json()); if (c && c.total) cat = c; } } catch (_) {}
+      if (!cat) {
+        const rootHtml = await (await fetch(base + '/', { cache: 'no-cache' })).text();
+        const { dirs, files } = parseDirListing(rootHtml);
+        const scanDirs = [];
+        for (const d of dirs) { try { const sub = await (await fetch(`${base}/${encodeURIComponent(d)}/`, { cache: 'no-cache' })).text(); const f = parseDirListing(sub).files; if (f.length) scanDirs.push({ name: d, files: f }); } catch (_) {} }
+        cat = buildUserCatalog({ base, rootFiles: files, dirs: scanDirs });
+      }
+      if (!cat || !cat.total) { setModalStatus('📭「data/」下还没找到 .mid。'); userCatalog = null; renderLib({ categories: [], songs: [] }); return; }
+      userCatalog = cat; renderLib(cat); setModalStatus(`共 ${cat.total} 首你自己的曲目。`);
+    } catch (err) {
+      setModalStatus('⚠️ 无法扫描 data/：' + (err && err.message ? err.message : err), 'err'); userCatalog = null; renderLib({ categories: [], songs: [] });
+    }
+  }
+
+  let libState = { catalog: null, curFn: null, query: '' };
+  function renderLib(catalog) { libState = { catalog, curFn: (catalog.categories[0] || {}).slug || null, query: '' }; $('#bb-search').value = ''; drawCats(); drawList(); }
+  function matchesQ(s, q) { return s.title.toLowerCase().includes(q) || (s.composer || '').toLowerCase().includes(q) || (s.cat || '').toLowerCase().includes(q); }
+  function drawCats() {
+    const { catalog, curFn, query } = libState;
+    $('#bb-cats').innerHTML = (catalog.categories || []).map((c) => `<button class="scf-lib-cat${(c.slug === curFn && !query.trim()) ? ' on' : ''}" data-fn="${c.slug}">${c.emoji || '🎵'} ${escH(c.label)} <em>${c.count}</em></button>`).join('');
+    $('#bb-cats').querySelectorAll('.scf-lib-cat').forEach((b) => { b.onclick = () => { libState.curFn = b.dataset.fn; libState.query = ''; $('#bb-search').value = ''; drawCats(); drawList(); }; });
+  }
+  function drawList() {
+    const { catalog, curFn, query } = libState;
+    const songs = catalog.songs || [];
+    const q = query.trim().toLowerCase();
+    const vis = q ? songs.filter((s) => matchesQ(s, q)).slice(0, 400) : songs.filter((s) => s.fn === curFn);
+    let html = '', lastCat = null;
+    vis.forEach((s) => {
+      if (s.cat !== lastCat) { lastCat = s.cat; if (s.cat) html += `<div class="scf-lib-sub">${escH(s.cat)}</div>`; }
+      html += `<button class="scf-lib-item bb-lib-item" ${s._demo ? 'data-demo="1"' : ''} data-path="${escH(s.path || '')}" data-title="${escH(s.title)}"><span class="scf-lib-t">${escH(s.title)}</span>${s.composer ? `<span class="scf-lib-c">${escH(s.composer)}</span>` : ''}</button>`;
+    });
+    $('#bb-songlist').innerHTML = html || '<div class="scf-lib-empty">没有匹配的曲子</div>';
+    $('#bb-songlist').querySelectorAll('.bb-lib-item').forEach((b) => {
+      b.onclick = () => {
+        if (b.dataset.demo) { loadParsed(makeBandDemo(), '🎼 小星星合奏'); closeModal(); }
+        else if (b.dataset.path) loadPath(b.dataset.path, b.dataset.title);
+      };
+    });
+  }
+  async function loadPath(path, name) {
+    setModalStatus('⏳ 载入「' + name + '」…');
+    try {
+      const url = String(path).split('/').map(encodeURIComponent).join('/');
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const p = parseMidi(await r.arrayBuffer());
+      if (!p.notes.length) throw new Error('文件里没有可用的音符');
+      loadParsed(p, name); closeModal();
+    } catch (err) { setModalStatus('❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）', 'err'); }
+  }
+
+  // ---- 事件绑定 ----
+  $('#bb-load').onclick = openModal;
+  $('#bb-modal-x').onclick = closeModal;
+  $('#bb-modal').onclick = (e) => { if (e.target === $('#bb-modal')) closeModal(); };
+  $('#bb-play').onclick = () => start();
+  $('#bb-stop').onclick = () => stop();
+  $('#bb-rate').oninput = (e) => { rate = (+e.target.value) / 100; $('#bb-rate-v').textContent = e.target.value + '%'; if (!playing) { rebuildSchedule(); } };
+  $('#bb-vol').oninput = (e) => setVol((+e.target.value) / 100);
+  $('#bb-count').onchange = (e) => { countIn = e.target.checked; };
+  $('#bb-loop').onchange = (e) => { loopOn = e.target.checked; };
+  $('#bb-drums').onchange = (e) => { includeDrums = e.target.checked; if (playing) stop(); rebuildSchedule(); drawParts(); refreshStat(); };
+  $('#bb-search').oninput = (e) => { libState.query = e.target.value; drawCats(); drawList(); };
+  $('#bb-file').onchange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try { const p = parseMidi(await file.arrayBuffer()); if (!p.notes.length) throw new Error('文件里没有可用的音符'); loadParsed(p, '📄 ' + file.name.replace(/\.(midi?|MIDI?)$/i, '')); closeModal(); }
+    catch (err) { setModalStatus('❌ MIDI 解析失败：' + (err && err.message ? err.message : err), 'err'); }
+    e.target.value = '';
+  };
+  root.querySelectorAll('.ps-tab').forEach((tab) => {
+    tab.onclick = () => {
+      root.querySelectorAll('.ps-tab').forEach((t) => t.classList.toggle('on', t === tab));
+      const which = tab.dataset.tab;
+      $('#bb-pane-lib').hidden = which === 'upload';
+      $('#bb-pane-upload').hidden = which !== 'upload';
+      setModalStatus('');
+      if (which === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog); else loadBuiltin(); }
+      else if (which === 'user') { if (userCatalog) renderLib(userCatalog); else loadUser(); }
+    };
+  });
+
+  // 初始即载入离线示范合奏，保证打开就能玩
+  loadParsed(makeBandDemo(), '🎼 小星星合奏');
+}
+
 // ---------- 模块48：乐句视奏（phrase sight-reading）----------
 function renderSightPhrase() {
   const root = $('#module-sphrase');
@@ -13316,7 +13739,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
