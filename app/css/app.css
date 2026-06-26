@@ -2117,3 +2117,5 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .cp-arrow { color:var(--muted); font-size:14px; opacity:.5; }
 .cp-tip { color:var(--muted); font-size:14px; margin-top:6px; min-height:20px; }
 .cp-kb { margin-top:16px; }
+.cfp-target { font-size:20px; font-weight:700; margin-bottom:4px; }
+.cfp-kb { margin-top:16px; }

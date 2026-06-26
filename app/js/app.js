@@ -4671,23 +4671,23 @@ function renderTempoRamp() {
 
     <div class="card-panel" style="text-align:center">
       <svg id="tr-curve" class="cr-curve" viewBox="0 0 480 180" preserveAspectRatio="none"></svg>
-      <div id="tr-feedback" class="sight-feedback" style="margin-top:10px">点"开始"，然后依次敲出渐变的速度</div>
+      <div id="trr-feedback" class="sight-feedback" style="margin-top:10px">点"开始"，然后依次敲出渐变的速度</div>
     </div>
 
     <div class="sight-stats">
-      <div class="sight-stat"><div id="tr-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">本条分数</div></div>
+      <div class="sight-stat"><div id="trr-score" class="sight-stat-num">—</div><div class="sight-stat-lbl">本条分数</div></div>
       <div class="sight-stat"><div id="tr-dir-pct" class="sight-stat-num">—</div><div class="sight-stat-lbl">方向正确</div></div>
       <div class="sight-stat"><div id="tr-smooth" class="sight-stat-num">—</div><div class="sight-stat-lbl">平滑度</div></div>
       <div class="sight-stat"><div id="tr-prog" class="sight-stat-num">0</div><div class="sight-stat-lbl">进度</div></div>
-      <div class="sight-stat"><div id="tr-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
+      <div class="sight-stat"><div id="trr-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳</div></div>
     </div>
 
     <div class="rotate-bar">
-      <button id="tr-start" class="big-btn">▶ 开始 / 重来</button>
+      <button id="trr-start" class="big-btn">▶ 开始 / 重来</button>
       <button id="tr-tap" class="big-btn" style="background:var(--accent)">👆 敲击（或按空格）</button>
       <button id="tr-sim-good" class="big-btn" style="background:var(--panel2)">🎹 模拟（平滑变速）</button>
       <button id="tr-sim-bad" class="big-btn" style="background:var(--panel2)">🎹 模拟（忽快忽慢）</button>
-      <span id="tr-status" style="color:var(--muted)">未开始</span>
+      <span id="trr-status" style="color:var(--muted)">未开始</span>
     </div>`;
 
   let tr = null;
@@ -4734,21 +4734,21 @@ function renderTempoRamp() {
   }
 
   function showResult(r) {
-    $('#tr-score').textContent = r.score;
+    $('#trr-score').textContent = r.score;
     $('#tr-dir-pct').textContent = Math.round(r.monotonic * 100) + '%';
     $('#tr-smooth').textContent = Math.round(r.smoothness * 100) + '%';
-    $('#tr-best').textContent = tr.best;
+    $('#trr-best').textContent = tr.best;
     drawCurve(r.bpms, r);
     const dirName = r.direction === 'rit' ? '渐慢' : '渐快';
     const startBpm = Math.round(r.bpms[0] || 0), endBpm = Math.round(r.bpms[r.bpms.length - 1] || 0);
-    const fb = $('#tr-feedback');
+    const fb = $('#trr-feedback');
     if (r.score >= 85) { fb.className = 'sight-feedback ok'; fb.textContent = `🏆 ${r.score} 分！${dirName}平滑到位（${startBpm}→${endBpm} BPM）`; }
     else if (r.score >= 60) { fb.className = 'sight-feedback'; fb.textContent = `👍 ${r.score} 分。方向 ${Math.round(r.monotonic * 100)}%、平滑 ${Math.round(r.smoothness * 100)}%（${startBpm}→${endBpm} BPM），再均匀一点`; }
     else if (r.monotonic < 0.5) { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分：方向只对 ${Math.round(r.monotonic * 100)}%，注意整体要${dirName}（别忽快忽慢）`; }
     else { fb.className = 'sight-feedback no'; fb.textContent = `⚠ ${r.score} 分：${r.spanScore < 0.4 ? '变速幅度太小，速度差再拉大些' : '起伏不够平滑，让每一步变速差不多大'}`; }
     recordPractice('temporamp', '速度渐变', 1, r.score >= 60 ? 1 : 0, tr.best);
     tempoRampOnNote = null;
-    $('#tr-status').textContent = '完成 · 可重来';
+    $('#trr-status').textContent = '完成 · 可重来';
   }
 
   function tap(time) {
@@ -4770,11 +4770,11 @@ function renderTempoRamp() {
     tr = new TempoRampTrainer(opts());
     tr.onComplete = (r) => showResult(r);
     tempoRampOnNote = (time) => tap(time);
-    $('#tr-score').textContent = '—'; $('#tr-dir-pct').textContent = '—'; $('#tr-smooth').textContent = '—';
-    $('#tr-best').textContent = tr.best; $('#tr-prog').textContent = `0/${tr.count}`;
-    const fb = $('#tr-feedback'); fb.className = 'sight-feedback';
+    $('#trr-score').textContent = '—'; $('#tr-dir-pct').textContent = '—'; $('#tr-smooth').textContent = '—';
+    $('#trr-best').textContent = tr.best; $('#tr-prog').textContent = `0/${tr.count}`;
+    const fb = $('#trr-feedback'); fb.className = 'sight-feedback';
     fb.textContent = `🎯 敲 ${tr.count} 下，速度整体${tr.direction === 'rit' ? '渐慢（快→慢）' : '渐快（慢→快）'}`;
-    $('#tr-status').textContent = '进行中…';
+    $('#trr-status').textContent = '进行中…';
     drawCurve([], null);
   }
 
@@ -4799,7 +4799,7 @@ function renderTempoRamp() {
   $('#tr-dir').onchange = () => { tr = null; drawCurve([], null); };
   $('#tr-count').onchange = () => { tr = null; $('#tr-count-lbl').textContent = $('#tr-count').value; drawCurve([], null); };
   $('#tr-ratio').onchange = () => { tr = null; };
-  $('#tr-start').onclick = start;
+  $('#trr-start').onclick = start;
   $('#tr-tap').onclick = () => tap(performance.now());
   $('#tr-sim-good').onclick = () => sim(true);
   $('#tr-sim-bad').onclick = () => sim(false);
@@ -5908,11 +5908,6 @@ function renderChordInversion() {
 
     <div class="kb-wrap">
       <div class="kb-cap">🎹 答完把这个和弦的三个音画在 88 键上 — <span class="kb-legend" style="color:#f472b6"><i></i>低音（决定转位）</span>（点键可试听）</div>
-      <div id="inv-kb"></div>
-    </div>
-
-    <div class="kb-wrap">
-      <div class="kb-cap">🎹 答完把这个和弦画在 88 键上（<b style="color:#ff5da2">低</b>=最低的音/低音，数字=从低到高第几个音，点键可试听）</div>
       <div id="inv-kb"></div>
     </div>
 
@@ -10211,7 +10206,7 @@ function renderSightPhrase() {
 
     <div class="sight-stage">
       <div class="sight-staff-wrap"><div id="sp-staff" class="sp-staff"></div></div>
-      <div id="sp-feedback" class="sight-feedback">选好设置，按"开始"出一句谱</div>
+      <div id="sph-feedback" class="sight-feedback">选好设置，按"开始"出一句谱</div>
       <div id="sp-tip" class="mid-hint"></div>
     </div>
 
@@ -10221,17 +10216,17 @@ function renderSightPhrase() {
     </div>
 
     <div class="sight-stats">
-      <div class="sight-stat"><span class="sight-stat-num" id="sp-score">0</span><span class="sight-stat-lbl">弹对句数</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sph-score">0</span><span class="sight-stat-lbl">弹对句数</span></div>
       <div class="sight-stat"><span class="sight-stat-num" id="sp-streak">0</span><span class="sight-stat-lbl">连击</span></div>
-      <div class="sight-stat"><span class="sight-stat-num" id="sp-best">0</span><span class="sight-stat-lbl">最佳</span></div>
-      <div class="sight-stat"><span class="sight-stat-num" id="sp-acc">—</span><span class="sight-stat-lbl">一遍过率</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sph-best">0</span><span class="sight-stat-lbl">最佳</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="sph-acc">—</span><span class="sight-stat-lbl">一遍过率</span></div>
     </div>
 
     <div class="rotate-bar">
-      <button id="sp-start" class="big-btn">▶ 开始 / 下一句</button>
+      <button id="sph-start" class="big-btn">▶ 开始 / 下一句</button>
       <button id="sp-preview" class="scf-mode-btn" disabled>👂 试听</button>
       <button id="sp-reveal" class="scf-mode-btn" disabled>🏳 看答案</button>
-      <span id="sp-status" style="color:var(--muted);margin-left:6px">未开始</span>
+      <span id="sph-status" style="color:var(--muted);margin-left:6px">未开始</span>
     </div>`;
 
   // 调下拉
@@ -10358,10 +10353,10 @@ function renderSightPhrase() {
 
   function refreshStats() {
     if (!game) return;
-    $('#sp-score').textContent = game.score;
+    $('#sph-score').textContent = game.score;
     $('#sp-streak').textContent = game.streak;
-    $('#sp-best').textContent = game.best;
-    $('#sp-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
+    $('#sph-best').textContent = game.best;
+    $('#sph-acc').textContent = game.attempts ? Math.round(game.accuracy * 100) + '%' : '—';
   }
 
   function setKbRange() {
@@ -10383,10 +10378,10 @@ function renderSightPhrase() {
     spOnNote = (m) => onPlay(m);
     $('#sp-preview').disabled = false;
     $('#sp-reveal').disabled = false;
-    $('#sp-status').textContent = '读谱中…逐音弹出';
+    $('#sph-status').textContent = '读谱中…逐音弹出';
     $('#sp-tip').textContent = '';
-    $('#sp-feedback').className = 'sight-feedback';
-    $('#sp-feedback').textContent = `📖 看谱：${game.phrase.length} 个音，从左到右弹。弹对的变绿、当前音高亮。`;
+    $('#sph-feedback').className = 'sight-feedback';
+    $('#sph-feedback').textContent = `📖 看谱：${game.phrase.length} 个音，从左到右弹。弹对的变绿、当前音高亮。`;
     drawStaff();
   }
 
@@ -10406,18 +10401,18 @@ function renderSightPhrase() {
         $('#sp-preview').disabled = true;
         $('#sp-reveal').disabled = true;
         if (r.mistakes === 0) {
-          $('#sp-feedback').className = 'sight-feedback ok';
-          $('#sp-feedback').textContent = `🎉 整句一遍弹对！连击 ${game.streak}。按"下一句"继续。`;
+          $('#sph-feedback').className = 'sight-feedback ok';
+          $('#sph-feedback').textContent = `🎉 整句一遍弹对！连击 ${game.streak}。按"下一句"继续。`;
           recordPractice('sightphrase', '乐句视奏', game.phrase.length, game.phrase.length, game.streak);
         } else {
-          $('#sp-feedback').className = 'sight-feedback';
-          $('#sp-feedback').textContent = `✅ 这句弹完了（中间错了 ${r.mistakes} 次，未计满分）。再来一句巩固。`;
+          $('#sph-feedback').className = 'sight-feedback';
+          $('#sph-feedback').textContent = `✅ 这句弹完了（中间错了 ${r.mistakes} 次，未计满分）。再来一句巩固。`;
           recordPractice('sightphrase', '乐句视奏', game.phrase.length, Math.max(0, game.phrase.length - r.mistakes), 0);
         }
-        $('#sp-status').textContent = '完成';
+        $('#sph-status').textContent = '完成';
       } else {
-        $('#sp-feedback').className = 'sight-feedback';
-        $('#sp-feedback').textContent = `👍 第 ${game.pos}/${game.phrase.length} 个音对了，继续。`;
+        $('#sph-feedback').className = 'sight-feedback';
+        $('#sph-feedback').textContent = `👍 第 ${game.pos}/${game.phrase.length} 个音对了，继续。`;
       }
     } else {
       // 弹错：闪红 + 提示该弹的音名（不前进）
@@ -10453,7 +10448,7 @@ function renderSightPhrase() {
   }
   function clearPreview() { while (previewTimers.length) clearTimeout(previewTimers.pop()); previewing = false; }
 
-  $('#sp-start').onclick = () => { clearPreview(); newPhrase(); };
+  $('#sph-start').onclick = () => { clearPreview(); newPhrase(); };
   $('#sp-preview').onclick = preview;
   $('#sp-reveal').onclick = reveal;
 
@@ -12481,7 +12476,7 @@ function renderBossBattle() {
 
     <div class="kb-wrap">
       <div class="kb-cap" id="bb-kbcap">🎹 按高亮的键，按顺序弹出乐句</div>
-      <div id="bb-kb"></div>
+      <div id="bsb-kb"></div>
     </div>
 
     <div class="rotate-bar">
@@ -12586,7 +12581,7 @@ function renderBossBattle() {
     $('#bb-pick').querySelectorAll('.bb-chip').forEach((el) => el.classList.remove('locked'));
   }
 
-  const bbKb = new PianoKeyboard($('#bb-kb'), {
+  const bbKb = new PianoKeyboard($('#bsb-kb'), {
     labels: 'c',
     // CA99 真琴输入由全局 bossOnNote 钩子驱动（见 onMidiIn）；这里不能再开 recognizeExternal，
     // 否则一次真琴按键会同时触发全局钩子 + 本键盘 onNoteOn，handlePress 被调用两次 → 误判/卡住。
@@ -14038,12 +14033,12 @@ function renderCofPuzzle() {
     <div class="cp-wrap">
       <div class="cp-stage"><canvas id="cp-canvas" width="380" height="380"></canvas></div>
       <div class="cp-side">
-        <div class="cp-target" id="cp-target"></div>
+        <div class="cfp-target" id="cfp-target"></div>
         <div class="cp-scale" id="cp-scale"></div>
         <div class="cp-tip" id="cp-tip">弹奏上面的音阶来解锁这一格 🎹</div>
       </div>
     </div>
-    <div id="cp-kb" class="cp-kb"></div>`;
+    <div id="cfp-kb" class="cfp-kb"></div>`;
 
   const STORE = 'ca99_cof_puzzle';
   const puzzle = new CofPuzzle({ unlocked: CofPuzzle.loadUnlocked(localStorage, STORE) || ['C'], storageKey: STORE });
@@ -14098,7 +14093,7 @@ function renderCofPuzzle() {
   }
 
   function buildScaleStrip() {
-    const tEl = root.querySelector('#cp-target');
+    const tEl = root.querySelector('#cfp-target');
     const sEl = root.querySelector('#cp-scale');
     root.querySelector('#cp-count').textContent = puzzle.unlockedCount();
     if (puzzle.isComplete()) {
@@ -14158,7 +14153,7 @@ function renderCofPuzzle() {
   }
   cofPuzzleOnNote = onNote;
 
-  const kb = new PianoKeyboard(root.querySelector('#cp-kb'), {
+  const kb = new PianoKeyboard(root.querySelector('#cfp-kb'), {
     labels: 'c',
     onNoteOn: (m) => onNote(m),
   });
