@@ -73,6 +73,7 @@ import { noteColor as ncNoteColor, scaffoldStrength as ncStrength, isWeaned as n
 import { BOSSES as BB_BOSSES, getBoss as bbGetBoss, BossBattle } from './boss-battle.js';
 import { RUNS as SR_RUNS, getRun as srGetRun, SpeedRun } from './speed-run.js';
 import { DiceWarmup } from './dice-warmup.js';
+import { BingoCard, winLines } from './bingo-card.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -12184,6 +12185,118 @@ function renderDiceWarmup() {
   $('#dw-roll').onclick = rollOnce;
 }
 
+// ========== 模块: 🎯 练习宾果（5×5 任务格，连线/填满给奖励，打散枯燥重复）==========
+function renderBingoCard() {
+  const root = $('#module-bingo');
+  const today = new Date().toISOString().slice(0, 10);
+  const KEY = 'ca99-bingo-' + today;
+
+  function freshCard() { return new BingoCard({ freeCenter: true }); }
+  function restore() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      if (!o || !Array.isArray(o.cells)) return null;
+      const card = freshCard();
+      card.cells = o.cells;
+      card.marked = new Set(o.marked || []);
+      card._wonLines = new Set();
+      // 重新算已完成线（不触发庆祝）
+      winLines(card.size).forEach((ln, idx) => { if (ln.every((c) => card.marked.has(c))) card._wonLines.add(idx); });
+      return card;
+    } catch (_) { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ cells: card.cells, marked: [...card.marked] })); } catch (_) {}
+  }
+
+  let card = restore() || freshCard();
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎯 练习宾果</h2>
+    <p style="color:var(--muted);margin-bottom:14px">今天的<b>练习菜单</b>！每格一个超小任务，做完就点亮它。连成一整<b>行/列/斜线</b>就有奖励 🎉，<b>整张填满</b>有大奖励 🏆。任务<b>每天换一批</b>，中间 ⭐ 是免费格。不用一口气做完——做一点点点亮一点点，<b>积少成多</b>。</p>
+
+    <div class="bingo-stats">
+      <span class="dw-stat">✅ 完成 <b id="bingo-done">0</b>/24</span>
+      <span class="dw-stat">🎉 连线 <b id="bingo-lines">0</b></span>
+      <button id="bingo-new" class="mini-btn">🔄 换一张新卡</button>
+    </div>
+
+    <div class="bingo-grid" id="bingo-grid"></div>
+    <div class="bb-feedback" id="bingo-feedback" style="margin-top:12px">点一个你已经做到的任务，把它点亮！</div>`;
+
+  function refreshStats() {
+    $('#bingo-done').textContent = card.doneCount();
+    $('#bingo-lines').textContent = card.lineCount();
+  }
+
+  function drawGrid() {
+    const g = $('#bingo-grid');
+    g.innerHTML = card.cells.map((c, i) =>
+      `<button class="bingo-cell${c.free ? ' free' : ''}${card.isMarked(i) ? ' on' : ''}" data-i="${i}" ${c.free ? 'disabled' : ''}>
+        <span class="bingo-emoji">${c.task.emoji}</span>
+        <span class="bingo-text">${c.task.text}</span>
+      </button>`).join('');
+    g.querySelectorAll('.bingo-cell').forEach((el) => {
+      el.onclick = () => onTap(parseInt(el.dataset.i, 10), el);
+    });
+    // 还原已完成线的金色高亮（刷新/隔天回来时）
+    winLines(card.size).forEach((ln, idx) => {
+      if (card._wonLines.has(idx)) ln.forEach((i) => {
+        const cell = g.querySelector(`.bingo-cell[data-i="${i}"]`);
+        if (cell) cell.classList.add('win');
+      });
+    });
+  }
+
+  function onTap(i, el) {
+    const before = card.isMarked(i);
+    const res = card.toggle(i);
+    save();
+    el.classList.toggle('on', card.isMarked(i));
+    refreshStats();
+    if (!before && card.isMarked(i)) {
+      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+      if (res.full) {
+        cheerToast('🏆 整张宾果填满！你超棒！', root);
+        cheerBurst(root, 90);
+        $('#bingo-feedback').innerHTML = '🏆 <b>太厉害了！</b>整张卡都点亮了！明天有新的一张等你～';
+        recordPractice('bingo', '练习宾果', card.doneCount(), card.lineCount(), card.lineCount());
+        // 高亮全卡
+        $('#bingo-grid').querySelectorAll('.bingo-cell').forEach((c) => c.classList.add('win'));
+      } else if (res.newLines.length) {
+        cheerToast(`🎉 连成一线！已 ${card.lineCount()} 条`, root);
+        cheerBurst(root, 55);
+        $('#bingo-feedback').innerHTML = `🎉 <b>宾果！</b>连成一线啦～继续点亮更多任务！`;
+        // 高亮这条线
+        res.newLines[0].forEach((idx) => {
+          const cell = $('#bingo-grid').querySelector(`.bingo-cell[data-i="${idx}"]`);
+          if (cell) cell.classList.add('win');
+        });
+        recordPractice('bingo', '练习宾果', card.doneCount(), card.lineCount(), card.lineCount());
+      } else {
+        $('#bingo-feedback').textContent = '👍 点亮一格！做到一个就是进步～';
+      }
+    } else if (before && !card.isMarked(i)) {
+      el.classList.remove('win');
+      $('#bingo-feedback').textContent = '取消了这一格（没关系，想做的时候再点亮）';
+    }
+  }
+
+  $('#bingo-new').onclick = () => {
+    if (!confirm('换一张全新的宾果卡？当前进度会清空哦～')) return;
+    card = freshCard();
+    save();
+    drawGrid();
+    refreshStats();
+    $('#bingo-feedback').textContent = '✨ 新卡来啦！点亮你做到的任务～';
+  };
+
+  drawGrid();
+  refreshStats();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -12831,7 +12944,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

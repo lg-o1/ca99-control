@@ -450,6 +450,27 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .dw-face.dw-flav { background: rgba(52,211,153,.2); color: #bbf7d0; }
 .dw-stats { display: flex; gap: 18px; justify-content: center; margin-bottom: 10px; color: var(--muted); }
 .dw-stat b { color: var(--text); font-size: 18px; }
+
+/* 🎯 练习宾果 */
+.bingo-stats { display: flex; gap: 16px; align-items: center; justify-content: center; margin-bottom: 12px; flex-wrap: wrap; color: var(--muted); }
+.mini-btn { padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border, #2a2f45); background: var(--panel, #1a1f33); color: var(--text); cursor: pointer; font-size: 13px; }
+.mini-btn:hover { background: #242b45; }
+.bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-width: 640px; margin: 0 auto; }
+.bingo-cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; aspect-ratio: 1 / 1; padding: 6px; border-radius: 14px; border: 1px solid var(--border, #2a2f45); background: linear-gradient(160deg, #232a45, #1a1f33); color: var(--text); cursor: pointer; text-align: center; transition: transform .12s, box-shadow .2s, background .2s; }
+.bingo-cell:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.3); }
+.bingo-emoji { font-size: 22px; line-height: 1; }
+.bingo-text { font-size: 11px; line-height: 1.2; color: var(--muted); }
+.bingo-cell.on { background: linear-gradient(160deg, #1e6f50, #155c43); border-color: #34d399; }
+.bingo-cell.on .bingo-text { color: #bbf7d0; }
+.bingo-cell.on::after { content: '✓'; position: absolute; top: 4px; right: 8px; color: #34d399; font-weight: 900; }
+.bingo-cell { position: relative; }
+.bingo-cell.free { background: linear-gradient(160deg, #4a3a16, #3a2e12); border-color: #fbbf24; cursor: default; }
+.bingo-cell.free .bingo-emoji { font-size: 26px; }
+.bingo-cell.free .bingo-text { color: #fde68a; font-weight: 800; }
+.bingo-cell.win { box-shadow: 0 0 0 2px #fbbf24, 0 0 16px rgba(251,191,36,.6); }
+.bingo-cell.pop { animation: bingoPop .35s cubic-bezier(.4,1.7,.6,1); }
+@keyframes bingoPop { 0% { transform: scale(1) } 50% { transform: scale(1.18) } 100% { transform: scale(1) } }
+@media (max-width: 560px) { .bingo-text { font-size: 9px; } .bingo-emoji { font-size: 18px; } }
 .dw-passage { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-bottom: 8px; }
 
 /* ===== 曲谱跟弹（Synthesia 式）===== */

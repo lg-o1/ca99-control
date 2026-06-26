@@ -41,7 +41,7 @@ reference/                  ← 所有调研与逆向成果（参考资料）
     govee-api-summary.md    ← Govee API（LAN UDP 同步）
     sound-limits-summary.md ← 音色限制 + VST 方案
     piano-creative-summary.md ← 创意玩法清单
-app/                        ← PWA + Web MIDI 应用（68 个模块已实现）
+app/                        ← PWA + Web MIDI 应用（69 个模块已实现）
   js/bridge-protocol.js     ← WebSocket 桥接协议契约 + BridgeClient 状态机
   midi/                     ← 📚 生成产物：1543 首 CA99 自带曲库（按 function 分 7 类）
                               catalog.json + <类别>/*.mid，曲谱跟弹模块的"CA99 曲库"浏览器即读它
