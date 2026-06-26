@@ -21,6 +21,7 @@ import { INTERVALS, EarTrainingGame, intervalName } from './ear-training.js';
 import { DYNAMICS, DynamicsGame, velocityToDynamic } from './dynamics-trainer.js';
 import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 import { PracticeStats } from './practice-stats.js';
+import { Medals, MEDAL_TIERS, tierOf as medalTier, medalForResult } from './medals.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
@@ -149,6 +150,28 @@ let pitchDirOnNote = null;   // 高低音方向感的 note-on 回调（模块63�
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
 });
+// #1 奖牌只升不降：每首曲一枚 🥉🥈🥇💎，永不下降，配合「奖牌墙」收集面板
+const medalStore = new Medals({
+  storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
+});
+let medalWallOnUpdate = null; // 奖牌墙刷新回调（🏅 模块注册）
+// 记一遍曲子成绩，奖牌只升不降；升级时撒花 + 飘字庆祝。返回 award 结果
+function awardMedal(songId, title, summary) {
+  if (!summary) return null;
+  const allPerfect = summary.miss === 0 && (summary.good | 0) === 0 && (summary.perfect | 0) > 0;
+  const res = medalStore.award(songId, { accuracy: summary.accuracy, allPerfect, title });
+  if (medalWallOnUpdate) medalWallOnUpdate();
+  if (res.upgraded) {
+    const t = medalTier(res.medal);
+    cheerToast(`${t.icon} 获得${t.name}！「${title}」最佳已升级`, null);
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:35';
+    document.body.appendChild(overlay);
+    cheerBurst(overlay, 90);
+    setTimeout(() => overlay.remove(), 2600);
+  }
+  return res;
+}
 let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
 const DAILY_GOAL = 3; // 今日微目标：练 3 次就达成（超小目标，降低抗拒）
 
@@ -8955,6 +8978,7 @@ function renderScoreFollow() {
       const s = sf.summary();
       recordPractice('scorefollow', '曲谱跟弹', s.judgedCount || s.total, s.perfect + s.good, s.maxCombo);
       const { isRecord } = recordBest(songId, s);   // ③ 计入每首最高分
+      awardMedal(songId, getCurrentSong().title, s); // #1 奖牌只升不降
       logPlay(songId, getCurrentSong().title, s);   // ⑥ 记练习足迹
       $('#scf-feedback').textContent = `🔁 循环练习结束：弹了 ${sf.judgedCount} 个音，正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}。${isRecord ? '🏅 刷新本曲最佳！' : ''}`;
       drawTimingChart();   // ⑦ 循环练习也画落点对比
@@ -8983,6 +9007,7 @@ function renderScoreFollow() {
       const s = sf.summary();
       recordPractice('scorefollow', '曲谱跟弹', s.total, s.perfect + s.good, s.maxCombo);
       const { isRecord } = recordBest(songId, s);   // ③ 计入每首最高分
+      awardMedal(songId, getCurrentSong().title, s); // #1 奖牌只升不降
       logPlay(songId, getCurrentSong().title, s);   // ⑥ 记练习足迹
       // ⑨ 渐进提速：本遍正确率高就把下一遍速度 +0.05×（上限 1.5×）
       let bumped = '';
@@ -9316,6 +9341,7 @@ function renderPlayStage() {
       const star = '★'.repeat(s.stars) + '☆'.repeat(3 - s.stars);
       $('#ps-stat').textContent = `🎉 ${star}　正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}`;
       try { recordPractice('playstage', '演奏台', s.total, s.perfect + s.good, s.maxCombo); } catch (_) {}
+      try { awardMedal(songKey(), song.title || '乐曲', s); } catch (_) {} // #1 奖牌只升不降
     } else {
       drawHighway(-LEAD_MS); drawStaff(-LEAD_MS); refreshStat();
     }
@@ -12456,6 +12482,55 @@ function renderGuessSong() {
   drawStaff();
 }
 
+function renderMedalWall() {
+  const root = $('#module-medals');
+  if (!root) return;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function build() {
+    const counts = medalStore.counts();
+    // 已知曲库：SCF_SONGS（内置）+ 任何已获奖但不在曲库里的 id（自定义 / 演奏台）
+    const known = SCF_SONGS.map((s) => ({ id: s.id, title: s.title }));
+    const knownIds = new Set(known.map((k) => k.id));
+    medalStore.all().forEach((m) => {
+      if (!knownIds.has(m.id)) { known.push({ id: m.id, title: m.title || m.id }); knownIds.add(m.id); }
+    });
+
+    const total = known.length;
+    const earned = counts.total;
+    const pct = total ? Math.round(earned / total * 100) : 0;
+
+    const cards = known.map((k) => {
+      const rec = medalStore.medalOf(k.id);
+      const medal = rec ? rec.medal : 'none';
+      const t = medalTier(medal);
+      const has = medal && medal !== 'none';
+      const best = rec && rec.plays ? `最佳 ${rec.bestPct}% · 弹过 ${rec.plays} 遍` : '还没弹过';
+      return `<div class="mw-card ${has ? 'mw-' + medal : 'mw-locked'}">
+        <div class="mw-medal">${has ? t.icon : '🔒'}</div>
+        <div class="mw-title">${esc(k.title)}</div>
+        <div class="mw-best">${best}</div>
+        <div class="mw-tier ${has ? '' : 'mw-next'}">${has ? t.name : '弹一遍解锁'}</div>
+      </div>`;
+    }).join('');
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🏅 奖牌墙</h2>
+      <p class="mw-sub">每首曲一枚奖牌，<b>只升不降</b>——再弹一遍<b>零风险</b>，最差也是维持原奖牌 💪 努力收集所有 💎 白金吧！</p>
+      <div class="mw-summary">
+        <div class="mw-tally"><span class="mw-pip mw-platinum">💎 ${counts.platinum}</span><span class="mw-pip mw-gold">🥇 ${counts.gold}</span><span class="mw-pip mw-silver">🥈 ${counts.silver}</span><span class="mw-pip mw-bronze">🥉 ${counts.bronze}</span></div>
+        <div class="mw-progress"><div class="mw-bar"><span style="width:${pct}%"></span></div><b>已收集 ${earned} / ${total} 枚</b></div>
+      </div>
+      <div class="mw-legend">🥉 正确率 ≥50% · 🥈 ≥70% · 🥇 ≥90% · 💎 100% 且全程 PERFECT</div>
+      <div class="mw-grid">${cards}</div>
+      <p class="mw-hint">去 <b>🎼 曲谱跟弹</b> 或 <b>🎹 演奏台</b> 弹一首曲子，弹得越好奖牌越亮 ✨</p>
+    `;
+  }
+
+  build();
+  medalWallOnUpdate = build;
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -13103,7 +13178,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderCircleFifths(); renderMedalWall(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

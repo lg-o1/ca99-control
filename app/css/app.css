@@ -484,6 +484,44 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .gs-opt.wrong { background: rgba(248,113,113,.18); border-color: #f87171; opacity: .6; }
 .dw-passage { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-bottom: 8px; }
 
+/* ===== 🏅 奖牌墙（medals never decrease）===== */
+.mw-sub { color: var(--muted); margin: 2px 0 12px; line-height: 1.5; }
+.mw-sub b { color: #fbbf24; }
+.mw-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 8px; }
+.mw-tally { display: flex; gap: 8px; flex-wrap: wrap; }
+.mw-pip { font-size: 15px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); }
+.mw-pip.mw-platinum { border-color: #67e8f9; box-shadow: 0 0 10px rgba(103,232,249,.3); }
+.mw-pip.mw-gold { border-color: #fbbf24; box-shadow: 0 0 10px rgba(251,191,36,.3); }
+.mw-pip.mw-silver { border-color: #cbd5e1; }
+.mw-pip.mw-bronze { border-color: #d6915b; }
+.mw-progress { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; }
+.mw-progress b { white-space: nowrap; color: var(--muted); font-size: 13px; }
+.mw-bar { flex: 1; height: 12px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); overflow: hidden; }
+.mw-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #d6915b, #cbd5e1 45%, #fbbf24 80%, #67e8f9); transition: width .5s ease; }
+.mw-legend { color: var(--muted); font-size: 12.5px; margin-bottom: 12px; }
+.mw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.mw-card {
+  border-radius: 14px; padding: 14px 10px 12px; text-align: center;
+  background: var(--panel2); border: 2px solid var(--line); transition: transform .15s, box-shadow .2s;
+}
+.mw-card:hover { transform: translateY(-2px); }
+.mw-medal { font-size: 40px; line-height: 1.1; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.mw-title { font-weight: 700; margin: 6px 0 3px; font-size: 14px; }
+.mw-best { color: var(--muted); font-size: 12px; }
+.mw-tier { margin-top: 6px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; display: inline-block; }
+.mw-tier.mw-next { color: var(--muted); font-weight: 500; background: transparent; }
+.mw-locked { opacity: .55; border-style: dashed; }
+.mw-locked .mw-medal { filter: grayscale(1) opacity(.7); }
+.mw-bronze { border-color: #d6915b; box-shadow: 0 0 12px rgba(214,145,91,.22); }
+.mw-bronze .mw-tier { background: rgba(214,145,91,.2); color: #e0a877; }
+.mw-silver { border-color: #cbd5e1; box-shadow: 0 0 12px rgba(203,213,225,.22); }
+.mw-silver .mw-tier { background: rgba(203,213,225,.2); color: #e2e8f0; }
+.mw-gold { border-color: #fbbf24; box-shadow: 0 0 16px rgba(251,191,36,.3); }
+.mw-gold .mw-tier { background: rgba(251,191,36,.2); color: #fcd34d; }
+.mw-platinum { border-color: #67e8f9; box-shadow: 0 0 18px rgba(103,232,249,.4); }
+.mw-platinum .mw-tier { background: rgba(103,232,249,.2); color: #a5f3fc; }
+.mw-hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
+
 /* ===== 曲谱跟弹（Synthesia 式）===== */
 .scf-stage { margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }
 .scf-staff-wrap {
