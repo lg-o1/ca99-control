@@ -550,6 +550,33 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 @keyframes hm-glow { 0%,100% { box-shadow: 0 0 12px -4px var(--hm); } 50% { box-shadow: 0 0 20px -2px var(--hm); } }
 .hm-hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
 
+/* ===== 🌟 成长之星（8-star micro-progress）===== */
+.ms-sub { color: var(--muted); margin: 2px 0 12px; line-height: 1.55; }
+.ms-sub b { color: #fbbf24; }
+.ms-summary { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.ms-progress { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; }
+.ms-progress b { white-space: nowrap; color: var(--muted); font-size: 13px; }
+.ms-bar { flex: 1; height: 12px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); overflow: hidden; }
+.ms-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #f59e0b, #fbbf24 60%, #fcd34d); transition: width .5s ease; }
+.ms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.ms-card {
+  border-radius: 14px; padding: 12px 14px; background: var(--panel2);
+  border: 1px solid var(--line); transition: transform .15s, box-shadow .2s;
+}
+.ms-card:hover { transform: translateY(-2px); }
+.ms-maxed { border-color: #fbbf24; box-shadow: 0 0 16px rgba(251,191,36,.32); }
+.ms-head { display: flex; align-items: center; gap: 7px; }
+.ms-ico { font-size: 20px; }
+.ms-label { font-weight: 700; font-size: 14px; flex: 1; }
+.ms-count { color: var(--muted); font-size: 12px; font-weight: 700; }
+.ms-row { font-size: 19px; letter-spacing: 2px; margin: 7px 0 5px; line-height: 1; }
+.ms-on { color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,.55); }
+.ms-off { color: var(--line); }
+.ms-foot { font-size: 12px; color: var(--muted); }
+.ms-next b { color: #fcd34d; }
+.ms-done { color: #fbbf24; font-weight: 700; }
+.ms-hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
+
 /* ===== 曲谱跟弹（Synthesia 式）===== */
 .scf-stage { margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }
 .scf-staff-wrap {

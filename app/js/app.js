@@ -23,6 +23,7 @@ import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 import { PracticeStats } from './practice-stats.js';
 import { Medals, MEDAL_TIERS, tierOf as medalTier, medalForResult } from './medals.js';
 import { Heatmap, HEAT_BUCKETS, NEVER_BUCKET } from './heatmap.js';
+import { MicroStars, MAX_STARS as MICRO_MAX } from './microstars.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
@@ -178,6 +179,33 @@ const HEATMAP_CATALOG = [
   { id: 'bingo',      label: '练习宾果',     icon: '🎯' },
   { id: 'guess',      label: '猜歌视奏',     icon: '🕵️' },
 ];
+// 上述 14 项均为 🌱 初级（level-1）核心技能，热力图与「成长之星」共用此目录
+// #3 8 星微进度：每个技能拆 8 颗小星，按「累计练对数」点亮，只升不降——胜利时刻 ×8
+const microStars = new MicroStars({
+  storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
+});
+let microStarsOnUpdate = null; // 成长之星刷新回调（🌟 模块注册）
+// 用某技能的最新累计练对数刷新微星；新点亮星时撒花 + 飘字庆祝
+function syncMicroStars(moduleId, label) {
+  const m = practiceStats.moduleStats().find((x) => x.id === moduleId);
+  const correct = m ? m.correct : 0;
+  const r = microStars.sync(moduleId, correct, label);
+  if (microStarsOnUpdate) microStarsOnUpdate();
+  if (r.gained.length) {
+    const msg = r.justMaxed
+      ? `🌟 集齐 8 颗星！「${label}」满星啦，太厉害了！`
+      : `⭐ 「${label}」点亮第 ${r.stars} 颗星！`;
+    cheerToast(msg, null);
+    if (r.justMaxed) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:35';
+      document.body.appendChild(overlay);
+      cheerBurst(overlay, 100);
+      setTimeout(() => overlay.remove(), 2600);
+    }
+  }
+  return r;
+}
 // 记一遍曲子成绩，奖牌只升不降；升级时撒花 + 飘字庆祝。返回 award 结果
 function awardMedal(songId, title, summary) {
   if (!summary) return null;
@@ -248,6 +276,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   const newly = practiceStats.record({ moduleId, label, attempts, correct, bestStreak });
   if (dashboardOnUpdate) dashboardOnUpdate();
   renderDailyStrip();
+  syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
   newly.forEach((id, i) => {
     const a = practiceStats.allAchievements().find((x) => x.id === id);
     if (!a) return;
@@ -12601,6 +12630,45 @@ function renderHeatmap() {
   heatmapOnUpdate = build;
 }
 
+// #3 8 星微进度（micro-progress stars）：每个 level-1 技能拆 8 颗小星，按累计练对数点亮
+function renderMicroStars() {
+  const root = $('#module-stars');
+  if (!root) return;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function build() {
+    const items = microStars.all(HEATMAP_CATALOG);
+    const c = microStars.counts(HEATMAP_CATALOG);
+    const pct = c.max ? Math.round(c.earned / c.max * 100) : 0;
+
+    const cards = items.map((e) => {
+      const filled = '★'.repeat(e.stars);
+      const empty = '☆'.repeat(MICRO_MAX - e.stars);
+      const next = e.maxed
+        ? '<span class="ms-done">🌟 满星！</span>'
+        : `<span class="ms-next">再练对 <b>${e.toNext}</b> 个点亮下一颗</span>`;
+      return `<div class="ms-card ${e.maxed ? 'ms-maxed' : ''}">
+        <div class="ms-head"><span class="ms-ico">${e.icon || '🎵'}</span><span class="ms-label">${esc(e.label)}</span><span class="ms-count">${e.stars}/${MICRO_MAX}</span></div>
+        <div class="ms-row"><span class="ms-on">${filled}</span><span class="ms-off">${empty}</span></div>
+        <div class="ms-foot">${next}</div>
+      </div>`;
+    }).join('');
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🌟 成长之星</h2>
+      <p class="ms-sub">每个练习有 <b>8 颗小星</b>——练对一点点就点亮一颗 ⭐ 第一颗只要练对 1 个就到手！<br>星星<b>只升不降</b>，每一小步都被看见。目标：把所有技能都集满 8 颗 🌟</p>
+      <div class="ms-summary">
+        <div class="ms-progress"><div class="ms-bar"><span style="width:${pct}%"></span></div><b>已点亮 ${c.earned} / ${c.max} 颗星 · ${c.maxed} 个满星</b></div>
+      </div>
+      <div class="ms-grid">${cards}</div>
+      <p class="ms-hint">提示：去任意 🌱 初级练习弹一弹，弹对的越多，对应技能的星星就越多 ✨</p>
+    `;
+  }
+
+  build();
+  microStarsOnUpdate = build;
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -13248,7 +13316,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
