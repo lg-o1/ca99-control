@@ -551,6 +551,45 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 @keyframes hm-glow { 0%,100% { box-shadow: 0 0 12px -4px var(--hm); } 50% { box-shadow: 0 0 20px -2px var(--hm); } }
 .hm-hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
 
+/* ===== 🔄 智能复习队列（spaced repetition）===== */
+.rq-sub { color: var(--muted); margin: 2px 0 12px; line-height: 1.55; }
+.rq-sub b { color: var(--text); }
+.rq-tally { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.rq-pip { font-size: 14px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); }
+.rq-pip-due { color: #f87171; border-color: #f87171; box-shadow: 0 0 10px -3px #f87171; }
+.rq-pip-fresh { color: #22c55e; border-color: #22c55e; box-shadow: 0 0 10px -3px #22c55e; }
+.rq-pip-exp { color: #94a3b8; }
+.rq-pick-cap { font-weight: 700; margin: 4px 0 10px; }
+.rq-pick-cap b { color: #f59e0b; }
+.rq-pick { display: flex; flex-direction: column; gap: 10px; }
+.rq-card {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  border-radius: 14px; background: var(--panel2); border: 1px solid var(--line);
+  border-left: 6px solid var(--rq, #f59e0b); transition: transform .15s, box-shadow .2s;
+}
+.rq-card:hover { transform: translateY(-2px); }
+.rq-card.rq-hot { --rq: #f87171; box-shadow: 0 0 16px -6px #f87171; }
+.rq-card.rq-warm { --rq: #f59e0b; }
+.rq-ic { font-size: 28px; line-height: 1; }
+.rq-body { flex: 1; min-width: 0; }
+.rq-name { font-weight: 700; font-size: 15px; }
+.rq-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.rq-go {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 999px; font-weight: 700; cursor: pointer;
+  background: var(--rq, #f59e0b); color: #1a1205; border: none; transition: filter .15s;
+}
+.rq-go:hover { filter: brightness(1.1); }
+.rq-empty, .rq-clear { padding: 18px 16px; border-radius: 14px; background: var(--panel2); border: 1px dashed var(--line); color: var(--muted); line-height: 1.6; }
+.rq-clear { color: #22c55e; border-color: #22c55e; border-style: solid; }
+.rq-explore { margin-top: 16px; }
+.rq-explore-cap { color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.rq-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.rq-chip {
+  padding: 7px 12px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 600;
+  background: var(--panel2); border: 1px dashed var(--line); color: var(--muted); transition: all .15s;
+}
+.rq-chip:hover { color: var(--text); border-color: var(--accent); border-style: solid; transform: translateY(-1px); }
+
 /* ===== 🌟 成长之星（8-star micro-progress）===== */
 .ms-sub { color: var(--muted); margin: 2px 0 12px; line-height: 1.55; }
 .ms-sub b { color: #fbbf24; }

@@ -24,6 +24,7 @@ import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 import { PracticeStats } from './practice-stats.js';
 import { Medals, MEDAL_TIERS, tierOf as medalTier, medalForResult } from './medals.js';
 import { Heatmap, HEAT_BUCKETS, NEVER_BUCKET } from './heatmap.js';
+import { buildReviewQueue as rqBuild } from './review-queue.js';
 import { MicroStars, MAX_STARS as MICRO_MAX } from './microstars.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
@@ -236,6 +237,7 @@ const heatmap = new Heatmap({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
 });
 let heatmapOnUpdate = null; // 热力图刷新回调（🌡️ 模块注册）
+let reviewQueueOnUpdate = null; // 🔄 智能复习队列刷新回调（注册于 renderReviewQueue）
 // 给 Lily 看的核心练习技能目录（id = recordPractice 的 moduleId）——让从未练的也显示「待探索」卡
 const HEATMAP_CATALOG = [
   { id: 'staffread',  label: '五线谱识谱卡', icon: '🎼' },
@@ -351,6 +353,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   if (!attempts) return; // 没答过题不记
   heatmap.touch(moduleId, label); // #2 热力图：标记该技能「刚刚练过」
   if (heatmapOnUpdate) heatmapOnUpdate();
+  if (reviewQueueOnUpdate) reviewQueueOnUpdate(); // 🔄 复习队列：该技能复习计时重置
   const newly = practiceStats.record({ moduleId, label, attempts, correct, bestStreak });
   if (dashboardOnUpdate) dashboardOnUpdate();
   renderDailyStrip();
@@ -15437,6 +15440,76 @@ function renderHeatmap() {
   heatmapOnUpdate = build;
 }
 
+// ========== 🔄 智能复习队列（间隔重复 spaced repetition）==========
+// 叠在 heatmap 的 per-skill 上次练习+次数之上，按遗忘曲线算「今天该复习哪几项」。
+// 温柔基调：到期不是「你不行」，是「这个技能想你啦，回来复习一下」💚；练得越多间隔越长。
+function renderReviewQueue() {
+  const root = $('#module-review');
+  if (!root) return;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ago = (d) => (d == null ? '还没练过' : d === 0 ? '今天练过' : d === 1 ? '昨天练过' : `${d} 天没练`);
+
+  function build() {
+    const items = heatmap.all(HEATMAP_CATALOG); // {id,label,icon,count,daysAgo}
+    const q = rqBuild(items, { limit: 3 });
+
+    // 今日复习卡（最急的前 3 项）
+    let pickHtml;
+    if (q.pick.length) {
+      const cards = q.pick.map((s) => {
+        const nav = GOAL_NAV_MAP[s.id] || s.id;
+        const urgency = s.ratio >= 2 ? 'rq-hot' : 'rq-warm';
+        return `<div class="rq-card ${urgency}">
+          <div class="rq-ic">${s.icon || '🎵'}</div>
+          <div class="rq-body">
+            <div class="rq-name">${esc(s.label)}</div>
+            <div class="rq-meta">${ago(s.daysAgo)} · 每 ${s.interval} 天复习一次</div>
+          </div>
+          <button class="rq-go" data-nav="${nav}">去复习 →</button>
+        </div>`;
+      }).join('');
+      pickHtml = `
+        <div class="rq-pick-cap">📌 今天最该回来看看的 <b>${q.pick.length}</b> 项——它们有点想你啦 💚</div>
+        <div class="rq-pick">${cards}</div>`;
+    } else if (q.counts.total === 0) {
+      pickHtml = `<div class="rq-empty">还没有练习记录——去随便玩一个，复习队列就会帮你记着啦 🌱</div>`;
+    } else {
+      pickHtml = `<div class="rq-clear">🎉 今天没有到期要复习的！你的技能都还很新鲜——想挑战就去探索新玩法吧 ✨</div>`;
+    }
+
+    // 待探索（从未练过的）—— 邀请而非施压，最多展示几个
+    let exploreHtml = '';
+    if (q.explore.length) {
+      const chips = q.explore.slice(0, 6).map((s) => {
+        const nav = GOAL_NAV_MAP[s.id] || s.id;
+        return `<button class="rq-chip" data-nav="${nav}">${s.icon || '🎵'} ${esc(s.label)}</button>`;
+      }).join('');
+      exploreHtml = `<div class="rq-explore">
+        <div class="rq-explore-cap">⚪ 还没试过的（点一个去探索，没有压力）</div>
+        <div class="rq-chips">${chips}</div>
+      </div>`;
+    }
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🔄 智能复习</h2>
+      <p class="rq-sub">用<b>间隔重复</b>帮你记住学过的东西：练得越熟，下次复习就排得越久——到期了我会温柔提醒你回来看看。<br>这不是作业，是<b>科学地少练、记得牢</b> 🧠💚</p>
+      <div class="rq-tally">
+        <span class="rq-pip rq-pip-due">🔴 该复习 ${q.counts.due}</span>
+        <span class="rq-pip rq-pip-fresh">🟢 还新鲜 ${q.counts.fresh}</span>
+        <span class="rq-pip rq-pip-exp">⚪ 待探索 ${q.counts.explore}</span>
+      </div>
+      ${pickHtml}
+      ${exploreHtml}`;
+
+    root.querySelectorAll('.rq-go, .rq-chip').forEach((b) => {
+      b.onclick = () => switchModule(b.dataset.nav);
+    });
+  }
+
+  build();
+  reviewQueueOnUpdate = build;
+}
+
 // #3 8 星微进度（micro-progress stars）：每个 level-1 技能拆 8 颗小星，按累计练对数点亮
 function renderMicroStars() {
   const root = $('#module-stars');
@@ -18231,7 +18304,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
