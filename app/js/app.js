@@ -12570,7 +12570,8 @@ function renderBossBattle() {
 
   const bbKb = new PianoKeyboard($('#bb-kb'), {
     labels: 'c',
-    recognizeExternal: true,
+    // CA99 真琴输入由全局 bossOnNote 钩子驱动（见 onMidiIn）；这里不能再开 recognizeExternal，
+    // 否则一次真琴按键会同时触发全局钩子 + 本键盘 onNoteOn，handlePress 被调用两次 → 误判/卡住。
     onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); handlePress(m); },
   });
   bbKb.scrollToShow(55, 79);
@@ -12719,7 +12720,7 @@ function renderSpeedRun() {
 
   const sr2Kb = new PianoKeyboard($('#sr2-kb'), {
     labels: 'c',
-    recognizeExternal: true,
+    // CA99 真琴输入由全局 speedRunOnNote 钩子驱动（见 onMidiIn）；勿再开 recognizeExternal，否则 handlePress 双触发。
     onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
   });
   sr2Kb.scrollToShow(55, 84);
@@ -12837,7 +12838,7 @@ function renderDiceWarmup() {
 
   const dwKb = new PianoKeyboard($('#dw-kb'), {
     labels: 'c',
-    recognizeExternal: true,
+    // CA99 真琴输入由全局 diceOnNote 钩子驱动（见 onMidiIn）；勿再开 recognizeExternal，否则 handlePress 双触发。
     onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
   });
   dwKb.scrollToShow(55, 84);
@@ -13099,7 +13100,7 @@ function renderGuessSong() {
 
   const gsKb = new PianoKeyboard($('#gs-kb'), {
     labels: 'c',
-    recognizeExternal: true,
+    // CA99 真琴输入由全局 guessOnNote 钩子驱动（见 onMidiIn）；勿再开 recognizeExternal，否则 handlePress 双触发 → 弹一个音被判两次、卡在原地。
     onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
   });
   gsKb.scrollToShow(55, 84);
