@@ -81,6 +81,7 @@ import { DiceWarmup } from './dice-warmup.js';
 import { BingoCard, winLines } from './bingo-card.js';
 import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
+import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -169,6 +170,13 @@ const mysteryBox = new MysteryBoxEngine({
 });
 let mysteryOnUpdate = null;  // 🎁 音色图鉴刷新回调（盲盒模块注册）
 let mysteryPool = [];        // 可解锁音色 id 池（SOUNDS 加载后构建）
+// 🎯 每日自选微目标：开场让孩子自己选一个今日玩法（SDT 自主感），练 1 次即达成
+const dailyGoal = new DailyGoal({
+  storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
+});
+let dailyGoalOnUpdate = null; // 🎯 今日目标刷新回调（模块注册）
+// 目标模块 id（=recordPractice moduleId）→ 侧栏 data-module（多数同名，仅两个不同）
+const GOAL_NAV_MAP = { scorefollow: 'scf', playstage: 'play' };
 // #2 练习热力图：每个技能按「多久没练」着色（绿=热乎/红=该复习/灰=待探索），不是按正确率
 const heatmap = new Heatmap({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -292,6 +300,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   if (streakCalOnUpdate) streakCalOnUpdate(); // 🔥 打卡日历同步点亮今天
   syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
   mysteryRoll(); // 🎁 练完摇盲盒：小概率解锁一个好玩音色
+  dailyGoalProgress(moduleId); // 🎯 今日目标：练的正是所选则达成
   newly.forEach((id, i) => {
     const a = practiceStats.allAchievements().find((x) => x.id === id);
     if (!a) return;
@@ -400,6 +409,23 @@ function mysteryReveal(sound) {
   requestAnimationFrame(() => overlay.classList.add('mb-open'));
   cheerBurst(document.body, 90);
   setTimeout(() => overlay.remove(), 3600);
+}
+
+// ---------- 🎯 每日自选微目标：达成检测 + 庆祝 ----------
+function dgTodayKey() {
+  return practiceStats.recentDays(1)[0].day; // dayKey(now)（本地日期）
+}
+function dailyGoalProgress(moduleId) {
+  const justDone = dailyGoal.complete(dgTodayKey(), moduleId);
+  if (justDone) dailyGoalCelebrate();
+  if (dailyGoalOnUpdate) dailyGoalOnUpdate();
+}
+function dailyGoalCelebrate() {
+  cheerToast('🎯 今日目标达成！你说到做到 🌟', document.body);
+  cheerBurst(document.body, 80);
+}
+if (typeof window !== 'undefined') {
+  window.__dailygoal = { goal: dailyGoal, progress: dailyGoalProgress, today: dgTodayKey };
 }
 
 // ---------- 工具 ----------
@@ -13326,6 +13352,84 @@ function renderMysteryBox() {
   mysteryOnUpdate = build;
 }
 
+// ========== 🎯 每日自选微目标 ==========
+function renderDailyGoal() {
+  const root = $('#module-dailygoal');
+  if (!root) return;
+
+  function build() {
+    const todayKey = dgTodayKey();
+    const options = dgPickOptions(HEATMAP_CATALOG, todayKey, 3);
+    const st = dailyGoal.state(todayKey);
+    const chosen = st.chosenId ? HEATMAP_CATALOG.find((c) => c.id === st.chosenId) : null;
+
+    const totalLine = `<div class="dg-total">🏅 累计达成 <b>${st.totalDone}</b> 个每日目标——每一个都是「我说到做到」的证明</div>`;
+
+    let body;
+    if (chosen && st.done) {
+      // 已达成
+      body = `
+        <div class="dg-done">
+          <div class="dg-done-check">✅</div>
+          <div class="dg-done-title">今天的目标完成啦！</div>
+          <div class="dg-done-sub">${chosen.icon || '🎯'} ${chosen.label} —— 你做到了 🎉</div>
+          <button class="dg-again" id="dg-again">想再选一个？换个玩法 →</button>
+        </div>`;
+    } else if (chosen) {
+      // 已选未达成
+      const nav = GOAL_NAV_MAP[chosen.id] || chosen.id;
+      body = `
+        <div class="dg-chosen">
+          <div class="dg-chosen-cap">今天的小目标 👇（只要练 1 次就达成，超简单！）</div>
+          <div class="dg-chosen-card">
+            <div class="dg-chosen-ic">${chosen.icon || '🎯'}</div>
+            <div class="dg-chosen-name">${chosen.label}</div>
+          </div>
+          <button class="dg-go" data-nav="${nav}">去练「${chosen.label}」 →</button>
+          <button class="dg-change" id="dg-change">换一个目标</button>
+        </div>`;
+    } else {
+      // 未选 → 让她自己挑
+      const cards = options.map((o) => `
+        <button class="dg-opt" data-id="${o.id}">
+          <div class="dg-opt-ic">${o.icon || '🎯'}</div>
+          <div class="dg-opt-name">${o.label}</div>
+          <div class="dg-opt-pick">选这个 →</div>
+        </button>`).join('');
+      body = `
+        <div class="dg-pick">
+          <div class="dg-pick-cap">今天想练什么？<b>你自己选一个</b> 👇</div>
+          <div class="dg-opts">${cards}</div>
+          <div class="dg-pick-hint">选好后去练 1 次就达成——目标很小，迈出第一步最重要 💛</div>
+        </div>`;
+    }
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🎯 今日目标</h2>
+      <p class="dg-sub">每天<b>你自己</b>挑一个想练的玩法当今天的小目标。是<b>你的选择</b>，不是别人布置的作业——练 1 次就达成，给自己一个大大的 ✅。</p>
+      ${totalLine}
+      ${body}`;
+
+    const goBtn = root.querySelector('.dg-go');
+    if (goBtn) goBtn.onclick = () => switchModule(goBtn.dataset.nav);
+
+    root.querySelectorAll('.dg-opt').forEach((b) => {
+      b.onclick = () => {
+        dailyGoal.choose(todayKey, b.dataset.id);
+        cheerToast('好的！今天就练这个 🎯', root);
+        build();
+      };
+    });
+    const changeBtn = root.querySelector('#dg-change');
+    if (changeBtn) changeBtn.onclick = () => { dailyGoal.choose(todayKey, ''); build(); };
+    const againBtn = root.querySelector('#dg-again');
+    if (againBtn) againBtn.onclick = () => { dailyGoal.choose(todayKey, ''); build(); };
+  }
+
+  build();
+  dailyGoalOnUpdate = build;
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -13973,7 +14077,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

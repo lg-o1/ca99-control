@@ -1998,3 +1998,50 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .mb-reveal-name { font-size: 24px; font-weight: 800; margin: 8px 0 4px; }
 .mb-reveal-sub { font-size: 13px; color: #b9aee8; }
 .mb-reveal-hint { font-size: 12px; color: #8b93b8; margin-top: 10px; }
+
+/* ===== 🎯 每日自选微目标 ===== */
+.dg-sub { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 10px; }
+.dg-total { font-size: 13px; color: #c4b5fd; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; margin-bottom: 16px; }
+.dg-total b { color: #fbbf24; }
+.dg-pick-cap { font-size: 16px; color: var(--text); margin-bottom: 14px; }
+.dg-pick-cap b { color: #34d399; }
+.dg-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.dg-opt {
+  background: linear-gradient(160deg, #1f2740, #25304e);
+  border: 1px solid #3a4a6e; border-radius: 16px; padding: 22px 14px; cursor: pointer;
+  text-align: center; color: var(--text); transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+}
+.dg-opt:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(52,211,153,.25); border-color: #34d399; }
+.dg-opt-ic { font-size: 40px; line-height: 1; margin-bottom: 8px; }
+.dg-opt-name { font-size: 16px; font-weight: 700; }
+.dg-opt-pick { font-size: 12px; color: #34d399; margin-top: 8px; }
+.dg-pick-hint { font-size: 13px; color: var(--muted); margin-top: 16px; }
+
+.dg-chosen-cap { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+.dg-chosen-card {
+  display: flex; align-items: center; gap: 16px;
+  background: linear-gradient(160deg, #1f3320, #244a2c);
+  border: 1px solid #34d399; border-radius: 16px; padding: 18px 22px; margin-bottom: 16px;
+}
+.dg-chosen-ic { font-size: 44px; line-height: 1; }
+.dg-chosen-name { font-size: 22px; font-weight: 800; color: #d1fae5; }
+.dg-go {
+  display: inline-block; background: linear-gradient(90deg, #10b981, #34d399);
+  color: #06281c; font-weight: 800; font-size: 16px; border: none; border-radius: 12px;
+  padding: 13px 26px; cursor: pointer; box-shadow: 0 6px 18px rgba(16,185,129,.35);
+}
+.dg-go:hover { filter: brightness(1.08); }
+.dg-change, .dg-again {
+  display: block; margin-top: 14px; background: none; border: none;
+  color: var(--muted); font-size: 13px; cursor: pointer; text-decoration: underline;
+}
+.dg-change:hover, .dg-again:hover { color: var(--text); }
+
+.dg-done {
+  text-align: center; background: linear-gradient(160deg, #1f3320, #234a2b);
+  border: 1px solid #34d399; border-radius: 18px; padding: 30px 20px;
+}
+.dg-done-check { font-size: 64px; line-height: 1; animation: dg-pop .5s cubic-bezier(.2,1.5,.4,1); }
+@keyframes dg-pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+.dg-done-title { font-size: 22px; font-weight: 800; color: #d1fae5; margin-top: 10px; }
+.dg-done-sub { font-size: 15px; color: #a7f3d0; margin-top: 6px; }
