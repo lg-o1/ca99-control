@@ -424,6 +424,17 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .bb-dmg { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 34px; font-weight: 900; color: #fca5a5; text-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none; animation: bbDmg .9s ease-out forwards; }
 @keyframes bbDmg { 0% { opacity: 0; transform: translate(-50%, 0) scale(.6) } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2) } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1) } }
 
+/* 🚀 极速挑战 */
+.sr2-dash { display: flex; gap: 12px; justify-content: center; margin-bottom: 10px; }
+.sr2-gauge { flex: 1; max-width: 160px; text-align: center; padding: 12px 8px; border-radius: 14px; background: var(--panel, #1a1f33); border: 1px solid var(--border, #2a2f45); }
+.sr2-big { font-size: 34px; font-weight: 900; color: var(--text); line-height: 1; }
+.sr2-big.sr2-best { color: #fbbf24; }
+.sr2-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.sr2-curve { min-height: 64px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+.sr2-curve-svg { width: 100%; max-width: 340px; height: 64px; }
+.sr2-curve-empty { color: var(--muted); font-size: 13px; }
+.sr2-passage { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-bottom: 8px; }
+
 /* ===== 曲谱跟弹（Synthesia 式）===== */
 .scf-stage { margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }
 .scf-staff-wrap {

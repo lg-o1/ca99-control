@@ -71,6 +71,7 @@ import { layoutStaff as svLayoutStaff, cursorX as svCursorX, activeAt as svActiv
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 import { noteColor as ncNoteColor, scaffoldStrength as ncStrength, isWeaned as ncWeaned } from './note-color.js';
 import { BOSSES as BB_BOSSES, getBoss as bbGetBoss, BossBattle } from './boss-battle.js';
+import { RUNS as SR_RUNS, getRun as srGetRun, SpeedRun } from './speed-run.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -125,6 +126,8 @@ let playStageOnNote = null; // 🎬 演奏台跟弹判分的 note-on 回调（�
 let playStageOnNoteOff = null; // 🎬 演奏台的 note-off 回调（真琴松键 → 屏幕键抬起）
 let bossOnNote = null;      // 🐉 Boss 战的 note-on 回调（Boss 战模块注册）
 let bossOnNoteOff = null;   // 🐉 Boss 战的 note-off 回调（真琴松键 → 屏幕键抬起）
+let speedRunOnNote = null;  // 🚀 极速挑战的 note-on 回调（极速挑战模块注册）
+let speedRunOnNoteOff = null; // 🚀 极速挑战的 note-off 回调
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -334,6 +337,8 @@ function onMidiIn(bytes) {
     if (sightOnNote) sightOnNote(m.note);
     // 驱动 Boss 战
     if (bossOnNote) bossOnNote(m.note, m.velocity);
+    // 驱动极速挑战
+    if (speedRunOnNote) speedRunOnNote(m.note, m.velocity);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -437,6 +442,8 @@ function onMidiIn(bytes) {
     if (playStageOnNoteOff) playStageOnNoteOff(m.note);
     // 🐉 Boss 战：真琴松键 → 屏幕键抬起
     if (bossOnNoteOff) bossOnNoteOff(m.note);
+    // 🚀 极速挑战：真琴松键 → 屏幕键抬起
+    if (speedRunOnNoteOff) speedRunOnNoteOff(m.note);
     // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
     PianoKeyboard.echoOff(m.note);
   }
@@ -11915,6 +11922,155 @@ function renderBossBattle() {
   previewBoss();
 }
 
+// ========== 模块: 🚀 极速挑战（弹对又弹快 → 刷新个人 BPM 纪录）==========
+function renderSpeedRun() {
+  const root = $('#module-speedrun');
+  let sr = null;
+  let runId = SR_RUNS[0].id;
+  let octAgn = true;
+  let running = false;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🚀 极速挑战</h2>
+    <p style="color:var(--muted);margin-bottom:14px">把一段音阶/琶音<b>按顺序弹对、再弹得更快</b>——引擎给整段计时换算成<b>有效速度 (BPM)</b>。<b>超过当前目标就升一档</b>(+5 BPM) 并刷新你的<b>个人纪录</b>！没达标就再试，弹错从头来（都不惩罚）。<b>不用卡节拍器</b>，只跟自己比，越刷越快。可接 CA99 真琴或点屏幕键盘。</p>
+
+    <div class="bb-pick" id="sr2-pick"></div>
+
+    <div class="sr2-dash">
+      <div class="sr2-gauge"><div class="sr2-big" id="sr2-target">50</div><div class="sr2-lbl">🎯 目标 BPM</div></div>
+      <div class="sr2-gauge"><div class="sr2-big sr2-best" id="sr2-best">—</div><div class="sr2-lbl">🏅 个人纪录</div></div>
+      <div class="sr2-gauge"><div class="sr2-big" id="sr2-last">—</div><div class="sr2-lbl">⏱️ 上次速度</div></div>
+    </div>
+    <div class="sr2-curve" id="sr2-curve"></div>
+
+    <div class="sr2-passage" id="sr2-passage"></div>
+    <div class="bb-feedback" id="sr2-feedback">选好乐句，按"开始"挑战</div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap" id="sr2-kbcap">🎹 按高亮的键，按顺序快速弹出整段</div>
+      <div id="sr2-kb"></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="sr2-start" class="big-btn">▶ 开始挑战</button>
+      <label class="scaffold-toggle"><input type="checkbox" id="sr2-oct" checked> 忽略八度</label>
+      <span id="sr2-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawPicker() {
+    $('#sr2-pick').innerHTML = SR_RUNS.map((r) =>
+      `<button class="bb-chip${r.id === runId ? ' on' : ''}" data-id="${r.id}">${r.name}<small>${r.notes.length} 音</small></button>`).join('');
+    $('#sr2-pick').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { if (running) return; runId = el.dataset.id; drawPicker(); previewRun(); };
+    });
+  }
+
+  function drawPassage(notes, idx) {
+    $('#sr2-passage').innerHTML = notes.map((m, i) =>
+      `<span class="bb-pnote${i === idx ? ' cur' : ''}${idx > i ? ' done' : ''}">${kbNoteName(m)}</span>`).join('<i class="bb-arrow">→</i>');
+  }
+
+  function drawCurve() {
+    const h = sr ? sr.history : [];
+    if (!h.length) { $('#sr2-curve').innerHTML = '<span class="sr2-curve-empty">完成一次就会画出你的速度成长曲线 📈</span>'; return; }
+    const W = 320, H = 60, pad = 6;
+    const max = Math.max(...h, 1), min = Math.min(...h);
+    const span = Math.max(1, max - min);
+    const xs = (i) => pad + (h.length === 1 ? W / 2 : i * (W - 2 * pad) / (h.length - 1));
+    const ys = (v) => H - pad - (v - min) / span * (H - 2 * pad);
+    let path = h.map((v, i) => `${i ? 'L' : 'M'}${xs(i).toFixed(1)},${ys(v).toFixed(1)}`).join(' ');
+    let dots = h.map((v, i) => `<circle cx="${xs(i).toFixed(1)}" cy="${ys(v).toFixed(1)}" r="3" fill="${v >= max ? '#fbbf24' : '#22d3ee'}"/>`).join('');
+    $('#sr2-curve').innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="sr2-curve-svg"><path d="${path}" fill="none" stroke="#6366f1" stroke-width="2"/>${dots}</svg>`;
+  }
+
+  function previewRun() {
+    const r = srGetRun(runId);
+    $('#sr2-target').textContent = sr ? sr.targetBpm : 50;
+    $('#sr2-best').textContent = sr && sr.bestBpm ? sr.bestBpm : '—';
+    $('#sr2-last').textContent = '—';
+    drawPassage(r.notes, -1);
+    drawCurve();
+    $('#sr2-feedback').textContent = `乐句：${r.notes.map((m) => kbNoteName(m)).join(' → ')}`;
+  }
+
+  function refreshDash() {
+    $('#sr2-target').textContent = sr.targetBpm;
+    $('#sr2-best').textContent = sr.bestBpm || '—';
+  }
+
+  function showTarget() {
+    const t = sr.current();
+    sr2Kb.clear();
+    if (t != null) sr2Kb.highlightMany([{ midi: t, color: '#fbbf24', text: kbNoteName(t) }]);
+  }
+
+  function handlePress(midi) {
+    if (!sr || !running) return;
+    const r = sr.press(midi, performance.now());
+    if (r.wrong) {
+      sr2Kb.flash(midi, '#f87171');
+      $('#sr2-feedback').textContent = '🤔 顺序错了，从头再来～（速度不变，别急）';
+      drawPassage(sr.notes, sr.idx);
+      showTarget();
+      return;
+    }
+    sr2Kb.flash(midi, '#34d399');
+    if (r.complete) {
+      $('#sr2-last').textContent = r.effBpm;
+      refreshDash();
+      drawCurve();
+      drawPassage(sr.notes, -1);
+      if (r.leveledUp) {
+        cheerToast(`🚀 ${r.newRecord ? '新纪录 ' : ''}${r.effBpm} BPM！升到目标 ${r.targetBpm}`, root);
+        cheerBurst(root, 70);
+        $('#sr2-feedback').innerHTML = `🚀 <b>${r.effBpm} BPM</b>！达标升档 → 新目标 <b>${r.targetBpm}</b>。再来一遍冲更快！`;
+        recordPractice('speedrun', '极速挑战', sr.runs, sr.bestBpm, sr.bestBpm);
+      } else {
+        $('#sr2-feedback').innerHTML = `⏱️ <b>${r.effBpm} BPM</b>${r.newRecord ? '（个人纪录！）' : ''} · 离目标 <b>${sr.targetBpm}</b> 还差一点，再快一点点！`;
+      }
+      showTarget();
+      return;
+    }
+    drawPassage(sr.notes, sr.idx);
+    showTarget();
+  }
+
+  const sr2Kb = new PianoKeyboard($('#sr2-kb'), {
+    labels: 'c',
+    recognizeExternal: true,
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
+  });
+  sr2Kb.scrollToShow(55, 84);
+
+  $('#sr2-oct').onchange = () => { if (!running) octAgn = $('#sr2-oct').checked; };
+
+  $('#sr2-start').onclick = () => {
+    if (running) {
+      running = false; speedRunOnNote = null; speedRunOnNoteOff = null;
+      $('#sr2-start').textContent = '▶ 开始挑战';
+      $('#sr2-start').classList.remove('running');
+      $('#sr2-status').textContent = '已停止';
+      sr2Kb.clear();
+      previewRun();
+      return;
+    }
+    sr = new SpeedRun({ run: runId, octaveAgnostic: octAgn });
+    running = true;
+    $('#sr2-start').textContent = '⏸ 停止';
+    $('#sr2-start').classList.add('running');
+    $('#sr2-status').textContent = '挑战中…';
+    refreshDash();
+    drawPassage(sr.notes, 0);
+    showTarget();
+    $('#sr2-feedback').textContent = `开始！按高亮键<b>又对又快</b>地弹出整段，超过 ${sr.targetBpm} BPM 就升档！`;
+    speedRunOnNote = (m) => handlePress(m);
+    speedRunOnNoteOff = (m) => { try { sr2Kb.release(m); } catch (_) {} };
+  };
+
+  drawPicker();
+  previewRun();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -12562,7 +12718,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
