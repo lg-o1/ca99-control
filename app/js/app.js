@@ -29,7 +29,7 @@ import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
 import { Accompaniment, PATTERNS as ACCOMP_PATTERNS, getPattern as accompGetPattern } from './accompaniment.js';
-import { analyzeChord, COLOR_KEYS as CCOLOR_KEYS, tonicTriadPcs as ccolorTonicTriad } from './chord-color.js';
+import { analyzeChord, COLOR_KEYS as CCOLOR_KEYS, tonicTriadPcs as ccolorTonicTriad, colorOf as ccolorOf } from './chord-color.js';
 import { heatColor as lsHeatColor, pickColor as lsPickColor, sparkSpec as lsSparkSpec, beamHeight as lsBeamHeight, stageFrac as lsStageFrac, isMilestone as lsIsMilestone, THEMES as LS_THEMES, ComboCounter as LsCombo } from './light-show.js';
 import { ECHO_LEVELS as ME_LEVELS, levelById as meLevelById, MelodyEcho } from './melody-echo.js';
 import { CR_LEVELS, levelById as crLevelById, CallResponse } from './call-response.js';
@@ -90,6 +90,7 @@ import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
 import * as MagicJam from './magic-jam.js';
 import { LoopComposer, QUANTIZE_OPTIONS as LC_QUANTIZE } from './loop-composer.js';
 import { WarmupRoutine, WARMUP_BPMS } from './warmup-routine.js';
+import { PlayMood, MOODS as PM_MOODS } from './play-mood.js';
 import * as XpLevel from './xp-level.js';
 import * as WeeklyQuest from './weekly-quest.js';
 import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhostFrac, playerFrac as grPlayerFrac, lead as grLead, formatMs as grFormatMs } from './ghost-race.js';
@@ -184,6 +185,8 @@ let loopComposerOnNote = null;  // 🎼 循环作曲台的 note-on 回调（叠�
 let loopComposerOffNote = null; // 🎼 循环作曲台的 note-off 回调
 let warmupOnNote = null;        // 🌅 每日热身例程·音阶步的 note-on 回调（注册）
 let warmupOnNoteOff = null;     // 🌅 每日热身例程·音阶步的 note-off 回调
+let playMoodOnNote = null;      // 🎭 情绪演奏的 note-on 回调（带力度，自由表达）
+let playMoodOnNoteOff = null;   // 🎭 情绪演奏的 note-off 回调
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -621,6 +624,8 @@ function onMidiIn(bytes) {
     if (diceOnNote) diceOnNote(m.note, m.velocity);
     // 驱动每日热身例程（音阶步）
     if (warmupOnNote) warmupOnNote(m.note, m.velocity);
+    // 驱动情绪演奏（自由表达，带力度）
+    if (playMoodOnNote) playMoodOnNote(m.note, m.velocity);
     // 驱动猜歌视奏
     if (guessOnNote) guessOnNote(m.note, m.velocity);
     // 驱动力度练习
@@ -753,6 +758,8 @@ function onMidiIn(bytes) {
     if (diceOnNoteOff) diceOnNoteOff(m.note);
     // 🌅 每日热身例程：真琴松键 → 屏幕键抬起
     if (warmupOnNoteOff) warmupOnNoteOff(m.note);
+    // 🎭 情绪演奏：真琴松键 → 屏幕键抬起
+    if (playMoodOnNoteOff) playMoodOnNoteOff(m.note);
     // 🕵️ 猜歌视奏：真琴松键 → 屏幕键抬起
     if (guessOnNoteOff) guessOnNoteOff(m.note);
     // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
@@ -15570,6 +15577,154 @@ function renderWarmupRoutine() {
   document.addEventListener('ca99:module-change', () => { stopMetro(); });
 }
 
+// ========== 🎭 情绪演奏（Play the Mood：给一张情绪卡，用力度+速度+音色自由表达，零对错）==========
+function renderPlayMood() {
+  const root = $('#module-playmood');
+  if (!root) return;
+  const pm = new PlayMood();
+  let pmRaf = null;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:4px">🎭 情绪演奏</h2>
+    <p class="pmd-sub">音乐不只是弹对音，更是<b>表达心情</b>！抽一张<b>情绪卡</b>（开心 / 神秘 / 暴风雨…），然后用你的<b>力度</b>（轻或响）、<b>速度</b>（快或慢）和<b>音色</b>，把这份感觉弹出来 🎹。<b>没有对错、没有分数</b>——你弹的就是你的情绪，怎么弹都很棒 🌈。</p>
+
+    <div class="pmd-card" id="pmd-card">
+      <div class="pmd-card-empty">点下面的「🎲 抽情绪卡」开始 🎭</div>
+    </div>
+
+    <div class="pmd-palette" id="pmd-palette"></div>
+
+    <div class="pmd-stats">
+      <span class="pmd-stat">🎵 这段 <b id="pmd-count">0</b> 个音</span>
+      <span class="pmd-stat">🎚️ 力度 <b id="pmd-dyn">—</b></span>
+      <span class="pmd-stat">⏱️ 速度 <b id="pmd-tempo">—</b></span>
+    </div>
+
+    <div class="bb-feedback" id="pmd-fb">抽一张情绪卡，然后自由表达 🎭</div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 用力度和速度弹出这份情绪——怎么弹都行</div>
+      <div id="pmd-kb"></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="pmd-roll" class="big-btn">🎲 抽情绪卡</button>
+      <button id="pmd-rec" class="grid-btn" disabled>⏺ 开始表达</button>
+      <button id="pmd-done" class="grid-btn" disabled>✨ 弹好了，看看</button>
+      <span id="pmd-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  const TEMPO_TXT = { slow: '慢', med: '中速', fast: '快' };
+
+  function drawCard() {
+    const m = pm.mood;
+    if (!m) return;
+    root.style.setProperty('--pmd-hue', m.hue);
+    $('#pmd-card').innerHTML = `
+      <div class="pmd-emoji">${m.emoji}</div>
+      <div class="pmd-name">${m.name}</div>
+      <div class="pmd-blurb">${m.blurb}</div>`;
+    $('#pmd-card').style.background = `linear-gradient(160deg, hsl(${m.hue},45%,18%), hsl(${m.hue},35%,12%))`;
+    $('#pmd-card').style.borderColor = `hsl(${m.hue},60%,45%)`;
+  }
+
+  function drawPalette() {
+    const m = pm.mood;
+    if (!m) { $('#pmd-palette').innerHTML = ''; return; }
+    const dyn = (DYNAMICS.find((d) => d.key === m.dynamic) || {});
+    const chips = m.qualities.map((q) => {
+      const c = ccolorOf(q);
+      return `<span class="pmd-chip" style="border-color:${c.color};color:${c.glow}">${c.label} · ${c.mood}</span>`;
+    }).join('');
+    $('#pmd-palette').innerHTML = `
+      <div class="pmd-hint-row"><span class="pmd-hint-lbl">建议力度</span><b>${dyn.sym || ''} ${dyn.name || ''}</b></div>
+      <div class="pmd-hint-row"><span class="pmd-hint-lbl">建议速度</span><b>${TEMPO_TXT[m.tempo]}</b></div>
+      <div class="pmd-hint-row"><span class="pmd-hint-lbl">音色灵感</span><span class="pmd-chips">${chips}</span></div>
+      <div class="pmd-hint-tip">💡 这些只是<b>灵感</b>，不是要求——你想怎么表达都可以！</div>`;
+  }
+
+  function refreshLive() {
+    const s = pm.expression();
+    $('#pmd-count').textContent = s.noteCount;
+    $('#pmd-dyn').textContent = s.dynamic ? `${s.dynamic.sym} ${s.dynamic.name}` : '—';
+    $('#pmd-tempo').textContent = s.noteCount >= 2 ? TEMPO_TXT[s.tempo] : '—';
+    if (pm.recording) pmRaf = requestAnimationFrame(refreshLive);
+  }
+
+  function handlePress(midi, vel) {
+    if (!pm.recording) return;
+    pm.addNote(midi, vel || 80, performance.now());
+    pmKb.flash(midi, `hsl(${pm.mood ? pm.mood.hue : 280},80%,60%)`);
+    $('#pmd-done').disabled = false;
+    refreshLive();
+  }
+
+  const pmKb = new PianoKeyboard($('#pmd-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); handlePress(m, 90); },
+  });
+  pmKb.scrollToShow(48, 84);
+
+  $('#pmd-roll').onclick = () => {
+    pm.stop();
+    if (pmRaf) cancelAnimationFrame(pmRaf);
+    pm.roll();
+    drawCard(); drawPalette();
+    pm.notes = [];
+    $('#pmd-count').textContent = '0'; $('#pmd-dyn').textContent = '—'; $('#pmd-tempo').textContent = '—';
+    $('#pmd-rec').disabled = false;
+    $('#pmd-rec').textContent = '⏺ 开始表达';
+    $('#pmd-rec').classList.remove('running');
+    $('#pmd-done').disabled = true;
+    $('#pmd-status').textContent = '抽到「' + pm.mood.name + '」——准备好就开始表达';
+    $('#pmd-fb').innerHTML = `🎭 这次表达「<b>${pm.mood.name}</b>」${pm.mood.emoji}——${pm.mood.blurb}`;
+    playMoodOnNote = null; playMoodOnNoteOff = null;
+  };
+
+  $('#pmd-rec').onclick = () => {
+    if (!pm.mood) return;
+    if (pm.recording) {
+      pm.stop();
+      if (pmRaf) cancelAnimationFrame(pmRaf);
+      $('#pmd-rec').textContent = '⏺ 重新表达';
+      $('#pmd-rec').classList.remove('running');
+      $('#pmd-done').disabled = pm.noteCount === 0;
+      $('#pmd-status').textContent = '停了——点「✨ 弹好了」看看，或重新表达';
+      playMoodOnNote = null; playMoodOnNoteOff = null;
+    } else {
+      pm.start(performance.now());
+      $('#pmd-rec').textContent = '⏹ 停止';
+      $('#pmd-rec').classList.add('running');
+      $('#pmd-done').disabled = true;
+      $('#pmd-status').textContent = '🔴 表达中…用力度和速度弹出「' + pm.mood.name + '」';
+      $('#pmd-fb').textContent = '🎹 尽情弹吧——轻一点 / 响一点 / 快一点 / 慢一点，都是你的情绪';
+      playMoodOnNote = (midi, vel) => handlePress(midi, vel);
+      playMoodOnNoteOff = (midi) => { try { pmKb.release(midi); } catch (_) {} };
+      refreshLive();
+    }
+  };
+
+  $('#pmd-done').onclick = () => {
+    if (pm.recording) { pm.stop(); if (pmRaf) cancelAnimationFrame(pmRaf); $('#pmd-rec').classList.remove('running'); $('#pmd-rec').textContent = '⏺ 重新表达'; }
+    const r = pm.reflect();
+    if (r.empty) { $('#pmd-fb').textContent = r.lines[0]; return; }
+    pm.finish();
+    $('#pmd-fb').innerHTML = r.lines.map((l) => `<div class="pmd-rline">${l}</div>`).join('');
+    cheerToast('🎭 你表达出了「' + pm.mood.name + '」！', root);
+    cheerBurst(root, 50);
+    recordPractice('playmood', '情绪演奏', 1, 1, 1);
+    $('#pmd-done').disabled = true;
+    $('#pmd-status').textContent = '✨ 表达完成！再抽一张，或重新表达这张';
+    playMoodOnNote = null; playMoodOnNoteOff = null;
+  };
+
+  document.addEventListener('ca99:module-change', () => {
+    pm.stop();
+    if (pmRaf) cancelAnimationFrame(pmRaf);
+    playMoodOnNote = null; playMoodOnNoteOff = null;
+  });
+}
+
 // ========== 🎬 演奏卡（录音分享卡）==========
 let shareCardRaf = null;
 function renderShareCard() {
@@ -17047,7 +17202,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

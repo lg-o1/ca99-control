@@ -2301,3 +2301,22 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .wr-finale-ic{font-size:46px}
 .wr-finale-title{font-size:20px;font-weight:800;color:#7dffae;margin:6px 0}
 .wr-finale-sub{color:var(--muted)}
+
+/* 🎭 情绪演奏 */
+.pmd-sub{color:var(--muted);margin-bottom:12px;line-height:1.6}
+.pmd-card{border:2px solid var(--line);border-radius:18px;padding:22px;text-align:center;margin-bottom:14px;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:background .4s,border-color .4s}
+.pmd-card-empty{color:var(--muted)}
+.pmd-emoji{font-size:48px;line-height:1}
+.pmd-name{font-size:26px;font-weight:800;color:#fff;letter-spacing:2px}
+.pmd-blurb{color:#e7e3f5;font-size:15px;max-width:520px}
+.pmd-palette{margin-bottom:12px}
+.pmd-hint-row{display:flex;align-items:center;gap:10px;padding:4px 0;flex-wrap:wrap}
+.pmd-hint-lbl{color:var(--muted);font-size:13px;min-width:64px}
+.pmd-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pmd-chip{border:1px solid;border-radius:20px;padding:3px 10px;font-size:12px;background:#0e1322}
+.pmd-hint-tip{color:var(--muted);font-size:12px;margin-top:6px}
+.pmd-stats{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px}
+.pmd-stat{color:var(--muted);font-size:14px}
+.pmd-stat b{color:var(--text)}
+.pmd-rline{padding:3px 0}
+#pmd-rec.running{background:#b03636;color:#fff}
