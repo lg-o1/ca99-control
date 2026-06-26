@@ -63,6 +63,7 @@ import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, ro
 import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
 import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi, beatToMs as scfBeatToMs } from './score-follow.js';
 import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js';
+import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
@@ -190,6 +191,7 @@ let playMoodOnNote = null;      // 🎭 情绪演奏的 note-on 回调（带力�
 let playMoodOnNoteOff = null;   // 🎭 情绪演奏的 note-off 回调
 let loopTrainerOnNote = null;   // 🔁 AB 循环慢练器的 note-on 回调（逐组等待）
 let loopTrainerOnNoteOff = null;// 🔁 AB 循环慢练器的 note-off 回调
+let melodyPalaceOnNote = null;  // 🧠 旋律记忆宫殿的 note-on 回调（渐进 Simon · 真实曲调）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -631,6 +633,8 @@ function onMidiIn(bytes) {
     if (playMoodOnNote) playMoodOnNote(m.note, m.velocity);
     // 驱动 AB 循环慢练器（逐组等待）
     if (loopTrainerOnNote) loopTrainerOnNote(m.note, m.velocity);
+    // 驱动 🧠 旋律记忆宫殿（渐进 Simon，照弹回来）
+    if (melodyPalaceOnNote) melodyPalaceOnNote(m.note);
     // 驱动猜歌视奏
     if (guessOnNote) guessOnNote(m.note, m.velocity);
     // 驱动力度练习
@@ -16043,6 +16047,263 @@ function renderLoopTrainer() {
 }
 
 
+// ========== 🧠 旋律记忆宫殿（渐进 Simon · 真实曲调逐音学会）==========
+function renderMelodyPalace() {
+  const root = $('#module-melpalace');
+  if (!root) return;
+
+  // 从内置曲库挑选适合「逐音听记」的旋律（短小、单手、主旋律清晰）
+  const WANT = ['find-c', 'five-finger', 'updown', 'mary', 'twinkle', 'ode', 'jingle'];
+  const songs = WANT
+    .map((id) => SCF_SONGS.find((s) => s.id === id))
+    .filter(Boolean)
+    .map((s) => ({ id: s.id, title: s.title, melody: pitchesFromSeq(s.seq) }))
+    .filter((s) => s.melody.length >= 3);
+  if (!songs.length) { root.innerHTML = '<p style="color:var(--muted)">没有可用曲目。</p>'; return; }
+
+  let songId = songs[0].id;
+  let ignoreOctave = true;
+  let tolerant = true;   // 默认容错：差 1 半音也提示放行，孩子不易受挫
+
+  const curSong = () => songs.find((s) => s.id === songId) || songs[0];
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🧠 旋律记忆宫殿</h2>
+    <p style="color:var(--muted);margin-bottom:14px">挑一首你喜欢的曲子，钢琴<b>每次只放前几个音</b>，你照着<b>弹回来</b>。弹对了，它就在末尾<b>多放一个音</b>——一句一句往里搬，<b>不看谱、纯靠耳朵</b>，最后整首歌就住进你脑子里啦 🏰。零基础也能玩；接上 CA99 直接弹真琴，没连琴点下面屏幕琴键也行。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>选一首曲子</label>
+        <div id="mp-songs" class="ear-chips">${songs.map((s) => `<button class="ear-chip${s.id === songId ? ' on' : ''}" data-s="${s.id}">${s.title}</button>`).join('')}</div>
+      </div>
+      <div class="param-row" style="gap:18px;flex-wrap:wrap">
+        <label class="ls-check"><input type="checkbox" id="mp-octave" checked> 🎚️ 忽略八度（任意八度都算对，更友好）</label>
+        <label class="ls-check"><input type="checkbox" id="mp-tol" checked> 🤝 容错（差一点点也放行，不卡住）</label>
+        <label>速度
+          <input id="mp-tempo" type="range" min="60" max="160" value="96" class="trans-slider" style="max-width:170px;vertical-align:middle">
+          <span id="mp-tempo-val" style="color:#667eea;font-weight:700">96/分</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="mp-banner" class="me-banner">点 <b>▶ 开始</b>，听前几个音再照着弹回来 🎧</div>
+      <div class="mp-prog-wrap"><div id="mp-prog" class="mp-prog"></div><span id="mp-prog-lbl" class="mp-prog-lbl">0 / 0 音</span></div>
+      <div id="mp-track" class="me-track"></div>
+      <div id="mp-kb" class="me-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="mp-len" class="sight-stat-num">0</div><div class="sight-stat-lbl">已学到</div></div>
+      <div class="sight-stat"><div id="mp-total" class="sight-stat-num">0</div><div class="sight-stat-lbl">全曲音数</div></div>
+      <div class="sight-stat"><div id="mp-rounds" class="sight-stat-num">0</div><div class="sight-stat-lbl">复奏轮数</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="mp-start" class="big-btn">▶ 开始</button>
+      <button id="mp-replay" class="big-btn" style="background:#667eea" disabled>🔊 再听一遍</button>
+      <button id="mp-giveup" class="big-btn" style="background:var(--panel2)" disabled>👀 看答案提示</button>
+    </div>`;
+
+  let game = null, kb = null, ac = null, playTimers = [];
+  const bannerEl = $('#mp-banner');
+  const trackEl = $('#mp-track');
+  const lenEl = $('#mp-len'), totalEl = $('#mp-total'), roundsEl = $('#mp-rounds');
+  const progEl = $('#mp-prog'), progLbl = $('#mp-prog-lbl');
+  const replayBtn = $('#mp-replay'), giveupBtn = $('#mp-giveup'), startBtn = $('#mp-start');
+
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function tone(midi, when, dur) {
+    try {
+      const c = ctx(); const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'triangle';
+      o.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      o.connect(g); g.connect(c.destination);
+      g.gain.setValueAtTime(0.0001, when);
+      g.gain.exponentialRampToValueAtTime(0.26, when + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+      o.start(when); o.stop(when + dur + 0.02);
+    } catch { /* 无音频环境忽略 */ }
+  }
+  function noteDur() { return 60 / (+$('#mp-tempo').value); }
+  function clearTimers() { playTimers.forEach(clearTimeout); playTimers = []; }
+  function band(cls, html) { bannerEl.className = 'me-banner' + (cls ? ' ' + cls : ''); bannerEl.innerHTML = html; }
+
+  function ensureKb() {
+    if (kb) return;
+    kb = new PianoKeyboard($('#mp-kb'), {
+      labels: 'c',
+      onNoteOn: (m) => { try { playTone(midiToFreq(m), 0, 0.5, 0.2); } catch (_) { /* ignore */ } feed(m); },
+    });
+    const mel = curSong().melody;
+    const lo = Math.min(...mel), hi = Math.max(...mel);
+    if (kb.scrollToShow) kb.scrollToShow(lo - 2, hi + 2);
+  }
+
+  // 进度条 + 文本（已揭示长度 / 全曲长度）
+  function updateProg() {
+    const total = game ? game.melody.length : curSong().melody.length;
+    const reveal = game ? game.revealLen : 0;
+    progEl.style.width = total ? Math.round((reveal / total) * 100) + '%' : '0%';
+    progLbl.textContent = `${reveal} / ${total} 音`;
+  }
+
+  // 画进度点：showing 时遮成「?」/「♪」，input 时已对填绿、当前高亮
+  function paintTrack(reveal) {
+    if (!game || !game.revealLen) { trackEl.innerHTML = ''; return; }
+    const seq = game.current();
+    trackEl.innerHTML = seq.map((n, i) => {
+      let cls = 'me-dot';
+      const showing = game.state === 'showing';
+      if (!showing && !reveal) {
+        if (i < game.pos) cls += ' filled';
+        else if (i === game.pos) cls += ' current';
+      } else if (reveal) {
+        cls += ' filled';
+      } else {
+        cls += ' masked';
+      }
+      const label = (reveal || (game.state === 'input' && i < game.pos)) ? CA99.noteName(n) : (showing ? '♪' : '?');
+      return `<div class="${cls}" data-i="${i}">${label}</div>`;
+    }).join('');
+  }
+
+  function updateStats() {
+    lenEl.textContent = game ? game.revealLen : 0;
+    totalEl.textContent = game ? game.melody.length : curSong().melody.length;
+    roundsEl.textContent = game ? game.rounds : 0;
+    updateProg();
+  }
+
+  // 播放本轮乐句（亮键 + 发声），结束后交给玩家
+  function playSequence() {
+    if (!game || !game.revealLen) return;
+    clearTimers();
+    game.state = 'showing';
+    replayBtn.disabled = true; giveupBtn.disabled = true;
+    const seq = game.current();
+    band('show', `👀 听好这 <b>${seq.length}</b> 个音…`);
+    paintTrack(false);
+    const d = noteDur(); const c = ctx(); const start = c.currentTime + 0.18;
+    seq.forEach((n, i) => {
+      tone(n, start + i * d, d * 0.85);
+      playTimers.push(setTimeout(() => {
+        if (kb) kb.flash(n, '#a78bfa');
+        const dot = trackEl.querySelector(`.me-dot[data-i="${i}"]`);
+        if (dot) { dot.classList.add('beat'); setTimeout(() => dot.classList.remove('beat'), 260); }
+      }, 180 + i * d * 1000));
+    });
+    playTimers.push(setTimeout(() => {
+      if (!game) return;
+      game.ready();
+      band('input', '🎹 轮到你！照着<b>原样弹回来</b>');
+      paintTrack(false);
+      replayBtn.disabled = false; giveupBtn.disabled = false;
+    }, 180 + seq.length * d * 1000 + 160));
+  }
+
+  function feed(note) {
+    if (!game || game.state !== 'input') return;
+    const r = game.play(note);
+    if (!r) return;
+    if (r.ok) {
+      if (kb) kb.flash(note, '#34d399');
+      paintTrack(false);
+      if (r.done) {
+        updateStats();
+        if (r.whole) {
+          // 整首掌握！庆祝
+          band('win', `🏆 太厉害了！你<b>凭耳朵学会了整首《${curSong().title}》</b>！`);
+          recordPractice('melpalace', '🧠 旋律记忆宫殿', game.rounds, game.rounds, game.melody.length);
+          try { cheerBurst(root, 16); } catch (_) { /* ignore */ }
+          replayBtn.disabled = true; giveupBtn.disabled = true;
+          startBtn.textContent = '🔁 再来一首';
+          game.state = 'mastered';
+          return;
+        }
+        band('win', `✅ 对啦！记住了 <b>${r.revealLen}</b> 个音 — 再加一个…`);
+        replayBtn.disabled = true; giveupBtn.disabled = true;
+        try { cheerToast('🌟 +1 音', root); } catch (_) { /* ignore */ }
+        playTimers.push(setTimeout(() => {
+          if (!game) return;
+          game.advance();
+          updateStats();
+          playSequence();
+        }, 900));
+      }
+    } else {
+      if (kb) { kb.flash(note, '#f43f5e'); kb.flash(r.expected, '#fbbf24'); }
+      band('fail', `🤔 第 <b>${r.pos + 1}</b> 个不太对：应该是 <b>${CA99.noteName(r.expected)}</b>，你弹了 ${CA99.noteName(note)}。<b>再听一遍</b>试试，已学到 <b>${r.revealLen}</b> 个音 ✨`);
+      recordPractice('melpalace', '🧠 旋律记忆宫殿', game.rounds + 1, game.rounds, game.best);
+      paintTrack(true);
+      if (kb) kb.highlightMany(game.current().map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
+      replayBtn.disabled = true; giveupBtn.disabled = false;
+      giveupBtn.textContent = '🔁 再听一遍';
+      game.state = 'fail';
+    }
+  }
+
+  function beginRun() {
+    ensureKb();
+    game = new MelodyPalace(curSong().melody, { startLen: 3, ignoreOctave, tolerant, semis: 1 });
+    if (kb) kb.clear();
+    if (typeof window !== 'undefined') window.__mpGame = game;  // 调试钩子
+    updateStats();
+    startBtn.textContent = '🔄 重新开始';
+    giveupBtn.textContent = '👀 看答案提示';
+    playSequence();
+  }
+
+  $('#mp-songs').querySelectorAll('button').forEach((b) => b.onclick = () => {
+    songId = b.dataset.s;
+    $('#mp-songs').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+    clearTimers();
+    game = null;
+    if (kb) { kb.clear(); const mel = curSong().melody; if (kb.scrollToShow) kb.scrollToShow(Math.min(...mel) - 2, Math.max(...mel) + 2); }
+    band('', `已选《${curSong().title}》，点 <b>▶ 开始</b> 听第一句 🎧`);
+    trackEl.innerHTML = '';
+    startBtn.textContent = '▶ 开始';
+    replayBtn.disabled = true; giveupBtn.disabled = true;
+    updateStats();
+  });
+  $('#mp-octave').onchange = (e) => { ignoreOctave = e.target.checked; if (game) game.ignoreOctave = ignoreOctave; };
+  $('#mp-tol').onchange = (e) => { tolerant = e.target.checked; if (game) { game.tolerant = tolerant; game.semis = tolerant ? 1 : 0; } };
+  $('#mp-tempo').oninput = (e) => { $('#mp-tempo-val').textContent = e.target.value + '/分'; };
+
+  startBtn.onclick = beginRun;
+  replayBtn.onclick = () => {
+    if (!game || !game.revealLen) return;
+    game.pos = 0;
+    playSequence();
+  };
+  giveupBtn.onclick = () => {
+    if (!game) return;
+    if (game.state === 'fail') {
+      // 看完答案 → 再听一遍本轮（不生长）
+      clearTimers();
+      game.retry();
+      band('', `👀 答案在键上（按数字弹一遍记住它），马上再听 🎧`);
+      playTimers.push(setTimeout(() => { if (game) playSequence(); }, 700));
+      return;
+    }
+    // input 中放弃 → 揭示本轮答案
+    clearTimers();
+    band('fail', `👀 这一句是（${game.revealLen} 个音）：跟着键上数字弹一遍记住它`);
+    paintTrack(true);
+    if (kb) kb.highlightMany(game.current().map((n, i) => ({ midi: n, color: HL_PALETTE[i % HL_PALETTE.length], text: String(i + 1) })));
+    game.state = 'fail';
+    replayBtn.disabled = true;
+    giveupBtn.textContent = '🔁 再听一遍';
+  };
+
+  updateStats();
+
+  // 真实 MIDI 驱动（钢琴自己发声，这里只判定）
+  melodyPalaceOnNote = (midi) => feed(midi);
+
+  document.addEventListener('ca99:module-change', () => { clearTimers(); melodyPalaceOnNote = null; });
+}
+
+
 // ========== 🎬 演奏卡（录音分享卡）==========
 let shareCardRaf = null;
 function renderShareCard() {
@@ -17520,7 +17781,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
