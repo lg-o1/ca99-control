@@ -89,6 +89,7 @@ import { Drops, makeRng as dropsMakeRng, noteLetter as dropsNoteLetter, POOL_C a
 import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
 import * as MagicJam from './magic-jam.js';
 import { LoopComposer, QUANTIZE_OPTIONS as LC_QUANTIZE } from './loop-composer.js';
+import { WarmupRoutine, WARMUP_BPMS } from './warmup-routine.js';
 import * as XpLevel from './xp-level.js';
 import * as WeeklyQuest from './weekly-quest.js';
 import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhostFrac, playerFrac as grPlayerFrac, lead as grLead, formatMs as grFormatMs } from './ghost-race.js';
@@ -181,6 +182,8 @@ let magicJamOnNote = null;   // 🪄 魔法即兴沙盒的 note-on 回调（带�
 let magicJamOffNote = null;  // 🪄 魔法即兴沙盒的 note-off 回调
 let loopComposerOnNote = null;  // 🎼 循环作曲台的 note-on 回调（叠录到当前层）
 let loopComposerOffNote = null; // 🎼 循环作曲台的 note-off 回调
+let warmupOnNote = null;        // 🌅 每日热身例程·音阶步的 note-on 回调（注册）
+let warmupOnNoteOff = null;     // 🌅 每日热身例程·音阶步的 note-off 回调
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -616,6 +619,8 @@ function onMidiIn(bytes) {
     if (soundPaintOnNote) soundPaintOnNote(m.note, m.velocity);
     // 驱动骰子热身
     if (diceOnNote) diceOnNote(m.note, m.velocity);
+    // 驱动每日热身例程（音阶步）
+    if (warmupOnNote) warmupOnNote(m.note, m.velocity);
     // 驱动猜歌视奏
     if (guessOnNote) guessOnNote(m.note, m.velocity);
     // 驱动力度练习
@@ -746,6 +751,8 @@ function onMidiIn(bytes) {
     if (ghostRaceOnNoteOff) ghostRaceOnNoteOff(m.note);
     // 🎲 骰子热身：真琴松键 → 屏幕键抬起
     if (diceOnNoteOff) diceOnNoteOff(m.note);
+    // 🌅 每日热身例程：真琴松键 → 屏幕键抬起
+    if (warmupOnNoteOff) warmupOnNoteOff(m.note);
     // 🕵️ 猜歌视奏：真琴松键 → 屏幕键抬起
     if (guessOnNoteOff) guessOnNoteOff(m.note);
     // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
@@ -15384,6 +15391,185 @@ function renderDailyGoal() {
   dailyGoalOnUpdate = build;
 }
 
+// ========== 🌅 每日热身例程（一键今日 5 分钟例程：音阶 + 节奏 + 小曲，跟着走完打卡）==========
+// 复用 dice-warmup（音阶卡）+ metro-kit（拍号/节拍音色）+ daily-goal（按日期确定）+ 现成歌曲模块。
+let warmupMetroTimer = null;
+function renderWarmupRoutine() {
+  const root = $('#module-warmup');
+  if (!root) return;
+
+  // 小曲目录：从现成「弹一首」类模块里挑（nav = 导航 id）
+  const WARMUP_SONGS = [
+    { id: 'scorefollow', label: '曲谱跟弹', icon: '🎹', nav: 'scf' },
+    { id: 'playstage',   label: '演奏台',   icon: '🎬', nav: 'play' },
+    { id: 'sight',       label: '视奏闪卡', icon: '👀', nav: 'sight' },
+    { id: 'guess',       label: '猜歌视奏', icon: '🕵️', nav: 'guess' },
+    { id: 'staffwars',   label: '音符射击', icon: '🚀', nav: 'staffwars' },
+  ];
+
+  function stopMetro() { if (warmupMetroTimer) { clearInterval(warmupMetroTimer); warmupMetroTimer = null; } }
+
+  // 跟着拍 bars 小节（纯 Web Audio 节拍器，绝不发往 CA99）
+  function runMetro(meterId, bpm, bars, pulseEl, beatEl, onDone) {
+    stopMetro();
+    const beats = MetroKit.beatsOf(meterId);
+    const total = beats * bars;
+    const interval = 60000 / bpm;
+    let b = 0;
+    const tick = () => {
+      const inBar = b % beats;
+      const level = MetroKit.accentAt(meterId, inBar);
+      playMetroClick(level, null);
+      if (pulseEl) { pulseEl.classList.remove('on'); void pulseEl.offsetWidth; pulseEl.classList.add('on', level === 'accent' ? 'accent' : ''); }
+      if (beatEl) beatEl.textContent = `第 ${Math.floor(b / beats) + 1} 小节 · 第 ${inBar + 1} 拍${level === 'accent' ? ' ●' : ''}`;
+      b++;
+      if (b >= total) { stopMetro(); onDone && onDone(); }
+    };
+    tick();
+    warmupMetroTimer = setInterval(tick, interval);
+  }
+
+  function build() {
+    const dayKey = dgTodayKey();
+    const wr = new WarmupRoutine({
+      storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
+      dayKey, songs: WARMUP_SONGS,
+    });
+    warmupOnNote = null; warmupOnNoteOff = null; // 默认不接真琴，仅音阶步激活时挂上
+
+    const sc = wr.step(0), rh = wr.step(1), sg = wr.step(2);
+    const active = wr.activeIndex();
+    const prog = wr.progress();
+
+    const totalLine = `<div class="wr-total">🌅 累计完成 <b>${wr.totalDone}</b> 天热身例程——每天开个好头，手指活动开就赢了一半</div>`;
+    const progBar = `<div class="wr-prog"><div class="wr-prog-fill" style="width:${prog.done / prog.total * 100}%"></div></div><div class="wr-prog-cap">今日进度 ${prog.done} / ${prog.total}</div>`;
+
+    // 三步卡（已完成=✅折叠，当前=展开控件，未到=灰）
+    function stepShell(i, icon, title, sub, inner) {
+      const cls = wr.stepDone[i] ? 'done' : (i === active ? 'active' : 'wait');
+      const badge = wr.stepDone[i] ? '✅' : (i === active ? '👉' : '⏳');
+      return `<div class="wr-step ${cls}">
+        <div class="wr-step-head"><span class="wr-step-badge">${badge}</span><span class="wr-step-ic">${icon}</span>
+          <span class="wr-step-title">${title}</span><span class="wr-step-sub">${sub}</span></div>
+        ${(i === active && !wr.stepDone[i]) ? `<div class="wr-step-body">${inner}</div>` : ''}
+      </div>`;
+    }
+
+    const scaleInner = `
+      <div class="wr-passage" id="wr-passage"></div>
+      <div class="kb-wrap"><div class="kb-cap">🎹 按高亮键，把这条音阶弹一遍（弹错没关系，从头来）</div><div id="wr-kb"></div></div>
+      <div class="bb-feedback" id="wr-sc-fb">${sc.hint}</div>`;
+    const rhythmInner = `
+      <div class="wr-metro"><div class="wr-pulse" id="wr-pulse"></div><div class="wr-beat" id="wr-beat">准备好就开始 🥁</div></div>
+      <div class="rotate-bar"><button class="big-btn" id="wr-metro-go">▶ 跟着拍 ${rh.bars} 小节</button>
+        <button class="grid-btn" id="wr-metro-skip">我拍稳了 ✅</button></div>`;
+    const songInner = `
+      <div class="wr-song-card"><div class="wr-song-ic">${sg.icon}</div><div class="wr-song-name">${sg.label}</div></div>
+      <div class="rotate-bar"><button class="big-btn" id="wr-song-go">去弹「${sg.label}」 →</button>
+        <button class="grid-btn" id="wr-song-skip">弹过了 ✅</button></div>`;
+
+    let finale = '';
+    if (wr.isAllDone()) {
+      finale = `<div class="wr-finale"><div class="wr-finale-ic">🎉</div>
+        <div class="wr-finale-title">今天的热身例程全部完成！</div>
+        <div class="wr-finale-sub">手指活动开了，状态满满——可以去玩任何你喜欢的了 💪</div></div>`;
+    }
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🌅 每日热身例程</h2>
+      <p class="wr-sub">不知道今天先练啥？<b>一键跟着走</b>就好——像真正的老师一样，先<b>1 个音阶</b>暖手、再<b>1 段节奏</b>稳拍子、最后<b>1 首小曲</b>活动手指。三步超小，<b>不用自己决定</b>，走完就给今天开了个好头 ☀️。</p>
+      ${totalLine}
+      ${progBar}
+      ${stepShell(0, '🎼', '第一步 · 音阶暖手', sc.label, scaleInner)}
+      ${stepShell(1, '🥁', '第二步 · 稳住节奏', rh.label, rhythmInner)}
+      ${stepShell(2, '🎵', '第三步 · 弹首小曲', sg.label, songInner)}
+      ${finale}`;
+
+    // ---- 音阶步（仅当它是当前步才挂键盘 + 真琴） ----
+    if (active === 0) {
+      const passEl = root.querySelector('#wr-passage');
+      const fbEl = root.querySelector('#wr-sc-fb');
+      function drawPassage() {
+        passEl.innerHTML = sc.notes.map((m, i) =>
+          `<span class="bb-pnote${i === wr.scaleIdx ? ' cur' : ''}${wr.scaleIdx > i ? ' done' : ''}">${kbNoteName(m)}</span>`)
+          .join('<i class="bb-arrow">→</i>');
+      }
+      function showTarget() {
+        const t = wr.currentScaleNote();
+        wrKb.clear();
+        if (t != null) wrKb.highlightMany([{ midi: t, color: '#fbbf24', text: kbNoteName(t) }]);
+      }
+      function handlePress(midi) {
+        const r = wr.pressScale(midi);
+        if (r.wrong) {
+          wrKb.flash(midi, '#f87171');
+          fbEl.textContent = '🤔 再试一次～从头慢慢弹（别急，没关系）';
+          drawPassage(); showTarget();
+          return;
+        }
+        wrKb.flash(midi, '#34d399');
+        if (r.complete) {
+          cheerToast('🎼 音阶弹完！手暖好了 👏', root);
+          cheerBurst(root, 40);
+          finishStep(r.allDone);
+          return;
+        }
+        drawPassage(); showTarget();
+      }
+      var wrKb = new PianoKeyboard(root.querySelector('#wr-kb'), {
+        labels: 'c',
+        onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
+      });
+      wrKb.scrollToShow(55, 84);
+      drawPassage(); showTarget();
+      warmupOnNote = (m) => handlePress(m);
+      warmupOnNoteOff = (m) => { try { wrKb.release(m); } catch (_) {} };
+    }
+
+    // ---- 节奏步 ----
+    if (active === 1) {
+      const goBtn = root.querySelector('#wr-metro-go');
+      const skipBtn = root.querySelector('#wr-metro-skip');
+      const pulse = root.querySelector('#wr-pulse');
+      const beatEl = root.querySelector('#wr-beat');
+      goBtn.onclick = () => {
+        goBtn.disabled = true; goBtn.textContent = '🥁 跟着拍…';
+        runMetro(rh.meter.id, rh.bpm, rh.bars, pulse, beatEl, () => {
+          beatEl.textContent = '稳稳拍完 2 小节，好节奏！🎉';
+          cheerToast('🥁 节奏稳住啦！', root);
+          const r = wr.completeStep(1);
+          finishStep(r.allDone);
+        });
+      };
+      skipBtn.onclick = () => { stopMetro(); const r = wr.completeStep(1); finishStep(r.allDone); };
+    }
+
+    // ---- 小曲步 ----
+    if (active === 2) {
+      const goBtn = root.querySelector('#wr-song-go');
+      const skipBtn = root.querySelector('#wr-song-skip');
+      goBtn.onclick = () => { wr.completeStep(2); switchModule(sg.nav); };
+      skipBtn.onclick = () => { const r = wr.completeStep(2); finishStep(r.allDone); };
+    }
+
+    // 完成一步后：刚好走完三步 → 打卡（记一次练习 + 全屏庆祝）
+    function finishStep(allDone) {
+      if (allDone) {
+        recordPractice('warmup', '每日热身例程', 3, 3, 3);
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:35';
+        document.body.appendChild(overlay);
+        cheerBurst(overlay, 90);
+        setTimeout(() => overlay.remove(), 2600);
+      }
+      build();
+    }
+  }
+
+  build();
+  document.addEventListener('ca99:module-change', () => { stopMetro(); });
+}
+
 // ========== 🎬 演奏卡（录音分享卡）==========
 let shareCardRaf = null;
 function renderShareCard() {
@@ -16861,7 +17047,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

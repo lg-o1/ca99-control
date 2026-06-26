@@ -2271,3 +2271,33 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .lc-licon:hover{background:#222d44;color:#fff}
 .lc-licon.lc-mute.on{color:#ff9f45}
 .lc-export{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
+
+/* 🌅 每日热身例程 */
+.wr-sub{color:var(--muted);margin-bottom:12px;line-height:1.6}
+.wr-total{background:linear-gradient(90deg,#2a1f0d,#1a1530);border:1px solid #3a3050;border-radius:12px;padding:10px 14px;color:#ffd98a;font-size:14px;margin-bottom:12px}
+.wr-prog{height:10px;background:#161b2e;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.wr-prog-fill{height:100%;background:linear-gradient(90deg,#fbbf24,#f97316);transition:width .4s ease}
+.wr-prog-cap{color:var(--muted);font-size:12px;margin:6px 0 14px;text-align:right}
+.wr-step{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;background:#11152400;transition:border-color .2s,opacity .2s}
+.wr-step.active{border-color:#fbbf24;background:linear-gradient(180deg,#1b1d2e,#15172690)}
+.wr-step.done{border-color:#2f6b46;opacity:.85}
+.wr-step.wait{opacity:.5}
+.wr-step-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.wr-step-badge{font-size:18px}
+.wr-step-ic{font-size:22px}
+.wr-step-title{font-weight:700;color:var(--text)}
+.wr-step-sub{color:var(--muted);font-size:13px;margin-left:auto}
+.wr-step-body{margin-top:12px}
+.wr-passage{display:flex;flex-wrap:wrap;align-items:center;gap:2px;margin:8px 0 12px;font-size:15px}
+.wr-metro{display:flex;align-items:center;gap:16px;margin:8px 0 14px}
+.wr-pulse{width:54px;height:54px;border-radius:50%;background:#1b2238;border:2px solid #2c3552;flex:none;transition:none}
+.wr-pulse.on{background:#7c83ff;border-color:#9aa0ff;box-shadow:0 0 18px #7c83ff88;transition:background .04s,box-shadow .04s}
+.wr-pulse.on.accent{background:#f97316;border-color:#fbbf24;box-shadow:0 0 22px #f9731699}
+.wr-beat{color:var(--muted);font-size:15px}
+.wr-song-card{display:flex;align-items:center;gap:14px;background:#161b2e;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:8px 0 12px}
+.wr-song-ic{font-size:30px}
+.wr-song-name{font-size:18px;font-weight:700;color:var(--text)}
+.wr-finale{text-align:center;background:linear-gradient(180deg,#1b2a1d,#15231a);border:1px solid #2f6b46;border-radius:16px;padding:22px;margin-top:8px}
+.wr-finale-ic{font-size:46px}
+.wr-finale-title{font-size:20px;font-weight:800;color:#7dffae;margin:6px 0}
+.wr-finale-sub{color:var(--muted)}
