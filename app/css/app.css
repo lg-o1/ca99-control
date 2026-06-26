@@ -1675,6 +1675,9 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .mpl-btn:hover { border-color: #60a5fa; }
 .mpl-primary { background: linear-gradient(135deg, #2563eb, #7c3aed); border-color: transparent; color: #fff; font-weight: 600; }
 .mpl-primary.mpl-on { background: linear-gradient(135deg, #db2777, #f59e0b); }
+.mpl-btn.mpl-on { background: linear-gradient(135deg, #f59e0b, #db2777); border-color: transparent; color: #fff; font-weight: 600; }
+.mpl-btn.beat-pulse { animation: mplBeatPulse .18s ease-out; }
+@keyframes mplBeatPulse { 0% { transform: scale(1.12); box-shadow: 0 0 14px rgba(245,158,11,.8); } 100% { transform: scale(1); box-shadow: none; } }
 .mpl-seg { display: inline-flex; border: 1px solid var(--line, #333); border-radius: 8px; overflow: hidden; }
 .mpl-seg button {
   background: var(--panel, #1e2138); color: var(--muted, #9aa3c4);

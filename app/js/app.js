@@ -161,6 +161,7 @@ let pitchDirOnNote = null;   // 高低音方向感的 note-on 回调（模块63�
 let staffWarsOnNote = null;  // 🚀 看谱击落的 note-on 回调（注册）
 let dropsOnNote = null;      // 🫧 接音水滴的 note-on 回调（注册）
 let cofPuzzleOnNote = null;  // 🧩 五度圈拼图的 note-on 回调（注册）
+let staffViewOnNote = null;  // 🎼 五线谱播放器·等待练习的 note-on 回调（注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -664,6 +665,8 @@ function onMidiIn(bytes) {
     if (dropsOnNote) dropsOnNote(m.note);
     // 驱动 🧩 五度圈拼图
     if (cofPuzzleOnNote) cofPuzzleOnNote(m.note);
+    // 驱动 🎼 五线谱播放器·等待练习（弹对才前进）
+    if (staffViewOnNote) staffViewOnNote(m.note, m.velocity);
     // 通用键盘回显：真实 CA99 按键点亮所有"当前可见"练习的屏幕 88 键（之前只有曲谱跟弹能亮）
     PianoKeyboard.echoOn(m.note);
     // 通用识别：对"点击即作答"且无全局钩子的练习（ni/sr/mpl），让真实按键等价于点击该键
@@ -8026,7 +8029,8 @@ function renderScoreFollow() {
   let layout = null, centerX = new Map();
   let demoPlayed = new Set();
   let labelsOn = true;      // ① 下落音符上显示音名标签
-  let metroOn = false;      // ④ 节拍器（跟随播放头）
+  let metroOn = false;      // ④ 节拍器（示范/跟弹跟随播放头；等待模式用自由运行的 scfBeat）
+  let scfBeat = null;       // ④ 等待模式专用自由运行节拍器（播放头冻结时也持续打拍，帮孩子把握节奏）
   let progSpeed = false;    // ⑨ 渐进提速
   let lastBeat = -1;        // 节拍器：上一次触发的整拍
   let hintUntil = 0;        // ⑥ 等待模式提示高亮的截止时刻
@@ -8358,7 +8362,7 @@ function renderScoreFollow() {
     b.onclick = () => { set(!get()); b.classList.toggle('on', get()); };
   }
   bindToggle('#scf-aux-labels', () => labelsOn, (v) => { labelsOn = v; if (sf) drawHighway(lastDrawT); });
-  bindToggle('#scf-aux-metro', () => metroOn, (v) => { metroOn = v; });
+  bindToggle('#scf-aux-metro', () => metroOn, (v) => { metroOn = v; if (mode === 'wait') { v ? startScfBeat() : stopScfBeat(); } });
   bindToggle('#scf-aux-prog', () => progSpeed, (v) => { progSpeed = v; updateMeta(); });
   bindToggle('#scf-aux-velviz', () => velViz, (v) => { velViz = v; if (sf) drawHighway(lastDrawT); });
   bindToggle('#scf-aux-fx', () => fxOn, (v) => { fxOn = v; });
@@ -9034,6 +9038,17 @@ function renderScoreFollow() {
     } else if (b < lastBeat) { lastBeat = b; }
   }
 
+  // ④ 等待模式自由运行节拍器：等待模式下播放头会冻结，跟随播放头的 tickMetro 会哑掉，
+  //    所以改用一个按真实时间自由打拍的节拍器——这样孩子在两音之间也始终听得到稳定的拍子。
+  function startScfBeat() {
+    stopScfBeat();
+    const bpm = Math.max(20, Math.round((getCurrentSong().bpm || 90) * speed));
+    scfBeat = new Metronome({ bpm, beatsPerBar: getCurrentSong().meter || 4 });
+    scfBeat.onTick = (info) => clickSound(info.isAccent);
+    scfBeat.start();
+  }
+  function stopScfBeat() { if (scfBeat) { scfBeat.stop(); scfBeat = null; } }
+
   // ③ 把循环窗口内的音符判定状态重置，供下一遍循环重弹
   function resetWindow() {
     winNotes.forEach((n) => { n.judged = false; n.grade = null; n.deltaMs = null; });
@@ -9050,7 +9065,7 @@ function renderScoreFollow() {
       }
       lastNow = now;
       const t = waitClock;
-      tickMetro(t);
+      // 等待模式不调 tickMetro（播放头冻结时它会哑）——节拍由自由运行的 scfBeat 负责
       drawHighway(t); drawStaff(t); refreshStats();
       if (waitIdx >= groups.length) {
         if (loopOn) {                       // ③ 循环：重置窗口、回到首组
@@ -9162,6 +9177,7 @@ function renderScoreFollow() {
       groups = loopOn ? sf.groups().filter((g) => g.ms >= loopStartMs - 1 && g.ms < loopEndMs) : sf.groups();
       waitIdx = 0; frozen = false; waitClock = lead0; lastNow = performance.now();
       scfOnNote = waitOnNote;
+      if (metroOn) startScfBeat();   // ④ 等待模式：自由运行节拍，冻结时也持续打拍
       $('#scf-feedback').textContent = '🐢 等待模式：弹出键盘上高亮的键，弹齐当前这一组才会继续——慢慢来，不计时。';
       $('#scf-feedback').className = 'sight-feedback';
     } else if (which === 'practice') {
@@ -9188,6 +9204,7 @@ function renderScoreFollow() {
   function stop() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
+    stopScfBeat();   // ④ 关掉等待模式的自由节拍
     allRealOff();   // ④ 关掉所有真琴上还响着的音
     const wasScored = mode === 'practice' || mode === 'wait';
     mode = null; scfOnNote = null;
@@ -9216,6 +9233,7 @@ function renderScoreFollow() {
   function finish() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
+    stopScfBeat();   // ④ 关掉等待模式的自由节拍
     allRealOff();   // ④ 关掉所有真琴上还响着的音
     const wasScored = mode === 'practice' || mode === 'wait';
     const wasWait = mode === 'wait';
@@ -14590,6 +14608,12 @@ function renderStaffView() {
   let t = 0, prevT = 0, total = 0, lastNow = 0;
   let view = [], glyphs = [];
   let kb = null;
+  let svMode = 'play';      // 'play' 播放 | 'wait' 等待练习（弹对才前进）
+  let svGroups = [];        // 等待模式分组：同一时刻的音符归一组 [{ms, midis:[...]}]
+  let waitIdx = 0;          // 当前等待的组
+  let waitNeed = null;      // 当前组还没弹到的音（按音高 class，忽略八度更友好）
+  let beat = null;          // 🥁 浏览器节拍器（自由运行，帮孩子把握节奏）
+  let metroOn = false;
   const allSongs = () => [...DEMO_SONGS, ...customSongs];
   const curSong = () => allSongs().find(s => s.id === songId) || DEMO_SONGS[0];
   const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
@@ -14597,7 +14621,7 @@ function renderStaffView() {
   root.innerHTML = `
     <div class="mod-head">
       <h2>🎼 五线谱播放器</h2>
-      <p class="mod-sub">把一首 MIDI <b>排成真正的五线谱</b>（高音谱号 + 低音谱号大谱表，自动加线/升号），<b>橙色光标</b>横扫时键盘同步亮灯发声、当前音符变亮 —— 边听边对着谱学读谱。内置示范曲，<b>可上传 .mid 文件</b>。和"钢琴卷帘"互为表里：卷帘看手位，五线谱看读谱。</p>
+      <p class="mod-sub">把一首 MIDI <b>排成真正的五线谱</b>（高音谱号 + 低音谱号大谱表，自动加线/升号），<b>橙色光标</b>横扫时键盘同步亮灯发声、当前音符变亮 —— 边听边对着谱学读谱。<b>🐢 等待练习</b>模式：光标停在当前音符，弹对（屏幕键或 CA99 真琴）才前进、不计时；<b>🥁 节拍器</b>给浏览器拍子帮你稳住节奏。内置示范曲，<b>可上传 .mid 文件</b>。和"钢琴卷帘"互为表里：卷帘看手位，五线谱看读谱。</p>
     </div>
     <div class="mpl-bar">
       <span class="mpl-label">曲目</span>
@@ -14607,6 +14631,14 @@ function renderStaffView() {
     <div class="mpl-bar">
       <button id="sv-play" class="mpl-btn mpl-primary">▶ 播放</button>
       <button id="sv-stop" class="mpl-btn">⏹ 停止</button>
+      <button id="sv-hint" class="mpl-btn" style="display:none">💡 提示</button>
+      <span class="mpl-sep"></span>
+      <span class="mpl-label">模式</span>
+      <div class="mpl-seg" id="sv-mode">
+        <button data-m="play" class="on">🔊 播放</button>
+        <button data-m="wait">🐢 等待练习</button>
+      </div>
+      <button id="sv-metro" class="mpl-btn">🥁 节拍器</button>
       <span class="mpl-sep"></span>
       <span class="mpl-label">手</span>
       <div class="mpl-seg" id="sv-hand">
@@ -14639,7 +14671,7 @@ function renderStaffView() {
 
   const svg = $('#sv-svg'), scroll = $('#sv-scroll'), wrap = $('#sv-wrap'), seek = $('#sv-seek');
   let cursor = null;
-  kb = new PianoKeyboard($('#sv-kb'), { labels: 'c', onNoteOn: (m) => { if (soundOn) playTone(midiToFreq(m), 0, 0.32, 0.2); kb.flash(m, '#22d3ee'); } });
+  kb = new PianoKeyboard($('#sv-kb'), { labels: 'c', onNoteOn: (m) => { if (soundOn) playTone(midiToFreq(m), 0, 0.32, 0.2); kb.flash(m, '#22d3ee'); if (svMode === 'wait') svWaitAnswer(m); } });
 
   function viewNotes(song) { return song.notes.filter(n => hand === 'both' || (n.hand || 'r') === hand); }
 
@@ -14740,14 +14772,28 @@ function renderStaffView() {
   }
 
   function play() {
-    if (playing) return;
+    if (playing || svMode === 'wait') return;
     if (t >= total) t = 0;
-    playing = true;
-    $('#sv-play').innerHTML = '⏸ 暂停'; $('#sv-play').classList.add('mpl-on');
-    lastNow = performance.now(); raf = requestAnimationFrame(frame);
+    const begin = () => {
+      playing = true;
+      $('#sv-play').innerHTML = '⏸ 暂停'; $('#sv-play').classList.add('mpl-on');
+      lastNow = performance.now(); raf = requestAnimationFrame(frame);
+    };
+    if (metroOn) {
+      startBeat();
+      if (t === 0) {
+        // 🥁 4 拍前奏数拍：先让孩子听到速度再开始
+        const beatMs = 60000 / Math.max(20, Math.round((curSong().bpm || 120) * speed));
+        $('#sv-play').innerHTML = '…预备…';
+        setTimeout(begin, beatMs * 4);
+        return;
+      }
+    }
+    begin();
   }
   function pause() {
     playing = false; if (raf) cancelAnimationFrame(raf); raf = null;
+    stopBeat();
     $('#sv-play').innerHTML = '▶ 播放'; $('#sv-play').classList.remove('mpl-on');
   }
   function stop(finished) {
@@ -14762,7 +14808,90 @@ function renderStaffView() {
       cheerToast(title ? `🎵 ${title} 播完啦！` : '🎵 播完啦！', host);
     }
   }
-  function rebuild() { t = 0; prevT = 0; build(); }
+  function rebuild() {
+    t = 0; prevT = 0; build();
+    if (svMode === 'wait') { svGroups = buildGroups(); svWaitGoto(0); }
+  }
+
+  // ===== 🥁 浏览器节拍器（自由运行，不经 CA99） =====
+  function startBeat() {
+    stopBeat();
+    const bpm = Math.max(20, Math.round((curSong().bpm || 120) * speed));
+    beat = new Metronome({ bpm, beatsPerBar: 4 });
+    beat.onTick = (info) => { clickSound(info.isAccent); pulseBeat(); };
+    beat.start();
+  }
+  function stopBeat() { if (beat) { beat.stop(); beat = null; } }
+  function pulseBeat() {
+    const el = $('#sv-metro'); if (!el) return;
+    el.classList.remove('beat-pulse'); void el.offsetWidth; el.classList.add('beat-pulse');
+  }
+
+  // ===== 🐢 等待练习（弹对才前进，不计时） =====
+  function buildGroups() {
+    const sorted = [...view].sort((a, b) => a.ms - b.ms);
+    const gs = [];
+    for (const n of sorted) {
+      const last = gs[gs.length - 1];
+      if (last && Math.abs(n.ms - last.ms) <= 60) last.midis.push(n.midi);
+      else gs.push({ ms: n.ms, midis: [n.midi] });
+    }
+    return gs;
+  }
+  function svWaitGoto(idx) {
+    waitIdx = idx;
+    if (idx >= svGroups.length) return;
+    const g = svGroups[idx];
+    waitNeed = new Set(g.midis.map(m => m % 12));   // 忽略八度，初学者更友好
+    t = g.ms; prevT = g.ms;
+    setActiveGlyphs(t); drawCursor(t);
+    kb.clear();
+    for (const midi of g.midis) kb.highlight(midi, { color: '#fbbf24' });   // 黄=该弹的键
+    $('#sv-counts').textContent = `🐢 等待练习：第 ${idx + 1}/${svGroups.length} 个　弹出高亮的键继续`;
+  }
+  function svWaitAnswer(midi) {
+    if (svMode !== 'wait' || waitIdx >= svGroups.length || !waitNeed) return;
+    const pc = midi % 12;
+    if (waitNeed.has(pc)) {
+      waitNeed.delete(pc);
+      kb.flash(midi, '#34d399');   // 绿=对（声音由屏幕键预听 / 真琴本身发出，避免重音）
+      if (waitNeed.size === 0) {
+        const next = waitIdx + 1;
+        if (next >= svGroups.length) svWaitFinish();
+        else svWaitGoto(next);
+      }
+    } else {
+      kb.flash(midi, '#fbbf24');   // 弹错：温和提示，不惩罚、不前进
+    }
+  }
+  function svWaitFinish() {
+    waitIdx = svGroups.length;
+    drawCursor(total);
+    const host = $('#sv-wrap');
+    cheerBurst(host, 80);
+    cheerToast('🎉 等待练习完成！全部弹对啦！', host);
+    $('#sv-counts').textContent = `🎉 完成！${svGroups.length} 组全部弹对　点「↺ 重来」再练一遍`;
+    recordPractice('staffview', '五线谱等待练习', svGroups.length, svGroups.length, svGroups.length);
+  }
+  function setMode(m) {
+    if (m === svMode) return;
+    svMode = m;
+    $('#sv-mode').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    pause();
+    if (m === 'wait') {
+      $('#sv-play').style.display = 'none';
+      $('#sv-hint').style.display = '';
+      $('#sv-stop').textContent = '↺ 重来';
+      rebuild();
+      if (metroOn) startBeat();
+    } else {
+      $('#sv-play').style.display = '';
+      $('#sv-hint').style.display = 'none';
+      $('#sv-stop').textContent = '⏹ 停止';
+      stopBeat();
+      rebuild();
+    }
+  }
 
   function renderChips() {
     $('#sv-songs').innerHTML = allSongs().map(s => `<button class="mpl-chip${s.id === songId ? ' on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
@@ -14770,13 +14899,24 @@ function renderStaffView() {
   }
 
   $('#sv-play').onclick = () => { playing ? pause() : play(); };
-  $('#sv-stop').onclick = () => stop(false);
+  $('#sv-stop').onclick = () => { if (svMode === 'wait') { stopBeat(); svWaitGoto(0); if (metroOn) startBeat(); } else stop(false); };
+  $('#sv-mode').querySelectorAll('button').forEach(b => { b.onclick = () => setMode(b.dataset.m); });
+  $('#sv-metro').onclick = () => {
+    metroOn = !metroOn;
+    $('#sv-metro').classList.toggle('mpl-on', metroOn);
+    if (metroOn) { if (playing || svMode === 'wait') startBeat(); }
+    else stopBeat();
+  };
+  $('#sv-hint').onclick = () => {
+    if (svMode !== 'wait' || waitIdx >= svGroups.length) return;
+    for (const midi of svGroups[waitIdx].midis) kb.flash(midi, '#fbbf24');
+  };
   $('#sv-hand').querySelectorAll('button').forEach(b => { b.onclick = () => { hand = b.dataset.h; $('#sv-hand').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); stop(false); rebuild(); }; });
-  $('#sv-speed').oninput = (e) => { speed = +e.target.value; $('#sv-speed-v').textContent = speed.toFixed(2) + '×'; };
+  $('#sv-speed').oninput = (e) => { speed = +e.target.value; $('#sv-speed-v').textContent = speed.toFixed(2) + '×'; if (beat && (playing || svMode === 'wait')) startBeat(); };
   $('#sv-sound').onchange = (e) => { soundOn = e.target.checked; };
   $('#sv-follow').onchange = (e) => { follow = e.target.checked; if (follow) drawCursor(t); };
   $('#sv-labels').onchange = (e) => { labels = e.target.checked; build(); drawCursor(t); };
-  $('#sv-seek').oninput = (e) => { if (!total) return; t = (+e.target.value / 1000) * total; prevT = t; setActiveGlyphs(t); drawCursor(t); };
+  $('#sv-seek').oninput = (e) => { if (!total || svMode === 'wait') return; t = (+e.target.value / 1000) * total; prevT = t; setActiveGlyphs(t); drawCursor(t); };
   $('#sv-file').onchange = async (e) => {
     const f = e.target.files && e.target.files[0]; if (!f) return;
     try {
@@ -14791,6 +14931,9 @@ function renderStaffView() {
 
   renderChips();
   rebuild();
+
+  // CA99 真琴 note-on → 等待练习作答（屏幕键已在上面的 onNoteOn 里处理；这里只接真琴）
+  staffViewOnNote = (midi) => { if (svMode === 'wait') svWaitAnswer(midi); };
 }
 
 // 钢琴卷帘引擎（midi-player.js）适配器：避免与其它模块同名函数冲突
