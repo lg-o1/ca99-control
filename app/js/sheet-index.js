@@ -84,3 +84,22 @@ export function sheetPaths(midiPath) {
 export function pngUrl(folder, file) {
   return String(folder || '') + '/' + String(file || '');
 }
+
+// 谱面卷帘「显示高度」配置：源切图高度（index.json 的 height）只是缩放基准，
+// 显示高度与之无关——平板横/竖屏可视空间差异大，应按视口动态取值并允许手动调节。
+export const SHEET_H = { min: 72, max: 360, frac: 0.24, key: 'ca99.sheetH' };
+
+// 把任意高度夹到合理区间（手动调节/读 localStorage 时用）。无效值回退到 min。
+export function clampSheetHeight(h, cfg = SHEET_H) {
+  const min = cfg.min, max = cfg.max;
+  const v = Math.round(+h || 0);
+  if (!(v > 0)) return min;
+  return Math.max(min, Math.min(max, v));
+}
+
+// 按视口高度算「自适应默认显示高度」：取视口高的一定比例再夹到 [min,max]。
+// 竖屏视口高 → 谱面更大更易读；横屏视口矮 → 谱面收窄，给键盘/光柱留空间。
+export function defaultSheetHeight(viewportH, cfg = SHEET_H) {
+  const h = Math.round((+viewportH || 700) * cfg.frac);
+  return Math.max(cfg.min, Math.min(cfg.max, h));
+}

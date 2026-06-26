@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSheetIndex, measureAtBeat, measureAtTime, cursorX, sheetPaths, pngUrl } from './sheet-index.js';
+import { parseSheetIndex, measureAtBeat, measureAtTime, cursorX, sheetPaths, pngUrl, defaultSheetHeight, clampSheetHeight, SHEET_H } from './sheet-index.js';
 
 const SAMPLE = {
   stem: 'blackforestpolka', height: 240, bpm: 120, bar_seconds: 2.0,
@@ -88,4 +88,26 @@ test('sheetPaths: derive folder + index from .mid path', () => {
 test('pngUrl: join folder + file', () => {
   assert.equal(pngUrl('midi/concert/x', 'm001.png'), 'midi/concert/x/m001.png');
   assert.equal(pngUrl('', 'a.png'), '/a.png');
+});
+
+test('defaultSheetHeight: scales with viewport, clamped to [min,max]', () => {
+  // 比例区间内：取视口高的 frac
+  assert.equal(defaultSheetHeight(800), Math.round(800 * SHEET_H.frac));
+  // 横屏矮视口 → 夹到 min（不会比 min 还小）
+  assert.equal(defaultSheetHeight(100), SHEET_H.min);
+  // 竖屏超高视口 → 夹到 max（不会无限大）
+  assert.equal(defaultSheetHeight(5000), SHEET_H.max);
+  // 缺省视口 → 用 700 兜底，仍落在区间内
+  const d = defaultSheetHeight(undefined);
+  assert.ok(d >= SHEET_H.min && d <= SHEET_H.max);
+});
+
+test('clampSheetHeight: bounds + invalid fallback', () => {
+  assert.equal(clampSheetHeight(150), 150);
+  assert.equal(clampSheetHeight(SHEET_H.max + 999), SHEET_H.max);
+  assert.equal(clampSheetHeight(SHEET_H.min - 999), SHEET_H.min);
+  assert.equal(clampSheetHeight(0), SHEET_H.min);
+  assert.equal(clampSheetHeight(NaN), SHEET_H.min);
+  assert.equal(clampSheetHeight('abc'), SHEET_H.min);
+  assert.equal(clampSheetHeight(132.7), 133);   // 四舍五入
 });

@@ -66,7 +66,20 @@ import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js
 import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
 import { dayKey as dsDayKey, pickDailyIndex as dsPickIndex, prettyName as dsPretty, catEmoji as dsCatEmoji } from './daily-song.js';
 import { buildSongTree as stBuildTree, findNode as stFindNode, findSub as stFindSub, searchSongs as stSearch, countMatches as stCount } from './song-tree.js';
-import { parseSheetIndex as shParse, measureAtBeat as shMeasureAtBeat, cursorX as shCursorX, sheetPaths as shPaths, pngUrl as shPngUrl } from './sheet-index.js';
+import { parseSheetIndex as shParse, measureAtBeat as shMeasureAtBeat, cursorX as shCursorX, sheetPaths as shPaths, pngUrl as shPngUrl, defaultSheetHeight as shDefaultH, clampSheetHeight as shClampH, SHEET_H as SH_CFG } from './sheet-index.js';
+
+// 📖 谱面卷帘显示高度（两 tab 共享）：localStorage 有手动值则用之；否则按视口自适应。
+function sheetActiveH() {
+  const raw = localStorage.getItem(SH_CFG.key);
+  if (raw != null && raw !== '') return shClampH(raw);
+  return shDefaultH((typeof window !== 'undefined' && window.innerHeight) || 700);
+}
+function sheetUserOverride() {
+  const raw = localStorage.getItem(SH_CFG.key);
+  return raw != null && raw !== '';
+}
+function setSheetH(v) { localStorage.setItem(SH_CFG.key, String(shClampH(v))); }
+function clearSheetH() { localStorage.removeItem(SH_CFG.key); }
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
@@ -8540,6 +8553,8 @@ function renderScoreFollow() {
           <span class="scf-sheet-ttl">📖 课本谱面</span>
           <span class="scf-sheet-label" id="scf-sheet-label"></span>
           <span class="scf-sheet-nav">
+            <input type="range" class="scf-sheet-size" id="scf-sheet-size" min="72" max="360" step="4" title="谱面高度（拖动调整，适配横/竖屏）">
+            <button class="scf-sheet-navbtn" id="scf-sheet-fit" title="自适应屏幕高度">⤢</button>
             <button class="scf-sheet-navbtn" id="scf-sheet-prev" title="上一小节">◀</button>
             <button class="scf-sheet-navbtn" id="scf-sheet-next" title="下一小节">▶</button>
           </span>
@@ -8672,6 +8687,18 @@ function renderScoreFollow() {
   // 📖 课本谱面：上/下一小节定位（暂停浏览时手动翻看）
   if ($('#scf-sheet-prev')) $('#scf-sheet-prev').onclick = () => { if (sheet) scrollSheetTo((sheetCurIdx < 0 ? 0 : sheetCurIdx) - 1, 0.5); };
   if ($('#scf-sheet-next')) $('#scf-sheet-next').onclick = () => { if (sheet) scrollSheetTo((sheetCurIdx < 0 ? 0 : sheetCurIdx) + 1, 0.5); };
+  if ($('#scf-sheet-size')) $('#scf-sheet-size').oninput = (e) => {
+    setSheetH(e.target.value);               // 记住用户手动高度
+    if (sheet) { sheetCurIdx = -1; buildSheetRibbon(); drawSheet(lastDrawT || -LEAD_MS); }
+  };
+  if ($('#scf-sheet-fit')) $('#scf-sheet-fit').onclick = () => {
+    clearSheetH();                           // 清掉手动值 → 回到按视口自适应
+    if (sheet) { sheetCurIdx = -1; buildSheetRibbon(); drawSheet(lastDrawT || -LEAD_MS); }
+  };
+  // 横竖屏切换 / 窗口缩放：未手动设过高度时跟随视口自适应重排
+  window.addEventListener('resize', () => {
+    if (sheet && !sheetUserOverride()) { sheetCurIdx = -1; buildSheetRibbon(); drawSheet(lastDrawT || -LEAD_MS); }
+  });
 
   // 🎲 随机一首：从内置+自定义里随机挑一首（尽量不重复当前）
   $('#scf-random').onclick = () => {
@@ -9206,7 +9233,7 @@ function renderScoreFollow() {
 
   function buildSheetRibbon() {
     const inner = $('#scf-sheet-inner'); if (!inner || !sheet) return;
-    const dispH = 132;
+    const dispH = sheetActiveH();
     sheetScale = dispH / (sheet.height || 240);
     const totalW = Math.round(sheet.totalWidth * sheetScale);
     let html = '';
@@ -9223,6 +9250,7 @@ function renderScoreFollow() {
     inner.querySelectorAll('.scf-sheet-m').forEach((img) => {
       img.onclick = () => scrollSheetTo(+img.dataset.m, 0.5);   // 点小节 → 定位预览
     });
+    const sz = $('#scf-sheet-size'); if (sz) sz.value = dispH;
   }
 
   function drawSheet(t) {
@@ -9707,6 +9735,8 @@ function renderPlayStage() {
           <span class="scf-sheet-ttl">📖 课本谱面</span>
           <span class="scf-sheet-label" id="ps-sheet-label"></span>
           <span class="scf-sheet-nav">
+            <input type="range" class="scf-sheet-size" id="ps-sheet-size" min="72" max="360" step="4" title="谱面高度（拖动调整，适配横/竖屏）">
+            <button class="scf-sheet-navbtn" id="ps-sheet-fit" title="自适应屏幕高度">⤢</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-prev" title="上一小节">◀</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-next" title="下一小节">▶</button>
           </span>
@@ -9821,7 +9851,7 @@ function renderPlayStage() {
   }
   function psBuildSheet() {
     const inner = $('#ps-sheet-inner'); if (!inner || !psSheet) return;
-    const dispH = 132;
+    const dispH = sheetActiveH();
     psSheetScale = dispH / (psSheet.height || 240);
     let html = '';
     psSheet.measures.forEach((m, i) => {
@@ -9835,6 +9865,7 @@ function renderPlayStage() {
     inner.style.height = dispH + 'px';
     inner.innerHTML = html;
     inner.querySelectorAll('.scf-sheet-m').forEach((img) => { img.onclick = () => psScrollSheet(+img.dataset.m, 0.5); });
+    const sz = $('#ps-sheet-size'); if (sz) sz.value = dispH;
   }
   function psDrawSheet(t) {
     if (!psSheet) return;
@@ -10142,6 +10173,17 @@ function renderPlayStage() {
   $('#ps-load').onclick = openModal;
   if ($('#ps-sheet-prev')) $('#ps-sheet-prev').onclick = () => { if (psSheet) psScrollSheet((psSheetCurIdx < 0 ? 0 : psSheetCurIdx) - 1, 0.5); };
   if ($('#ps-sheet-next')) $('#ps-sheet-next').onclick = () => { if (psSheet) psScrollSheet((psSheetCurIdx < 0 ? 0 : psSheetCurIdx) + 1, 0.5); };
+  if ($('#ps-sheet-size')) $('#ps-sheet-size').oninput = (e) => {
+    setSheetH(e.target.value);
+    if (psSheet) { psSheetCurIdx = -1; psBuildSheet(); psDrawSheet(psLastT || 0); }
+  };
+  if ($('#ps-sheet-fit')) $('#ps-sheet-fit').onclick = () => {
+    clearSheetH();
+    if (psSheet) { psSheetCurIdx = -1; psBuildSheet(); psDrawSheet(psLastT || 0); }
+  };
+  window.addEventListener('resize', () => {
+    if (psSheet && !sheetUserOverride()) { psSheetCurIdx = -1; psBuildSheet(); psDrawSheet(psLastT || 0); }
+  });
   $('#ps-modal-x').onclick = closeModal;
   $('#ps-modal').onclick = (e) => { if (e.target === $('#ps-modal')) closeModal(); };
   $('#ps-demo').onclick = () => start('demo');
