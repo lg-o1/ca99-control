@@ -471,6 +471,17 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .bingo-cell.pop { animation: bingoPop .35s cubic-bezier(.4,1.7,.6,1); }
 @keyframes bingoPop { 0% { transform: scale(1) } 50% { transform: scale(1.18) } 100% { transform: scale(1) } }
 @media (max-width: 560px) { .bingo-text { font-size: 9px; } .bingo-emoji { font-size: 18px; } }
+
+/* 🕵️ 猜歌视奏 */
+.gs-stats { display: flex; gap: 18px; justify-content: center; margin-bottom: 10px; color: var(--muted); }
+.gs-stage { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 8px; }
+.gs-mystery { font-size: 24px; font-weight: 900; letter-spacing: 2px; color: #a78bfa; padding: 6px 18px; border-radius: 12px; background: rgba(167,139,250,.12); border: 1px dashed #6d5bd0; }
+.gs-mystery.revealed { color: #fde68a; background: rgba(251,191,36,.15); border-style: solid; border-color: #fbbf24; letter-spacing: normal; }
+.gs-options { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 12px 0; }
+.gs-opt { padding: 12px 18px; border-radius: 14px; border: 1px solid var(--border, #2a2f45); background: linear-gradient(160deg, #232a45, #1a1f33); color: var(--text); font-size: 16px; font-weight: 700; cursor: pointer; transition: transform .12s, box-shadow .2s; }
+.gs-opt:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(0,0,0,.3); }
+.gs-opt.right { background: linear-gradient(160deg, #1e6f50, #155c43); border-color: #34d399; box-shadow: 0 0 14px rgba(52,211,153,.5); }
+.gs-opt.wrong { background: rgba(248,113,113,.18); border-color: #f87171; opacity: .6; }
 .dw-passage { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; margin-bottom: 8px; }
 
 /* ===== 曲谱跟弹（Synthesia 式）===== */
