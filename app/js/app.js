@@ -72,6 +72,7 @@ import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordM
 import { noteColor as ncNoteColor, scaffoldStrength as ncStrength, isWeaned as ncWeaned } from './note-color.js';
 import { BOSSES as BB_BOSSES, getBoss as bbGetBoss, BossBattle } from './boss-battle.js';
 import { RUNS as SR_RUNS, getRun as srGetRun, SpeedRun } from './speed-run.js';
+import { DiceWarmup } from './dice-warmup.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -128,6 +129,8 @@ let bossOnNote = null;      // 🐉 Boss 战的 note-on 回调（Boss 战模块�
 let bossOnNoteOff = null;   // 🐉 Boss 战的 note-off 回调（真琴松键 → 屏幕键抬起）
 let speedRunOnNote = null;  // 🚀 极速挑战的 note-on 回调（极速挑战模块注册）
 let speedRunOnNoteOff = null; // 🚀 极速挑战的 note-off 回调
+let diceOnNote = null;      // 🎲 骰子热身的 note-on 回调
+let diceOnNoteOff = null;   // 🎲 骰子热身的 note-off 回调
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -339,6 +342,8 @@ function onMidiIn(bytes) {
     if (bossOnNote) bossOnNote(m.note, m.velocity);
     // 驱动极速挑战
     if (speedRunOnNote) speedRunOnNote(m.note, m.velocity);
+    // 驱动骰子热身
+    if (diceOnNote) diceOnNote(m.note, m.velocity);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -444,6 +449,8 @@ function onMidiIn(bytes) {
     if (bossOnNoteOff) bossOnNoteOff(m.note);
     // 🚀 极速挑战：真琴松键 → 屏幕键抬起
     if (speedRunOnNoteOff) speedRunOnNoteOff(m.note);
+    // 🎲 骰子热身：真琴松键 → 屏幕键抬起
+    if (diceOnNoteOff) diceOnNoteOff(m.note);
     // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
     PianoKeyboard.echoOff(m.note);
   }
@@ -12071,6 +12078,112 @@ function renderSpeedRun() {
   previewRun();
 }
 
+// ========== 模块: 🎲 骰子热身（掷骰随机生成今日小任务，消除"练什么"的选择压力）==========
+function renderDiceWarmup() {
+  const root = $('#module-dice');
+  const dw = new DiceWarmup({ octaveAgnostic: true });
+  let active = false;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎲 骰子热身</h2>
+    <p style="color:var(--muted);margin-bottom:14px">不知道今天先练啥？<b>掷骰子</b>！随机给你一张超小的热身任务卡（调性 × 音型 × 手别 × 玩法）。按高亮键把它弹出来就<b>完成一张</b>、撒花、再掷下一张——<b>不用自己选</b>（选择最累），照着骰子玩就好。可接 CA99 真琴或点屏幕键盘。</p>
+
+    <div class="dw-stage">
+      <div class="dw-die" id="dw-die">🎲</div>
+      <div class="dw-card" id="dw-card">
+        <div class="dw-card-empty">点下面的「🎲 掷骰子」开始热身</div>
+      </div>
+    </div>
+
+    <div class="dw-stats">
+      <span class="dw-stat">✅ 完成 <b id="dw-done">0</b> 张</span>
+      <span class="dw-stat">🔥 连续无错 <b id="dw-streak">0</b></span>
+    </div>
+
+    <div class="dw-passage" id="dw-passage"></div>
+    <div class="bb-feedback" id="dw-feedback">准备好了就掷骰子吧！</div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 按高亮的键，把任务卡上的音型弹出来</div>
+      <div id="dw-kb"></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="dw-roll" class="big-btn">🎲 掷骰子</button>
+      <span id="dw-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawPassage() {
+    if (!dw.mission) { $('#dw-passage').innerHTML = ''; return; }
+    const notes = dw.mission.notes;
+    $('#dw-passage').innerHTML = notes.map((m, i) =>
+      `<span class="bb-pnote${i === dw.idx ? ' cur' : ''}${dw.idx > i ? ' done' : ''}">${kbNoteName(m)}</span>`).join('<i class="bb-arrow">→</i>');
+  }
+
+  function showTarget() {
+    const t = dw.current();
+    dwKb.clear();
+    if (t != null) dwKb.highlightMany([{ midi: t, color: '#fbbf24', text: kbNoteName(t) }]);
+  }
+
+  function drawCard() {
+    const m = dw.mission;
+    if (!m) return;
+    $('#dw-card').innerHTML = `
+      <div class="dw-row"><span class="dw-face dw-key">${m.key.name}</span><span class="dw-face dw-pat">${m.pattern.name}</span></div>
+      <div class="dw-row"><span class="dw-face dw-hand">${m.hand.name}</span><span class="dw-face dw-flav">${m.flavor.name}</span></div>`;
+  }
+
+  function handlePress(midi) {
+    if (!active || !dw.mission) return;
+    const r = dw.press(midi);
+    if (r.wrong) {
+      dwKb.flash(midi, '#f87171');
+      $('#dw-feedback').textContent = '🤔 再试一次～从头慢慢弹（别急，没关系）';
+      drawPassage(); showTarget();
+      return;
+    }
+    dwKb.flash(midi, '#34d399');
+    if (r.complete) {
+      $('#dw-done').textContent = r.done;
+      $('#dw-streak').textContent = r.streak;
+      cheerToast(`🎉 完成第 ${r.done} 张！${r.streak >= 2 ? '🔥 连续 ' + r.streak : ''}`, root);
+      cheerBurst(root, 60);
+      $('#dw-feedback').innerHTML = `🎉 太棒了，完成 <b>${dw.mission.label}</b>！再掷一张继续热身～`;
+      recordPractice('dice', '骰子热身', dw.done, dw.streak, dw.streak);
+      active = false;
+      dwKb.clear();
+      $('#dw-status').textContent = '完成！掷下一张';
+      drawPassage();
+      return;
+    }
+    drawPassage(); showTarget();
+  }
+
+  const dwKb = new PianoKeyboard($('#dw-kb'), {
+    labels: 'c',
+    recognizeExternal: true,
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
+  });
+  dwKb.scrollToShow(55, 84);
+
+  function rollOnce() {
+    const die = $('#dw-die');
+    die.classList.remove('rolling'); void die.offsetWidth; die.classList.add('rolling');
+    dw.roll();
+    drawCard();
+    drawPassage();
+    showTarget();
+    active = true;
+    $('#dw-status').textContent = '弹出这张卡！';
+    $('#dw-feedback').innerHTML = `🎯 任务：<b>${dw.mission.label}</b> — 按高亮键弹出来`;
+    diceOnNote = (m) => handlePress(m);
+    diceOnNoteOff = (m) => { try { dwKb.release(m); } catch (_) {} };
+  }
+
+  $('#dw-roll').onclick = rollOnce;
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -12718,7 +12831,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
