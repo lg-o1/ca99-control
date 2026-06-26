@@ -13,6 +13,7 @@ import { PresetStore } from './preset-store.js';
 import { describeNotes, detectChord } from './chord-detect.js';
 import { HeldNotes, ChordChallenge } from './chord-trainer.js';
 import { Metronome, TempoTracker } from './metronome.js';
+import * as MetroKit from './metro-kit.js';
 import { Recorder } from './recorder.js';
 import { SCALE_TYPES, buildScale, buildScaleUpDown, ScaleSession } from './scale-trainer.js';
 import { noteName as chordNoteName } from './chord-detect.js';
@@ -1677,20 +1678,82 @@ function renderChord() {
 
 // ========== 模块 13: 节拍器 + 节奏练习 ==========
 let _audioCtx = null;
-function clickSound(isAccent) {
+// 全局节拍器音色偏好（三处共享：独立节拍器 + 两个 Synthesia tab），localStorage 持久化
+let _metroSound = (() => { try { return localStorage.getItem('ca99_metro_sound') || 'classic'; } catch (_) { return 'classic'; } })();
+function setMetroSound(id) { _metroSound = id; try { localStorage.setItem('ca99_metro_sound', id); } catch (_) {} }
+
+// 下拉选项构造（音色 / 拍号），三处复用
+function metroSoundOptions(sel) {
+  return MetroKit.SOUNDS.map(s => `<option value="${s.id}"${s.id === sel ? ' selected' : ''}>${s.emoji} ${s.name}</option>`).join('');
+}
+function metroMeterOptions(sel, withFollow) {
+  const head = withFollow ? `<option value="follow"${sel === 'follow' ? ' selected' : ''}>🎵 跟随乐曲</option>` : '';
+  return head + MetroKit.METERS.map(m => `<option value="${m.id}"${m.id === sel ? ' selected' : ''}>${m.name}</option>`).join('');
+}
+
+// 按「音色 × 重音级别」合成一次节拍声（纯浏览器 Web Audio，绝不发往 CA99）
+function playMetroClick(level, soundId) {
   try {
     _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const ctx = _audioCtx;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = isAccent ? 1500 : 900;
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(isAccent ? 0.5 : 0.3, ctx.currentTime + 0.001);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(); osc.stop(ctx.currentTime + 0.05);
+    const spec = MetroKit.clickSpec(soundId || _metroSound, level);
+    const t0 = ctx.currentTime;
+    const dur = spec.dur || 0.05;
+    const peak = spec.gain || 0.3;
+    const out = ctx.createGain();
+    out.connect(ctx.destination);
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(peak, t0 + 0.001);
+    out.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    if (spec.kind === 'noise') {
+      // 拍手 / 沙锤：带通滤波白噪声
+      const len = Math.ceil(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.value = spec.filter || 1800; bp.Q.value = 1.2;
+      src.connect(bp); bp.connect(out);
+      src.start(t0); src.stop(t0 + dur);
+    } else if (spec.kind === 'kick') {
+      // 鼓：低频快速下滑正弦
+      const osc = ctx.createOscillator(); osc.type = 'sine';
+      const f = spec.freq || 150;
+      osc.frequency.setValueAtTime(f, t0);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(40, f * 0.4), t0 + dur);
+      osc.connect(out); osc.start(t0); osc.stop(t0 + dur);
+    } else if (spec.kind === 'bell') {
+      // 铃铛：双失谐正弦 + 长余音
+      const f = spec.freq || 1200;
+      [f, f * 1.5].forEach((fr, i) => {
+        const osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = fr;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(i ? 0.4 : 1, t0 + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        osc.connect(g); g.connect(out); osc.start(t0); osc.stop(t0 + dur);
+      });
+    } else if (spec.kind === 'chirp') {
+      // 啾啾鸟：快速上滑正弦
+      const osc = ctx.createOscillator(); osc.type = 'sine';
+      const f = spec.freq || 1400;
+      osc.frequency.setValueAtTime(f * 0.7, t0);
+      osc.frequency.exponentialRampToValueAtTime(f * 1.4, t0 + dur);
+      osc.connect(out); osc.start(t0); osc.stop(t0 + dur);
+    } else {
+      // tone：单振荡器
+      const osc = ctx.createOscillator();
+      osc.type = spec.wave || 'square';
+      osc.frequency.value = spec.freq || 900;
+      osc.connect(out); osc.start(t0); osc.stop(t0 + dur);
+    }
   } catch (e) { /* 静默：无音频上下文时只显示视觉 */ }
 }
+
+// 兼容旧调用：clickSound(isAccent) —— 多数节奏模块用它做强/弱拍
+function clickSound(isAccent) { playMetroClick(MetroKit.levelFromAccent(isAccent)); }
 
 function renderMetro() {
   const root = $('#module-metro');
@@ -1703,13 +1766,11 @@ function renderMetro() {
     <div class="card-panel">
       <div class="param-row"><label>速度（BPM）</label>
         <input type="range" id="metro-bpm" min="40" max="208" value="90"><span class="val" id="metro-bpm-val">90</span></div>
-      <div class="param-row"><label>拍号（每小节拍数）</label>
-        <select id="metro-beats">
-          <option value="2">2/4</option>
-          <option value="3">3/4</option>
-          <option value="4" selected>4/4</option>
-          <option value="6">6/8</option>
-        </select></div>
+      <div class="param-row"><label>拍号</label>
+        <select id="metro-beats">${metroMeterOptions('4/4', false)}</select></div>
+      <div class="param-row"><label>🥁 音色</label>
+        <select id="metro-sound">${metroSoundOptions(_metroSound)}</select>
+        <button class="ear-chip" id="metro-sound-try" type="button" style="margin-left:8px">试听</button></div>
     </div>
 
     <div class="metro-beats" id="metro-dots"></div>
@@ -1721,10 +1782,14 @@ function renderMetro() {
       </div>
     </div>`;
 
+  const meterId = () => $('#metro-beats').value;
   function drawDots() {
-    const n = +$('#metro-beats').value;
-    $('#metro-dots').innerHTML = Array.from({ length: n }, (_, i) =>
-      `<div class="metro-dot ${i === 0 ? 'accent' : ''}" data-beat="${i}"></div>`).join('');
+    const id = meterId();
+    const n = MetroKit.beatsOf(id);
+    $('#metro-dots').innerHTML = Array.from({ length: n }, (_, i) => {
+      const lv = MetroKit.accentAt(id, i);
+      return `<div class="metro-dot ${lv === 'accent' ? 'accent' : lv === 'mid' ? 'mid' : ''}" data-beat="${i}"></div>`;
+    }).join('');
   }
   drawDots();
 
@@ -1742,10 +1807,12 @@ function renderMetro() {
     $('#metro-bpm-val').textContent = e.target.value;
     if (metronome) metronome.setBpm(+e.target.value);
   };
-  $('#metro-beats').onchange = (e) => {
+  $('#metro-beats').onchange = () => {
     drawDots();
-    if (metronome) metronome.setBeatsPerBar(+e.target.value);
+    if (metronome) metronome.setBeatsPerBar(MetroKit.beatsOf(meterId()));
   };
+  $('#metro-sound').onchange = (e) => { setMetroSound(e.target.value); playMetroClick('accent'); };
+  $('#metro-sound-try').onclick = () => { const id = meterId(); const n = MetroKit.beatsOf(id); let i = 0; const iv = setInterval(() => { if (i >= n) { clearInterval(iv); return; } playMetroClick(MetroKit.accentAt(id, i)); flashDot(i); i++; }, 300); };
 
   $('#metro-toggle').onclick = () => {
     if (metronome && metronome.running) {
@@ -1756,12 +1823,13 @@ function renderMetro() {
       log('节拍器: 停止');
       return;
     }
-    metronome = new Metronome({ bpm: +$('#metro-bpm').value, beatsPerBar: +$('#metro-beats').value });
-    metronome.onTick = (info) => { clickSound(info.isAccent); flashDot(info.beat); };
+    const id = meterId();
+    metronome = new Metronome({ bpm: +$('#metro-bpm').value, beatsPerBar: MetroKit.beatsOf(id) });
+    metronome.onTick = (info) => { playMetroClick(MetroKit.accentAt(id, info.beat)); flashDot(info.beat); };
     metronome.start();
     $('#metro-toggle').textContent = '⏸ 停止';
     $('#metro-toggle').classList.add('running');
-    log(`节拍器: 开始（${$('#metro-bpm').value} BPM, ${$('#metro-beats').value} 拍/小节）`, 'ok');
+    log(`节拍器: 开始（${$('#metro-bpm').value} BPM, ${id}）`, 'ok');
   };
 
   // 演奏速度检测：每个 note-on 更新估算 BPM
@@ -8251,6 +8319,12 @@ function renderScoreFollow() {
           <button class="ear-chip on" id="scf-aux-fx">✨ 击中特效</button>
           <button class="ear-chip" id="scf-aux-real">🎹 真琴发声</button>
         </div></div>
+      <div class="param-row" id="scf-metro-row"><label>🥁 节拍器设置</label>
+        <div class="scf-metro-ctl">
+          <select id="scf-metro-meter">${metroMeterOptions('follow', true)}</select>
+          <select id="scf-metro-sound">${metroSoundOptions(_metroSound)}</select>
+          <button class="ear-chip" id="scf-metro-try" type="button">试听</button>
+        </div></div>
       <div class="param-row" id="scf-loop-row"><label>区间循环</label>
         <div class="scf-loop-ctl">
           <button class="ear-chip" id="scf-loop-on">🔁 循环此段</button>
@@ -8373,6 +8447,9 @@ function renderScoreFollow() {
   bindToggle('#scf-aux-velviz', () => velViz, (v) => { velViz = v; if (sf) drawHighway(lastDrawT); });
   bindToggle('#scf-aux-fx', () => fxOn, (v) => { fxOn = v; });
   bindToggle('#scf-aux-real', () => realPiano, (v) => { realPiano = v; if (!v) allRealOff(); });
+  $('#scf-metro-sound').onchange = (e) => { setMetroSound(e.target.value); playMetroClick('accent'); };
+  $('#scf-metro-meter').onchange = () => { if (scfBeat) startScfBeat(); };
+  $('#scf-metro-try').onclick = () => { const n = scfMetroBeats(); let i = 0; const iv = setInterval(() => { if (i >= n) { clearInterval(iv); return; } playMetroClick(scfMetroLevel(i)); i++; }, 300); };
   $('#scf-hint').onclick = doHint;
 
   // 🎲 随机一首：从内置+自定义里随机挑一首（尽量不重复当前）
@@ -8498,6 +8575,14 @@ function renderScoreFollow() {
 
   // ③ 区间循环：小节 → 拍 → 毫秒
   function meterOf() { return getCurrentSong().meter || 4; }
+  // 🥁 节拍器拍号选择：'follow'=跟随乐曲拍号，否则用 metro-kit 拍号 id（2/4、3/4、6/8…）
+  function scfMetroChoice() { const s = $('#scf-metro-meter'); return s ? s.value : 'follow'; }
+  function scfMetroBeats() { const c = scfMetroChoice(); return c === 'follow' ? meterOf() : MetroKit.beatsOf(c); }
+  function scfMetroLevel(beatInBar) {
+    const c = scfMetroChoice();
+    if (c === 'follow') { const n = meterOf(); return (((beatInBar % n) + n) % n) === 0 ? 'accent' : 'weak'; }
+    return MetroKit.accentAt(c, beatInBar);
+  }
   function totalMeasures() { return sf ? Math.max(1, Math.ceil((sf.totalBeats - 1e-6) / meterOf())) : 1; }
   function msForBeat(beat) { return scfBeatToMs(beat, sf.bpm) * sf.timeScale; }
   function computeLoop() {
@@ -9040,7 +9125,7 @@ function renderScoreFollow() {
     const b = Math.floor(sf.beatAt(t));
     if (b > lastBeat && b >= 0) {
       lastBeat = b;
-      clickSound((b % (getCurrentSong().meter || 4)) === 0);
+      playMetroClick(scfMetroLevel(b));
     } else if (b < lastBeat) { lastBeat = b; }
   }
 
@@ -9049,8 +9134,8 @@ function renderScoreFollow() {
   function startScfBeat() {
     stopScfBeat();
     const bpm = Math.max(20, Math.round((getCurrentSong().bpm || 90) * speed));
-    scfBeat = new Metronome({ bpm, beatsPerBar: getCurrentSong().meter || 4 });
-    scfBeat.onTick = (info) => clickSound(info.isAccent);
+    scfBeat = new Metronome({ bpm, beatsPerBar: scfMetroBeats() });
+    scfBeat.onTick = (info) => playMetroClick(scfMetroLevel(info.beat));
     scfBeat.start();
   }
   function stopScfBeat() { if (scfBeat) { scfBeat.stop(); scfBeat = null; } }
@@ -14967,6 +15052,8 @@ function renderStaffView() {
         <button data-m="wait">🐢 等待练习</button>
       </div>
       <button id="sv-metro" class="mpl-btn">🥁 节拍器</button>
+      <select id="sv-metro-meter" class="mpl-select">${metroMeterOptions('follow', true)}</select>
+      <select id="sv-metro-sound" class="mpl-select">${metroSoundOptions(_metroSound)}</select>
       <span class="mpl-sep"></span>
       <span class="mpl-label">手</span>
       <div class="mpl-seg" id="sv-hand">
@@ -15110,10 +15197,10 @@ function renderStaffView() {
     if (metroOn) {
       startBeat();
       if (t === 0) {
-        // 🥁 4 拍前奏数拍：先让孩子听到速度再开始
+        // 🥁 前奏数拍（拍号拍数）：先让孩子听到速度再开始
         const beatMs = 60000 / Math.max(20, Math.round((curSong().bpm || 120) * speed));
         $('#sv-play').innerHTML = '…预备…';
-        setTimeout(begin, beatMs * 4);
+        setTimeout(begin, beatMs * svMetroBeats());
         return;
       }
     }
@@ -15142,11 +15229,19 @@ function renderStaffView() {
   }
 
   // ===== 🥁 浏览器节拍器（自由运行，不经 CA99） =====
+  // 拍号选择：'follow'=跟随乐曲（无拍号信息则按 4 拍），否则用 metro-kit 拍号
+  function svMetroChoice() { const s = $('#sv-metro-meter'); return s ? s.value : 'follow'; }
+  function svMetroBeats() { const c = svMetroChoice(); return c === 'follow' ? ((curSong().meter) || 4) : MetroKit.beatsOf(c); }
+  function svMetroLevel(b) {
+    const c = svMetroChoice();
+    if (c === 'follow') { const n = (curSong().meter) || 4; return (((b % n) + n) % n) === 0 ? 'accent' : 'weak'; }
+    return MetroKit.accentAt(c, b);
+  }
   function startBeat() {
     stopBeat();
     const bpm = Math.max(20, Math.round((curSong().bpm || 120) * speed));
-    beat = new Metronome({ bpm, beatsPerBar: 4 });
-    beat.onTick = (info) => { clickSound(info.isAccent); pulseBeat(); };
+    beat = new Metronome({ bpm, beatsPerBar: svMetroBeats() });
+    beat.onTick = (info) => { playMetroClick(svMetroLevel(info.beat)); pulseBeat(); };
     beat.start();
   }
   function stopBeat() { if (beat) { beat.stop(); beat = null; } }
@@ -15235,6 +15330,8 @@ function renderStaffView() {
     if (metroOn) { if (playing || svMode === 'wait') startBeat(); }
     else stopBeat();
   };
+  $('#sv-metro-meter').onchange = () => { if (beat && (playing || svMode === 'wait')) startBeat(); };
+  $('#sv-metro-sound').onchange = (e) => { setMetroSound(e.target.value); playMetroClick('accent'); };
   $('#sv-hint').onclick = () => {
     if (svMode !== 'wait' || waitIdx >= svGroups.length) return;
     for (const midi of svGroups[waitIdx].midis) kb.flash(midi, '#fbbf24');

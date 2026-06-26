@@ -335,6 +335,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   transition: transform .08s, background .08s, box-shadow .08s;
 }
 .metro-dot.accent { border-color: var(--hi); }
+.metro-dot.mid { border-color: #f59e0b; }
 .metro-dot.active {
   background: var(--grad); border-color: transparent;
   transform: scale(1.25); box-shadow: 0 0 22px rgba(102,126,234,.6);
@@ -1706,6 +1707,16 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .mpl-primary.mpl-on { background: linear-gradient(135deg, #db2777, #f59e0b); }
 .mpl-btn.mpl-on { background: linear-gradient(135deg, #f59e0b, #db2777); border-color: transparent; color: #fff; font-weight: 600; }
 .mpl-btn.beat-pulse { animation: mplBeatPulse .18s ease-out; }
+.mpl-select {
+  background: var(--panel2, #262a45); color: var(--text, #e7eaf6);
+  border: 1px solid var(--line, #333); border-radius: 8px;
+  padding: 6px 8px; font-size: 13px; cursor: pointer;
+}
+.scf-metro-ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.scf-metro-ctl select {
+  background: var(--panel2, #262a45); color: var(--text, #e7eaf6);
+  border: 1px solid var(--line, #333); border-radius: 8px; padding: 6px 8px; font-size: 13px; cursor: pointer;
+}
 @keyframes mplBeatPulse { 0% { transform: scale(1.12); box-shadow: 0 0 14px rgba(245,158,11,.8); } 100% { transform: scale(1); box-shadow: none; } }
 .mpl-seg { display: inline-flex; border: 1px solid var(--line, #333); border-radius: 8px; overflow: hidden; }
 .mpl-seg button {
