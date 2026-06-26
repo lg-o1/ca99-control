@@ -2199,3 +2199,9 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   border: 1px solid rgba(255,255,255,.08); }
 .gr-canvas { width: 100%; height: auto; display: block; border-radius: 10px;
   background: linear-gradient(180deg, rgba(34,211,238,.06), rgba(167,139,250,.06)); }
+
+/* 🥁 节奏跳跳（Rhythm Jump） */
+.rj-track-wrap { margin: 8px 0 12px; padding: 10px; border-radius: 14px; background: rgba(0,0,0,.30);
+  border: 1px solid rgba(255,255,255,.08); }
+.rj-canvas { width: 100%; height: auto; display: block; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(99,102,241,.08), rgba(244,114,182,.06)); }

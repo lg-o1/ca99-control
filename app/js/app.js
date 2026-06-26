@@ -91,6 +91,7 @@ import * as MagicJam from './magic-jam.js';
 import * as XpLevel from './xp-level.js';
 import * as WeeklyQuest from './weekly-quest.js';
 import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhostFrac, playerFrac as grPlayerFrac, lead as grLead, formatMs as grFormatMs } from './ghost-race.js';
+import { PATTERNS as RJ_PATTERNS, patternById as rjPatternById, RhythmJump } from './rhythm-jump.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -151,6 +152,7 @@ let speedRunOnNote = null;  // 🚀 极速挑战的 note-on 回调（极速挑�
 let speedRunOnNoteOff = null; // 🚀 极速挑战的 note-off 回调
 let ghostRaceOnNote = null;  // 👻 幽灵竞速的 note-on 回调（幽灵竞速模块注册）
 let ghostRaceOnNoteOff = null; // 👻 幽灵竞速的 note-off 回调
+let rhythmJumpOnNote = null; // 🥁 节奏跳跳的 note-on 回调（任意键拍节奏；节奏跳跳模块注册）
 let diceOnNote = null;      // 🎲 骰子热身的 note-on 回调
 let diceOnNoteOff = null;   // 🎲 骰子热身的 note-off 回调
 let guessOnNote = null;     // 🕵️ 猜歌视奏的 note-on 回调
@@ -596,6 +598,8 @@ function onMidiIn(bytes) {
     if (speedRunOnNote) speedRunOnNote(m.note, m.velocity);
     // 驱动幽灵竞速
     if (ghostRaceOnNote) ghostRaceOnNote(m.note, m.velocity);
+    // 驱动节奏跳跳（任意键拍节奏）
+    if (rhythmJumpOnNote) rhythmJumpOnNote(m.note, m.velocity);
     // 驱动骰子热身
     if (diceOnNote) diceOnNote(m.note, m.velocity);
     // 驱动猜歌视奏
@@ -13556,6 +13560,256 @@ function renderGhostRace() {
   preview();
 }
 
+// ========== 模块: 🥁 节奏跳跳（太鼓达人式，任意键拍准节奏，只判节奏不判音高）==========
+function renderRhythmJump() {
+  const root = $('#module-rhythmjump');
+  if (!root) return;
+  let patId = RJ_PATTERNS[0].id;
+  let bpm = 90;
+  let guide = true;       // 节奏向导：方块落到线上时给一声提示音
+  let running = false;
+  let game = null, rafId = 0, t0 = 0;
+  const floats = [];      // {x,y,life,txt,color}
+  let lineFlash = 0;      // 击拍线高亮余韵（绿/金）
+  let lineFlashCol = '#34d399';
+  const voiced = new Set();
+  const BEST = 'ca99_rhythm_best'; // {patId: bestCombo}
+
+  function loadBest() { try { return JSON.parse(localStorage.getItem(BEST) || '{}') || {}; } catch (_) { return {}; } }
+  function saveBest(map) { try { localStorage.setItem(BEST, JSON.stringify(map)); } catch (_) {} }
+  function bestOf(id) { const v = loadBest()[id]; return v && v > 0 ? v : 0; }
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🥁 节奏跳跳</h2>
+    <p style="color:var(--muted);margin-bottom:14px">节奏方块顺着轨道往下掉，落到<b>击拍线</b>那一刻<b>按任意键</b>（或点大鼓按钮）把它拍中！<b>只看节奏、不看音高</b>——不用找对键，是最轻松的热身游戏。漏拍只会断连击，<b>永远不会输</b>。先用<b>四分音符</b>慢慢拍，熟了再换八分、切分。可接 CA99 真琴或点屏幕。</p>
+
+    <div class="bb-pick" id="rj-pick"></div>
+
+    <div class="rotate-bar" style="margin:6px 0 10px">
+      <label class="scaffold-toggle">速度
+        <select id="rj-bpm">
+          <option value="60">🐢 60</option>
+          <option value="80">🚶 80</option>
+          <option value="90" selected>🎵 90</option>
+          <option value="110">🏃 110</option>
+          <option value="130">⚡ 130</option>
+        </select>
+      </label>
+      <label class="scaffold-toggle"><input type="checkbox" id="rj-guide" checked> 🔊 节奏向导（提示音）</label>
+      <span id="rj-pdesc" style="color:var(--muted)"></span>
+    </div>
+
+    <div class="dr-hud">
+      <span class="dr-stat">⭐ 完美 <b id="rj-perfect">0</b></span>
+      <span class="dr-stat">👍 不错 <b id="rj-good">0</b></span>
+      <span class="dr-stat">💨 漏拍 <b id="rj-miss">0</b></span>
+      <span class="dr-stat">🔥 连击 <b id="rj-combo">0</b></span>
+      <span class="dr-stat">🏆 最佳连击 <b id="rj-best">0</b></span>
+    </div>
+
+    <div class="rj-track-wrap">
+      <canvas id="rj-canvas" class="rj-canvas" width="660" height="280"></canvas>
+    </div>
+
+    <div class="bb-feedback" id="rj-feedback">选好节奏型，按"开始"——跟着方块拍！</div>
+
+    <div class="rotate-bar">
+      <button id="rj-start" class="big-btn">▶ 开始</button>
+      <button id="rj-tap" class="big-btn" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">🥁 拍！</button>
+    </div>
+
+    <div class="kb-wrap" style="margin-top:10px">
+      <div class="kb-cap">🎹 也可以按下方任意键来拍（音高无所谓）</div>
+      <div id="rj-kb"></div>
+    </div>`;
+
+  const cv = $('#rj-canvas');
+  const cx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const TOP = 20, LINE = H - 70;      // 击拍线 y 像素
+  const yPix = (y) => TOP + y * (LINE - TOP);
+
+  function patObj() { return rjPatternById(patId); }
+  function travelMs() { return 2 * (60000 / bpm); } // 2 拍的下落提前量
+
+  function drawPicker() {
+    $('#rj-pick').innerHTML = RJ_PATTERNS.map((p) => {
+      const lv = p.level === 1 ? '🌱' : p.level === 2 ? '🌿' : '🔥';
+      return `<button class="bb-chip${p.id === patId ? ' on' : ''}" data-id="${p.id}">${p.emoji} ${p.label}<small>${lv} ${p.desc}</small></button>`;
+    }).join('');
+    $('#rj-pick').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { if (running) return; patId = el.dataset.id; drawPicker(); updateDesc(); draw(); };
+    });
+  }
+  function updateDesc() {
+    const p = patObj();
+    $('#rj-pdesc').textContent = `${p.desc} · 每小节 ${p.barBeats} 拍`;
+  }
+
+  function updateHud() {
+    const c = game ? game.counts : { perfect: 0, good: 0, miss: 0 };
+    $('#rj-perfect').textContent = c.perfect;
+    $('#rj-good').textContent = c.good;
+    $('#rj-miss').textContent = c.miss;
+    $('#rj-combo').textContent = game ? game.combo : 0;
+    $('#rj-best').textContent = Math.max(bestOf(patId), game ? game.bestCombo : 0);
+  }
+
+  function isDownbeat(idx) { return idx % patObj().beats.length === 0; }
+
+  function draw() {
+    cx.clearRect(0, 0, W, H);
+    // 背景
+    const g = cx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(99,102,241,.10)'); g.addColorStop(1, 'rgba(244,114,182,.08)');
+    cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+    // 击拍线
+    cx.save();
+    if (lineFlash > 0) { cx.shadowColor = lineFlashCol; cx.shadowBlur = 24 * lineFlash; }
+    cx.strokeStyle = lineFlash > 0 ? lineFlashCol : 'rgba(255,255,255,.55)';
+    cx.lineWidth = 4; cx.beginPath(); cx.moveTo(0, LINE); cx.lineTo(W, LINE); cx.stroke();
+    cx.restore();
+    cx.fillStyle = 'rgba(255,255,255,.5)'; cx.font = '12px system-ui,sans-serif';
+    cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText('← 拍这里', 6, LINE - 12);
+    if (lineFlash > 0) lineFlash = Math.max(0, lineFlash - 0.08);
+    // 方块
+    if (game) {
+      const now = performance.now() - t0;
+      for (const n of game.activeNotes(now, travelMs())) {
+        if (n.judged && n.result === 'miss') continue;
+        const x = W / 2;
+        const y = yPix(Math.min(1.2, n.y));
+        const down = isDownbeat(n.i);
+        const w = down ? 120 : 92, h = down ? 40 : 32;
+        const col = n.judged ? 'rgba(120,200,140,.35)' : (down ? '#fbbf24' : '#38bdf8');
+        cx.save();
+        cx.shadowColor = col; cx.shadowBlur = n.y > 0.8 && !n.judged ? 18 : 8;
+        cx.fillStyle = col; cx.globalAlpha = n.judged ? 0.5 : 0.95;
+        roundRect(cx, x - w / 2, y - h / 2, w, h, 10); cx.fill();
+        cx.restore();
+        cx.globalAlpha = 1;
+        cx.fillStyle = '#0b1020'; cx.font = `bold ${down ? 17 : 15}px system-ui,sans-serif`;
+        cx.textAlign = 'center'; cx.textBaseline = 'middle';
+        cx.fillText(down ? '●' : '♪', x, y + 1);
+      }
+    } else {
+      cx.fillStyle = 'rgba(220,228,255,.55)'; cx.font = '16px system-ui,sans-serif';
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText('按「开始」让节奏方块掉下来 🥁', W / 2, (TOP + LINE) / 2);
+    }
+    // 漂浮判定字
+    for (const f of floats) {
+      cx.globalAlpha = Math.max(0, f.life);
+      cx.fillStyle = f.color; cx.font = 'bold 20px system-ui,sans-serif';
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText(f.txt, f.x, f.y);
+      f.y -= 1.1; f.life -= 0.03;
+    }
+    cx.globalAlpha = 1;
+    for (let i = floats.length - 1; i >= 0; i--) if (floats[i].life <= 0) floats.splice(i, 1);
+  }
+
+  function roundRect(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
+  function loop() {
+    if (!running || !game) return;
+    const now = performance.now() - t0;
+    // 向导提示音：方块落到线上瞬间响一声
+    if (guide) {
+      for (const n of game.notes) {
+        if (!voiced.has(n.i) && now >= n.ms) { voiced.add(n.i); try { clickSound(isDownbeat(n.i)); } catch (_) {} }
+      }
+    }
+    const missed = game.expire(now);
+    if (missed.length) { lineFlash = 0.6; lineFlashCol = '#fbbf24'; updateHud(); }
+    draw();
+    if (game.isDone() || now > game.durationMs() + 400) { finish(); return; }
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function handleTap() {
+    if (!game || !running) return;
+    const now = performance.now() - t0;
+    const r = game.tap(now);
+    if (r.hit) {
+      lineFlash = 1; lineFlashCol = r.result === 'perfect' ? '#34d399' : '#60a5fa';
+      floats.push({ x: W / 2, y: LINE - 18, life: 1, txt: r.result === 'perfect' ? '完美!' : '不错', color: r.result === 'perfect' ? '#34d399' : '#60a5fa' });
+      if (game.bestCombo > bestOf(patId)) { const map = loadBest(); map[patId] = game.bestCombo; saveBest(map); }
+      if (game.combo > 0 && game.combo % 8 === 0) cheerToast(`🔥 连击 ${game.combo}！`, root);
+    } else {
+      // 空挥：温和，不扣分
+      floats.push({ x: W / 2, y: LINE - 18, life: 0.7, txt: '—', color: 'rgba(255,255,255,.5)' });
+    }
+    updateHud();
+  }
+
+  function finish() {
+    cancelAnimationFrame(rafId);
+    running = false; rhythmJumpOnNote = null;
+    $('#rj-start').textContent = '▶ 开始'; $('#rj-start').classList.remove('running');
+    const stars = game.stars();
+    const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+    recordPractice('rhythmjump', '节奏跳跳', game.total, game.counts.perfect + game.counts.good, game.bestCombo);
+    const rate = game.hitRate();
+    if (stars >= 3) {
+      $('#rj-feedback').innerHTML = `${starStr} 太稳了！命中率 <b>${rate}%</b>，平均误差仅 <b>${game.meanAbsErrMs()}ms</b> —— 节奏感满分！`;
+      cheerBurst(root, 80);
+      try { victoryLightShow(root, { confetti: 90, text: `🥁 节奏大师！${rate}%` }); } catch (_) {}
+    } else if (stars >= 1) {
+      $('#rj-feedback').innerHTML = `${starStr} 命中率 <b>${rate}%</b>，最佳连击 <b>${game.bestCombo}</b>。跟着 ● 重音拍会更准，再来一次！`;
+      cheerToast(`${starStr} 不错哦！`, root);
+    } else {
+      $('#rj-feedback').innerHTML = `这次还没接住几个，没关系～放慢速度（试试 🐢 60），跟着提示音拍，很快就有手感啦！`;
+    }
+    updateHud(); draw();
+    drawPicker();
+  }
+
+  function start() {
+    game = new RhythmJump({ bpm, pattern: patId, bars: 4, leadInBeats: 4 });
+    voiced.clear(); floats.length = 0; lineFlash = 0;
+    t0 = performance.now();
+    running = true;
+    $('#rj-start').textContent = '⏹ 停止'; $('#rj-start').classList.add('running');
+    $('#rj-feedback').innerHTML = `开始！前 4 拍是<b>预备拍</b>（听提示音找速度），然后跟着方块落到线上时按键～`;
+    rhythmJumpOnNote = () => handleTap();
+    updateHud();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function stop() {
+    cancelAnimationFrame(rafId);
+    running = false; rhythmJumpOnNote = null;
+    $('#rj-start').textContent = '▶ 开始'; $('#rj-start').classList.remove('running');
+    if (game && game.judgedCount > 0) finish(); else { $('#rj-feedback').textContent = '已停止'; draw(); }
+  }
+
+  const kb = new PianoKeyboard($('#rj-kb'), {
+    labels: 'c',
+    // CA99 真琴由全局 rhythmJumpOnNote 钩子驱动；屏幕键盘点任意键也算一次拍击。
+    onNoteOn: () => { handleTap(); },
+  });
+  kb.scrollToShow(57, 76);
+
+  $('#rj-start').onclick = () => { if (running) stop(); else start(); };
+  $('#rj-tap').onclick = () => handleTap();
+  $('#rj-bpm').onchange = () => { if (!running) bpm = +$('#rj-bpm').value; };
+  $('#rj-guide').onchange = () => { guide = $('#rj-guide').checked; };
+
+  // 切走模块自动停
+  document.addEventListener('ca99:module-change', (e) => {
+    if (e.detail !== 'rhythmjump' && running) {
+      running = false; rhythmJumpOnNote = null; cancelAnimationFrame(rafId);
+    }
+  });
+
+  drawPicker(); updateDesc(); updateHud(); draw();
+}
+
 // ========== 模块: 🎲 骰子热身（掷骰随机生成今日小任务，消除"练什么"的选择压力）==========
 function renderDiceWarmup() {
   const root = $('#module-dice');
@@ -15746,7 +16000,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
