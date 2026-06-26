@@ -8975,6 +8975,11 @@ function renderPlayStage() {
   let demoPlayed = new Set();
   const realOn = new Set();
   let builtinCatalog = null, userCatalog = null;
+  // #5 先听后弹（铃木法）：跟弹一首没听过的曲子前先自动放一遍示范，听完自动进入跟弹
+  let listenFirst = true;
+  let autoFollowAfter = false;
+  const previewed = new Set();          // 已完整听过示范的曲子（按 songKey）
+  const songKey = () => (song && (song.id || song.title)) || '';
 
   root.innerHTML = `
     <div class="ps-wrap">
@@ -8985,6 +8990,7 @@ function renderPlayStage() {
         <button class="ps-mbtn" id="ps-demo">▶ 预听</button>
         <button class="ps-mbtn primary" id="ps-follow">🎯 跟弹</button>
         <button class="ps-mbtn" id="ps-stop" disabled>⏸ 停止</button>
+        <label class="ps-toggle" title="开启后，跟弹一首还没听过的曲子前会先自动放一遍示范（铃木教学法：先听后弹），听完自动进入跟弹"><input type="checkbox" id="ps-listen" checked> 🎧 先听后弹</label>
         <label class="ps-toggle" title="开启后预听/示范会同时让连接的 CA99 真琴发声"><input type="checkbox" id="ps-real" checked> 🎹 真琴发声</label>
         <label class="ps-toggle"><input type="checkbox" id="ps-labels" checked> 🔤 音名</label>
         <span class="ps-stat" id="ps-stat"></span>
@@ -9215,9 +9221,21 @@ function renderPlayStage() {
     raf = null;
     allRealOff();
     const wasFollow = mode === 'follow';
+    const wasDemo = mode === 'demo';
     mode = null; playStageOnNote = null;
     setRunUI(null);
     kb.clear();
+    // #5 示范完整放完 → 记下「听过」；若是先听后弹触发的，听完自动进入跟弹
+    if (finished && wasDemo) {
+      previewed.add(songKey());
+      if (autoFollowAfter) {
+        autoFollowAfter = false;
+        $('#ps-stat').textContent = '🎧 听过啦，开始跟弹吧！';
+        setTimeout(() => { if (!mode) start('follow'); }, 700);
+        return;
+      }
+    }
+    if (!finished) autoFollowAfter = false;   // 中途停止，取消自动跟弹
     if (wasFollow && sf && sf.judgedCount > 0) {
       const s = sf.summary();
       const star = '★'.repeat(s.stars) + '☆'.repeat(3 - s.stars);
@@ -9343,8 +9361,19 @@ function renderPlayStage() {
   $('#ps-modal-x').onclick = closeModal;
   $('#ps-modal').onclick = (e) => { if (e.target === $('#ps-modal')) closeModal(); };
   $('#ps-demo').onclick = () => start('demo');
-  $('#ps-follow').onclick = () => start('follow');
+  $('#ps-follow').onclick = () => {
+    if (mode) { stop(); return; }
+    // #5 先听后弹：跟弹一首还没听过的曲子前，先自动放一遍示范，听完自动进入跟弹
+    if (listenFirst && sf && !previewed.has(songKey())) {
+      autoFollowAfter = true;
+      $('#ps-stat').textContent = '🎧 先听一遍示范～听完自动开始跟弹';
+      start('demo');
+    } else {
+      start('follow');
+    }
+  };
   $('#ps-stop').onclick = () => stop();
+  $('#ps-listen').onchange = (e) => { listenFirst = e.target.checked; };
   $('#ps-real').onchange = (e) => { realPiano = e.target.checked; if (!realPiano) allRealOff(); };
   $('#ps-labels').onchange = (e) => { labelsOn = e.target.checked; };
   $('#ps-search').oninput = (e) => { libState.query = e.target.value; drawCats(); drawList(); };
