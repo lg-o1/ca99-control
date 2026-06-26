@@ -89,6 +89,7 @@ import { Drops, makeRng as dropsMakeRng, noteLetter as dropsNoteLetter, POOL_C a
 import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
 import * as MagicJam from './magic-jam.js';
 import * as XpLevel from './xp-level.js';
+import * as WeeklyQuest from './weekly-quest.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -259,6 +260,7 @@ function awardMedal(songId, title, summary) {
 let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
 let streakCalOnUpdate = null; // 🔥 打卡日历刷新回调（注册于 renderStreakCalendar）
 let xpLevelOnUpdate = null;   // 📊 经验/等级刷新回调（注册于 renderXpLevel，含升级检测）
+let weeklyQuestOnPractice = null; // 🗓️ 限时赛季进度回调（注册于 renderWeeklyQuest）
 const DAILY_GOAL = 3; // 今日微目标：练 3 次就达成（超小目标，降低抗拒）
 
 // 顶栏下方「每日鼓励横幅」——复用 practice-stats 把连练天数/今日进度点亮出来
@@ -313,6 +315,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   renderDailyStrip();
   if (streakCalOnUpdate) streakCalOnUpdate(); // 🔥 打卡日历同步点亮今天
   if (xpLevelOnUpdate) xpLevelOnUpdate(); // 📊 经验/等级同步累加（升级则庆祝）
+  if (weeklyQuestOnPractice) weeklyQuestOnPractice(moduleId); // 🗓️ 限时赛季：给本周任务计数
   syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
   mysteryRoll(); // 🎁 练完摇盲盒：小概率解锁一个好玩音色
   dailyGoalProgress(moduleId); // 🎯 今日目标：练的正是所选则达成
@@ -12065,7 +12068,147 @@ function renderXpLevel() {
   xpLevelOnUpdate = update;
 }
 
-// ---------- 模块60：🔁 旋律回声（Simon 式记忆游戏） ----------
+// ---------- 模块85：🗓️ 限时主题挑战赛季（Weekly Quest） ----------
+function renderWeeklyQuest() {
+  const root = $('#module-weeklyquest');
+  if (!root) return;
+  const STATE = 'ca99_weekly_quest';   // {weekKey, progress:{taskId:n}, claimed:bool}
+  const BADGES = 'ca99_quest_badges';  // [{weekKey, themeId, name, emoji, claimedAt}]
+
+  function loadState() {
+    let st = null;
+    try { st = JSON.parse(localStorage.getItem(STATE) || 'null'); } catch (_) {}
+    const wk = WeeklyQuest.weekKey();
+    if (!st || st.weekKey !== wk) {
+      // 新的一周（或首次）→ 进度清零、换新主题
+      st = { weekKey: wk, progress: {}, claimed: false };
+      saveState(st);
+    }
+    return st;
+  }
+  function saveState(st) {
+    try { localStorage.setItem(STATE, JSON.stringify(st)); } catch (_) {}
+  }
+  function loadBadges() {
+    try { return JSON.parse(localStorage.getItem(BADGES) || '[]') || []; } catch (_) { return []; }
+  }
+  function saveBadges(list) {
+    try { localStorage.setItem(BADGES, JSON.stringify(list)); } catch (_) {}
+  }
+
+  function countdownText() {
+    const ms = WeeklyQuest.msToWeekEnd();
+    const days = Math.floor(ms / 86400000);
+    const hrs = Math.floor((ms % 86400000) / 3600000);
+    if (days > 0) return `${days} 天 ${hrs} 小时`;
+    const mins = Math.floor((ms % 3600000) / 60000);
+    return `${hrs} 小时 ${mins} 分`;
+  }
+
+  function buildHtml(st, theme) {
+    const pct = Math.round(WeeklyQuest.questPercent(theme, st.progress) * 100);
+    const complete = WeeklyQuest.questComplete(theme, st.progress);
+    const tasks = theme.tasks.map((t) => {
+      const got = Math.min(st.progress[t.id] || 0, t.goal);
+      const done = got >= t.goal;
+      const tp = Math.round((got / t.goal) * 100);
+      return `<div class="wq-task${done ? ' wq-done' : ''}">
+        <div class="wq-task-top">
+          <span class="wq-task-ic">${done ? '✅' : t.emoji}</span>
+          <span class="wq-task-lbl">${t.label}</span>
+          <span class="wq-task-cnt">${got}/${t.goal}</span>
+        </div>
+        <div class="wq-task-bar"><div class="wq-task-fill" style="width:${tp}%"></div></div>
+        <button class="wq-go" data-mod="${t.module}">${done ? '再玩一次' : '去玩 →'}</button>
+      </div>`;
+    }).join('');
+
+    const badges = loadBadges();
+    const shelf = badges.length
+      ? badges.slice().reverse().map((b) => `<div class="wq-badge" title="${b.weekKey}">${b.emoji}<span>${b.name}</span></div>`).join('')
+      : '<div class="wq-badge-empty">还没有赛季徽章——完成本周挑战拿下第一枚吧！</div>';
+
+    let claimBlock;
+    if (st.claimed) {
+      claimBlock = `<div class="wq-claimed">🏅 本周徽章已收入囊中，下周一换新主题，期待你回来！</div>`;
+    } else if (complete) {
+      claimBlock = `<button id="wq-claim" class="big-btn wq-claim-btn">🏅 领取「${theme.name}」赛季徽章</button>`;
+    } else {
+      claimBlock = `<div class="wq-hint">完成上面<b>全部任务</b>即可领取本周专属徽章 ${theme.emoji}</div>`;
+    }
+
+    return `
+      <h2 style="margin-bottom:6px">🗓️ 每周挑战赛季</h2>
+      <p style="color:var(--muted);margin-bottom:14px">每周一换一个<b>新主题</b>，完成本周全部小任务就能拿一枚<b>专属赛季徽章</b> 🏅。<b>这周不玩就过期</b>啦——不过别担心，错过只是少一枚徽章，<b>从不扣分、不惩罚</b>。慢慢集，集成一墙！</p>
+
+      <div class="wq-hero">
+        <div class="wq-hero-ic">${theme.emoji}</div>
+        <div class="wq-hero-body">
+          <div class="wq-hero-name">本周主题 · <b>${theme.name}</b></div>
+          <div class="wq-hero-blurb">${theme.blurb}</div>
+          <div class="wq-hero-bar"><div class="wq-hero-fill" style="width:${pct}%"></div><span class="wq-hero-txt">${pct}%</span></div>
+          <div class="wq-hero-meta">⏳ 本周还剩 <b>${countdownText()}</b></div>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <h3 style="margin:0 0 10px">本周任务</h3>
+        <div class="wq-tasks">${tasks}</div>
+        <div class="wq-claim-wrap">${claimBlock}</div>
+      </div>
+
+      <div class="card-panel">
+        <h3 style="margin:0 0 10px">🏅 我的赛季徽章（${badges.length}）</h3>
+        <div class="wq-shelf">${shelf}</div>
+      </div>`;
+  }
+
+  function update() {
+    const st = loadState();
+    const theme = WeeklyQuest.themeForWeek();
+    root.innerHTML = buildHtml(st, theme);
+    root.querySelectorAll('.wq-go').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const mod = btn.getAttribute('data-mod');
+        try { switchModule(mod); } catch (_) {}
+      });
+    });
+    const claim = root.querySelector('#wq-claim');
+    if (claim) {
+      claim.addEventListener('click', () => {
+        const cur = loadState();
+        const th = WeeklyQuest.themeForWeek();
+        if (!WeeklyQuest.questComplete(th, cur.progress) || cur.claimed) return;
+        cur.claimed = true;
+        saveState(cur);
+        const badges = loadBadges();
+        if (!badges.some((b) => b.weekKey === cur.weekKey)) {
+          badges.push({ weekKey: cur.weekKey, themeId: th.id, name: th.name, emoji: th.emoji, claimedAt: Date.now() });
+          saveBadges(badges);
+        }
+        try { victoryLightShow(document.body, { confetti: 150, text: `🏅 拿下「${th.name}」赛季徽章！` }); } catch (_) {}
+        update();
+      });
+    }
+  }
+
+  update();
+
+  // 注册练习钩子：每次某模块练习 → 给本周引用它的任务计数
+  weeklyQuestOnPractice = (moduleId) => {
+    const st = loadState();
+    const theme = WeeklyQuest.themeForWeek();
+    const before = JSON.stringify(st.progress);
+    st.progress = WeeklyQuest.applyPractice(theme, st.progress, moduleId);
+    if (JSON.stringify(st.progress) !== before) {
+      saveState(st);
+      // 仅在该模块可见时重渲染（省开销）
+      if (root.closest('.module')?.classList.contains('active') || root.classList.contains('active')) {
+        update();
+      }
+    }
+  };
+}
 function renderMelodyEcho() {
   const root = $('#module-melecho');
   let levelId = ME_LEVELS[0].id;   // 当前难度
@@ -15375,7 +15518,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

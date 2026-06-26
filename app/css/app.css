@@ -2159,3 +2159,37 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .cp-kb { margin-top:16px; }
 .cfp-target { font-size:20px; font-weight:700; margin-bottom:4px; }
 .cfp-kb { margin-top:16px; }
+
+/* 🗓️ 每周挑战赛季（Weekly Quest） */
+.wq-hero { display: flex; align-items: center; gap: 18px; margin: 6px 0 16px; padding: 18px; border-radius: 16px;
+  background: linear-gradient(120deg, rgba(34,211,238,.18), rgba(167,139,250,.16)); border: 1px solid rgba(34,211,238,.3); }
+.wq-hero-ic { font-size: 52px; line-height: 1; filter: drop-shadow(0 0 12px rgba(34,211,238,.6)); }
+.wq-hero-body { flex: 1; min-width: 0; }
+.wq-hero-name { font-size: 19px; margin-bottom: 4px; }
+.wq-hero-blurb { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+.wq-hero-bar { position: relative; height: 20px; border-radius: 11px; overflow: hidden; background: rgba(0,0,0,.32); border: 1px solid rgba(255,255,255,.1); }
+.wq-hero-fill { height: 100%; border-radius: 11px; background: linear-gradient(90deg, #22d3ee, #34d399, #a78bfa); transition: width .5s ease; }
+.wq-hero-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+.wq-hero-meta { margin-top: 8px; color: var(--muted); font-size: 13px; }
+.wq-tasks { display: flex; flex-direction: column; gap: 10px; }
+.wq-task { padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); }
+.wq-task.wq-done { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.4); }
+.wq-task-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.wq-task-ic { font-size: 22px; }
+.wq-task-lbl { flex: 1; font-weight: 700; }
+.wq-task-cnt { color: var(--muted); font-weight: 800; font-size: 14px; }
+.wq-task-bar { height: 10px; border-radius: 6px; overflow: hidden; background: rgba(0,0,0,.3); margin-bottom: 8px; }
+.wq-task-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #22d3ee, #34d399); transition: width .4s ease; }
+.wq-go { padding: 6px 14px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px;
+  color: #07121a; background: linear-gradient(90deg, #22d3ee, #34d399); }
+.wq-go:active { transform: translateY(1px); }
+.wq-claim-wrap { margin-top: 14px; }
+.wq-claim-btn { width: 100%; background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.wq-claimed { padding: 12px; border-radius: 10px; text-align: center; font-weight: 700; color: #fbbf24;
+  background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.35); }
+.wq-hint { padding: 10px; border-radius: 10px; text-align: center; color: var(--muted); font-size: 13px; background: rgba(255,255,255,.04); }
+.wq-shelf { display: flex; flex-wrap: wrap; gap: 10px; }
+.wq-badge { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 80px; padding: 12px 10px; border-radius: 12px;
+  background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.3); font-size: 30px; }
+.wq-badge span { font-size: 11px; font-weight: 700; color: var(--muted); text-align: center; }
+.wq-badge-empty { color: var(--muted); font-size: 13px; padding: 8px; }
