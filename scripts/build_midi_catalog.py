@@ -112,6 +112,13 @@ def main():
             "path": f"midi/{slug}/{f}",
         })
 
+    # 📖 课本谱面：若某首 .mid 旁有同名文件夹且内含 index.json（切图工具产出），标记 sheet=True，
+    # 供前端在曲库列表显示「📖 谱」徽章、跟弹时同步显示真实课本照片。
+    for s in songs:
+        stem = os.path.splitext(s["file"])[0]
+        if os.path.isfile(os.path.join(DST, s["fn"], stem, "index.json")):
+            s["sheet"] = True
+
     def natkey(s):
         key = (s["cat"] or "~", s["title"])
         return [int(t) if t.isdigit() else t.lower()

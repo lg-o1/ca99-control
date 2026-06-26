@@ -66,6 +66,7 @@ import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js
 import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
 import { dayKey as dsDayKey, pickDailyIndex as dsPickIndex, prettyName as dsPretty, catEmoji as dsCatEmoji } from './daily-song.js';
 import { buildSongTree as stBuildTree, findNode as stFindNode, findSub as stFindSub, searchSongs as stSearch, countMatches as stCount } from './song-tree.js';
+import { parseSheetIndex as shParse, measureAtBeat as shMeasureAtBeat, cursorX as shCursorX, sheetPaths as shPaths, pngUrl as shPngUrl } from './sheet-index.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
@@ -8171,7 +8172,8 @@ function mountHierBrowser(els, catalog, onPick, opts = {}) {
     const tail = withCtx
       ? `<span class="scf-lib-c">${esc(ctxLabel(s))}</span>`
       : (s.composer ? `<span class="scf-lib-c">${esc(s.composer)}</span>` : '');
-    return `<button class="scf-lib-item" data-i="${idx}"><span class="scf-lib-t">${esc(s.title)}</span>${tail}</button>`;
+    const sheet = s.sheet ? `<span class="scf-lib-sheet" title="这首带真实课本谱面，跟弹时可同步看书">📖 谱</span>` : '';
+    return `<button class="scf-lib-item" data-i="${idx}"><span class="scf-lib-t">${esc(s.title)}</span>${sheet}${tail}</button>`;
   };
   const bindCrumb = () => els.cats.querySelectorAll('.scf-crumb-link').forEach((b) => {
     b.onclick = () => {
@@ -8276,6 +8278,9 @@ function renderScoreFollow() {
   let hintUntil = 0;        // ⑥ 等待模式提示高亮的截止时刻
   let waitTolerant = true;  // 🌟 容差等待：节奏对、音高差≤2半音也帮过（宽容 MIDI 毛刺/相邻误触），默认开
   let lastDrawT = 0;        // 最近一次绘制的播放头时间（标签切换时重绘用）
+  let sheet = null;         // 📖 课本谱面（解析后的 index + 累计宽度 + folder）
+  let sheetScale = 1;       // 谱面源像素 → 显示像素的缩放
+  let sheetCurIdx = -1;     // 当前高亮的小节（避免每帧重设 class）
   let loopOn = false;       // ③ 区间循环开关
   let velViz = true;        // ② 力度可视化（上传 MIDI 的 velocity → 音符块亮度）
   let fxOn = true;          // ✨ 击中特效（粒子迸发 / 判定线发光 / 连击闪光）
@@ -8530,6 +8535,17 @@ function renderScoreFollow() {
         </span>
         <button class="scf-hint-btn" id="scf-hint" disabled title="等待练习卡住时，按一下让该弹的键闪 3 秒">💡 提示</button>
       </div>
+      <div class="scf-sheet-panel" id="scf-sheet-panel" hidden>
+        <div class="scf-sheet-head">
+          <span class="scf-sheet-ttl">📖 课本谱面</span>
+          <span class="scf-sheet-label" id="scf-sheet-label"></span>
+          <span class="scf-sheet-nav">
+            <button class="scf-sheet-navbtn" id="scf-sheet-prev" title="上一小节">◀</button>
+            <button class="scf-sheet-navbtn" id="scf-sheet-next" title="下一小节">▶</button>
+          </span>
+        </div>
+        <div class="scf-sheet-ribbon" id="scf-sheet-ribbon"><div class="scf-sheet-inner" id="scf-sheet-inner"></div></div>
+      </div>
       <div class="scf-staff-wrap"><div id="scf-staff"></div></div>
       <div class="scf-highway-wrap">
         <div id="scf-highway" class="scf-highway"></div>
@@ -8653,6 +8669,9 @@ function renderScoreFollow() {
   $('#scf-metro-meter').onchange = () => { if (scfBeat) startScfBeat(); };
   $('#scf-metro-try').onclick = () => { const n = scfMetroBeats(); let i = 0; const iv = setInterval(() => { if (i >= n) { clearInterval(iv); return; } playMetroClick(scfMetroLevel(i)); i++; }, 300); };
   $('#scf-hint').onclick = doHint;
+  // 📖 课本谱面：上/下一小节定位（暂停浏览时手动翻看）
+  if ($('#scf-sheet-prev')) $('#scf-sheet-prev').onclick = () => { if (sheet) scrollSheetTo((sheetCurIdx < 0 ? 0 : sheetCurIdx) - 1, 0.5); };
+  if ($('#scf-sheet-next')) $('#scf-sheet-next').onclick = () => { if (sheet) scrollSheetTo((sheetCurIdx < 0 ? 0 : sheetCurIdx) + 1, 0.5); };
 
   // 🎲 随机一首：从内置+自定义里随机挑一首（尽量不重复当前）
   $('#scf-random').onclick = () => {
@@ -8945,12 +8964,13 @@ function renderScoreFollow() {
   };
 
   // 从 MIDI 字节流载入一首跟弹曲目（上传 / OMR 识别共用）
-  function loadMidiBuffer(buf, rawTitle, prefix = '📄 ') {
+  function loadMidiBuffer(buf, rawTitle, prefix = '📄 ', sheetPath = null) {
     const parsed = parseMidi(buf);
     if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
     const id = 'midi-' + Date.now() + '-' + Math.floor(Math.random() * 1e4);
     const title = prefix + rawTitle;
     const song = scfFromMidi(parsed, { id, title });
+    song._sheetPath = sheetPath || null;   // 📖 带同名谱面文件夹时记下路径，prepare() 据此载入课本谱面
     customSongs.push(song);
     songId = id;
     loopFrom = 1; loopTo = 9999;
@@ -8968,7 +8988,7 @@ function renderScoreFollow() {
       const r = await fetch(d.path, { cache: 'no-cache' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const buf = await r.arrayBuffer();
-      const info = loadMidiBuffer(buf, d.title || '推荐曲', '🎲 ');
+      const info = loadMidiBuffer(buf, d.title || '推荐曲', '🎲 ', d.path);
       $('#scf-feedback').textContent = `✅ 已载入「${info.title.replace('🎲 ', '')}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。选一档训练开始。`;
       $('#scf-feedback').className = 'sight-feedback ok';
     } catch (err) {
@@ -8989,7 +9009,7 @@ function renderScoreFollow() {
         const url = String(s.path).split('/').map(encodeURIComponent).join('/');
         const r = await fetch(url, { cache: 'no-cache' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        const info = loadMidiBuffer(await r.arrayBuffer(), s.title, prefix);
+        const info = loadMidiBuffer(await r.arrayBuffer(), s.title, prefix, s.sheet ? s.path : null);
         els.status.textContent = `✅ 已载入「${s.title}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。下面选一档训练开始。`;
         els.status.className = 'scf-lib-status ok';
         const m = $('#scf-modal'); if (m) m.hidden = true;   // 选好即关弹窗，回到练习区
@@ -9159,6 +9179,80 @@ function renderScoreFollow() {
     drawHighway(-LEAD_MS);
     refreshStats();
     updateBestBadge();
+    loadSheetFor(getCurrentSong()._sheetPath || null);   // 📖 当前曲目带课本谱面则载入，否则清空
+  }
+
+  // ---- 📖 课本谱面（真实书本照片按小节切片，跟弹时同步高亮）----
+  // 数据来自切图工具产出的 <stem>/index.json + m001.png…；光标按引擎乐拍均匀映射到小节，
+  // 跟随慢练/变速同步，不依赖秒数。无谱面文件夹的曲目自动隐藏本面板。
+  async function loadSheetFor(path) {
+    sheet = null; sheetCurIdx = -1;
+    const panel = $('#scf-sheet-panel'); if (panel) panel.hidden = true;
+    const inner = $('#scf-sheet-inner'); if (inner) inner.innerHTML = '';
+    if (!path) return;
+    const { folder, index } = shPaths(path);
+    try {
+      const url = index.split('/').map(encodeURIComponent).join('/');
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) return;                       // 没有谱面 → 静默隐藏
+      const parsed = shParse(await r.json());
+      if (!parsed.measures.length) return;
+      sheet = Object.assign(parsed, { folder });
+      buildSheetRibbon();
+      if (panel) panel.hidden = false;
+      drawSheet(lastDrawT || -LEAD_MS);
+    } catch { sheet = null; }
+  }
+
+  function buildSheetRibbon() {
+    const inner = $('#scf-sheet-inner'); if (!inner || !sheet) return;
+    const dispH = 132;
+    sheetScale = dispH / (sheet.height || 240);
+    const totalW = Math.round(sheet.totalWidth * sheetScale);
+    let html = '';
+    sheet.measures.forEach((m, i) => {
+      const src = shPngUrl(sheet.folder, m.file).split('/').map(encodeURIComponent).join('/');
+      const w = Math.max(1, Math.round(m.w * sheetScale));
+      html += `<img class="scf-sheet-m${m.lowConf ? ' low-conf' : ''}" data-m="${i}" src="${src}" `
+        + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="lazy">`;
+    });
+    html += `<div class="scf-sheet-cursor" id="scf-sheet-cursor"></div>`;
+    inner.style.width = totalW + 'px';
+    inner.style.height = dispH + 'px';
+    inner.innerHTML = html;
+    inner.querySelectorAll('.scf-sheet-m').forEach((img) => {
+      img.onclick = () => scrollSheetTo(+img.dataset.m, 0.5);   // 点小节 → 定位预览
+    });
+  }
+
+  function drawSheet(t) {
+    if (!sheet) return;
+    const wrap = $('#scf-sheet-ribbon'), cur = $('#scf-sheet-cursor');
+    if (!wrap || !cur) return;
+    const beat = Math.max(0, sf ? sf.beatAt(t) : 0);
+    const { idx, f } = shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, sheet.nMeasures);
+    const x = shCursorX(sheet.measures, idx, f) * sheetScale;
+    cur.style.left = x + 'px';
+    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+    if (idx !== sheetCurIdx) {
+      const imgs = $('#scf-sheet-inner').querySelectorAll('.scf-sheet-m');
+      if (sheetCurIdx >= 0 && imgs[sheetCurIdx]) imgs[sheetCurIdx].classList.remove('cur');
+      if (imgs[idx]) imgs[idx].classList.add('cur');
+      sheetCurIdx = idx;
+      const lbl = $('#scf-sheet-label');
+      if (lbl) lbl.textContent = `第 ${idx + 1} / ${sheet.nMeasures} 小节`
+        + (sheet.measures[idx] && sheet.measures[idx].lowConf ? '　⚠️ 这格识别可能不准' : '');
+    }
+  }
+
+  function scrollSheetTo(idx, f) {
+    if (!sheet) return;
+    const wrap = $('#scf-sheet-ribbon'), cur = $('#scf-sheet-cursor');
+    if (!wrap) return;
+    const i = Math.max(0, Math.min(sheet.nMeasures - 1, idx));
+    const x = shCursorX(sheet.measures, i, f || 0) * sheetScale;
+    if (cur) cur.style.left = x + 'px';
+    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
   }
 
   // ---- 五线谱（整曲横向 + 光标）----
@@ -9328,7 +9422,7 @@ function renderScoreFollow() {
       lastNow = now;
       const t = waitClock;
       // 等待模式不调 tickMetro（播放头冻结时它会哑）——节拍由自由运行的 scfBeat 负责
-      drawHighway(t); drawStaff(t); refreshStats();
+      drawHighway(t); drawStaff(t); drawSheet(t); refreshStats();
       if (waitIdx >= groups.length) {
         if (loopOn) {                       // ③ 循环：重置窗口、回到首组
           resetWindow(); waitIdx = 0; frozen = false;
@@ -9361,6 +9455,7 @@ function renderScoreFollow() {
     }
     drawHighway(t);
     drawStaff(t);
+    drawSheet(t);
     refreshStats();
     if (loopOn) {                            // ③ 循环：到段尾跳回段首，不自动结束
       if (t >= loopEndMs + sf.goodMs) {
@@ -9583,6 +9678,8 @@ function renderPlayStage() {
   let autoFollowAfter = false;
   const previewed = new Set();          // 已完整听过示范的曲子（按 songKey）
   const songKey = () => (song && (song.id || song.title)) || '';
+  let psSheet = null, psSheetScale = 1, psSheetCurIdx = -1;   // 📖 课本谱面状态
+  let psLastT = -LEAD_MS;
 
   root.innerHTML = `
     <div class="ps-wrap">
@@ -9604,6 +9701,17 @@ function renderPlayStage() {
           </span>
         </span>
         <span class="ps-stat" id="ps-stat"></span>
+      </div>
+      <div class="scf-sheet-panel" id="ps-sheet-panel" hidden>
+        <div class="scf-sheet-head">
+          <span class="scf-sheet-ttl">📖 课本谱面</span>
+          <span class="scf-sheet-label" id="ps-sheet-label"></span>
+          <span class="scf-sheet-nav">
+            <button class="scf-sheet-navbtn" id="ps-sheet-prev" title="上一小节">◀</button>
+            <button class="scf-sheet-navbtn" id="ps-sheet-next" title="下一小节">▶</button>
+          </span>
+        </div>
+        <div class="scf-sheet-ribbon" id="ps-sheet-ribbon"><div class="scf-sheet-inner" id="ps-sheet-inner"></div></div>
       </div>
       <div class="ps-staff-wrap scf-staff-wrap"><div id="ps-staff"></div></div>
       <div class="ps-hw-wrap scf-highway-wrap" style="height:${HW_H}px">
@@ -9689,6 +9797,72 @@ function renderPlayStage() {
     $('#ps-title').textContent = song.title || '未命名';
     demoPlayed = new Set();
     drawStaff(-LEAD_MS); drawHighway(-LEAD_MS); refreshStat();
+    psLoadSheet(song._sheetPath || null);   // 📖 课本谱面
+  }
+
+  // ---- 📖 课本谱面（与曲谱跟弹同一套：真实书本照片按小节切片，跟弹时同步高亮）----
+  async function psLoadSheet(path) {
+    psSheet = null; psSheetCurIdx = -1;
+    const panel = $('#ps-sheet-panel'); if (panel) panel.hidden = true;
+    const inner = $('#ps-sheet-inner'); if (inner) inner.innerHTML = '';
+    if (!path) return;
+    const { folder, index } = shPaths(path);
+    try {
+      const url = index.split('/').map(encodeURIComponent).join('/');
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) return;
+      const parsed = shParse(await r.json());
+      if (!parsed.measures.length) return;
+      psSheet = Object.assign(parsed, { folder });
+      psBuildSheet();
+      if (panel) panel.hidden = false;
+      psDrawSheet(psLastT);
+    } catch { psSheet = null; }
+  }
+  function psBuildSheet() {
+    const inner = $('#ps-sheet-inner'); if (!inner || !psSheet) return;
+    const dispH = 132;
+    psSheetScale = dispH / (psSheet.height || 240);
+    let html = '';
+    psSheet.measures.forEach((m, i) => {
+      const src = shPngUrl(psSheet.folder, m.file).split('/').map(encodeURIComponent).join('/');
+      const w = Math.max(1, Math.round(m.w * psSheetScale));
+      html += `<img class="scf-sheet-m${m.lowConf ? ' low-conf' : ''}" data-m="${i}" src="${src}" `
+        + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="lazy">`;
+    });
+    html += `<div class="scf-sheet-cursor" id="ps-sheet-cursor"></div>`;
+    inner.style.width = Math.round(psSheet.totalWidth * psSheetScale) + 'px';
+    inner.style.height = dispH + 'px';
+    inner.innerHTML = html;
+    inner.querySelectorAll('.scf-sheet-m').forEach((img) => { img.onclick = () => psScrollSheet(+img.dataset.m, 0.5); });
+  }
+  function psDrawSheet(t) {
+    if (!psSheet) return;
+    psLastT = t;
+    const wrap = $('#ps-sheet-ribbon'), cur = $('#ps-sheet-cursor');
+    if (!wrap || !cur) return;
+    const beat = Math.max(0, sf ? sf.beatAt(t) : 0);
+    const { idx, f } = shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, psSheet.nMeasures);
+    const x = shCursorX(psSheet.measures, idx, f) * psSheetScale;
+    cur.style.left = x + 'px';
+    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+    if (idx !== psSheetCurIdx) {
+      const imgs = $('#ps-sheet-inner').querySelectorAll('.scf-sheet-m');
+      if (psSheetCurIdx >= 0 && imgs[psSheetCurIdx]) imgs[psSheetCurIdx].classList.remove('cur');
+      if (imgs[idx]) imgs[idx].classList.add('cur');
+      psSheetCurIdx = idx;
+      const lbl = $('#ps-sheet-label');
+      if (lbl) lbl.textContent = `第 ${idx + 1} / ${psSheet.nMeasures} 小节`
+        + (psSheet.measures[idx] && psSheet.measures[idx].lowConf ? '　⚠️ 这格识别可能不准' : '');
+    }
+  }
+  function psScrollSheet(idx, f) {
+    if (!psSheet) return;
+    const wrap = $('#ps-sheet-ribbon'), cur = $('#ps-sheet-cursor'); if (!wrap) return;
+    const i = Math.max(0, Math.min(psSheet.nMeasures - 1, idx));
+    const x = shCursorX(psSheet.measures, i, f || 0) * psSheetScale;
+    if (cur) cur.style.left = x + 'px';
+    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
   }
 
   // ---- 五线谱 ----
@@ -9817,7 +9991,7 @@ function renderPlayStage() {
     } else if (mode === 'follow') {
       sf.expire(t).forEach(() => popGrade('miss'));
     }
-    drawHighway(t); drawStaff(t); refreshStat();
+    drawHighway(t); drawStaff(t); psDrawSheet(t); refreshStat();
     if (t > sf.durationMs + sf.goodMs + 700) { stop(true); return; }
     raf = requestAnimationFrame(frame);
   }
@@ -9943,11 +10117,11 @@ function renderPlayStage() {
       catalog,
       (s) => {
         if (s._scfId) { const hit = SCF_SONGS.find((x) => x.id === s._scfId); if (hit) { loadSong(hit); closeModal(); } }
-        else if (s.path) loadPath(s.path, s.title);
+        else if (s.path) loadPath(s.path, s.title, s.sheet ? s.path : null);
       },
     );
   }
-  async function loadPath(path, title) {
+  async function loadPath(path, title, sheetPath = null) {
     setModalStatus('⏳ 载入「' + title + '」…');
     try {
       const url = String(path).split('/').map(encodeURIComponent).join('/');
@@ -9955,7 +10129,9 @@ function renderPlayStage() {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const parsed = parseMidi(await r.arrayBuffer());
       if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
-      loadSong(scfFromMidi(parsed, { id: 'ps-' + Date.now(), title }));
+      const so = scfFromMidi(parsed, { id: 'ps-' + Date.now(), title });
+      so._sheetPath = sheetPath || null;   // 📖 带课本谱面则记下
+      loadSong(so);
       closeModal();
     } catch (err) {
       setModalStatus('❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）', 'err');
@@ -9964,6 +10140,8 @@ function renderPlayStage() {
 
   // ---- 事件绑定 ----
   $('#ps-load').onclick = openModal;
+  if ($('#ps-sheet-prev')) $('#ps-sheet-prev').onclick = () => { if (psSheet) psScrollSheet((psSheetCurIdx < 0 ? 0 : psSheetCurIdx) - 1, 0.5); };
+  if ($('#ps-sheet-next')) $('#ps-sheet-next').onclick = () => { if (psSheet) psScrollSheet((psSheetCurIdx < 0 ? 0 : psSheetCurIdx) + 1, 0.5); };
   $('#ps-modal-x').onclick = closeModal;
   $('#ps-modal').onclick = (e) => { if (e.target === $('#ps-modal')) closeModal(); };
   $('#ps-demo').onclick = () => start('demo');
