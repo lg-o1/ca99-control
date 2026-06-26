@@ -344,6 +344,40 @@ function cheerToast(text, host) {
   setTimeout(() => el.remove(), 1500);
 }
 
+// ---------- 🌈 通关灯光秀奖励（完成一首歌/闯关时的庆祝）----------
+// 在真琴上奏一段上行五声音阶华彩 + 屏幕撒花。CA99 连着时由真琴亲自「演奏庆祝」，
+// 把每次通关变成一个有仪式感的奖励时刻（对易放弃的孩子尤其重要）。
+// 仅奖励用，绝不参与判分；未连真琴则用电脑发声，行为优雅降级。
+let _victoryBusy = false;
+function victoryLightShow(host, opts = {}) {
+  // 屏幕撒花（永远有）
+  try { cheerBurst(host || document.body, opts.confetti || 90); } catch (_) {}
+  if (opts.toast !== false) { try { cheerToast(opts.text || '🌈 通关啦！太棒了！', host); } catch (_) {} }
+  if (_victoryBusy) return;          // 避免重叠华彩造成轰鸣
+  _victoryBusy = true;
+  // C 大调五声音阶上行华彩（低 → 高），到顶再点一个主和弦
+  const CASCADE = [48, 50, 52, 55, 57, 60, 62, 64, 67, 69, 72, 74, 76, 79, 81, 84];
+  const STEP = 64;                   // 每个音间隔 ms
+  const realPiano = (typeof midiOutReady === 'function') && midiOutReady() && (typeof kbMidiOn === 'function');
+  CASCADE.forEach((n, i) => {
+    setTimeout(() => {
+      const vel = Math.min(118, 70 + i * 3);
+      if (realPiano) { try { kbMidiOn(n, 0, vel); setTimeout(() => { try { kbMidiOff(n); } catch (_) {} }, 280); } catch (_) {} }
+      else { try { playTone(midiToFreq(n), 0, 0.32, 0.16); } catch (_) {} }
+    }, i * STEP);
+  });
+  // 顶部主和弦庆祝音
+  const CHORD = [72, 76, 79, 84];
+  setTimeout(() => {
+    CHORD.forEach((n) => {
+      if (realPiano) { try { kbMidiOn(n, 0, 110); setTimeout(() => { try { kbMidiOff(n); } catch (_) {} }, 700); } catch (_) {} }
+      else { try { playTone(midiToFreq(n), 0, 0.8, 0.16); } catch (_) {} }
+    });
+  }, CASCADE.length * STEP + 40);
+  setTimeout(() => { _victoryBusy = false; }, CASCADE.length * STEP + 900);
+}
+if (typeof window !== 'undefined') window.victoryLightShow = victoryLightShow;
+
 // ---------- 🎁 惊喜盲盒：可解锁音色池 + 摇盒 + 开盒动画 ----------
 // 好玩音色关键词（按这些名字优先挑「值得收藏」的趣味音色，避免普通钢琴）
 const MYSTERY_KEYWORDS = [
@@ -9529,6 +9563,10 @@ function renderPlayStage() {
       $('#ps-stat').textContent = `🎉 ${star}　正确率 ${s.accuracy}%（PERFECT ${s.perfect} / GOOD ${s.good} / MISS ${s.miss}）最高连对 ${s.maxCombo}`;
       try { recordPractice('playstage', '演奏台', s.total, s.perfect + s.good, s.maxCombo); } catch (_) {}
       try { awardMedal(songKey(), song.title || '乐曲', s); } catch (_) {} // #1 奖牌只升不降
+      // 🌈 通关灯光秀奖励：完整跟弹完一首 → 真琴亲自奏华彩 + 撒花（弹得越好越隆重）
+      if (finished) {
+        try { victoryLightShow(root, { confetti: 80 + s.stars * 40, text: s.stars >= 3 ? '🌈 满星通关！太厉害了！' : '🌈 通关啦！真棒！' }); } catch (_) {}
+      }
     } else {
       drawHighway(-LEAD_MS); drawStaff(-LEAD_MS); refreshStat();
     }
@@ -14077,9 +14115,14 @@ function renderCofPuzzle() {
       if (r.complete) {
         puzzle.save(localStorage);
         const unlocked = r.unlockedKey;
-        cheerBurst(root, 70);
-        cheerToast(`🔓 解锁 ${unlocked} 大调！`, root);
         recordPractice('cofpuzzle', '五度圈拼图', 1, 1, puzzle.unlockedCount());
+        if (puzzle.isComplete()) {
+          // 🌈 集齐全部 12 个调 → 通关灯光秀奖励（真琴亲奏华彩）
+          victoryLightShow(root, { confetti: 160, text: '🌈 12 个调全部解锁！五度圈大师！' });
+        } else {
+          cheerBurst(root, 70);
+          cheerToast(`🔓 解锁 ${unlocked} 大调！`, root);
+        }
         buildScaleStrip();
         drawWheel();
       } else {
