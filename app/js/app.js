@@ -70,6 +70,7 @@ import { DEMO_SONGS, pitchRange as mplPitchRange, totalMs as mplTotalMs, layoutR
 import { layoutStaff as svLayoutStaff, cursorX as svCursorX, activeAt as svActiveAt, triggered as svTriggered, totalMs as svTotalMs, staffStep as svStaffStep, noteName as svNoteName } from './staff-view.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 import { noteColor as ncNoteColor, scaffoldStrength as ncStrength, isWeaned as ncWeaned } from './note-color.js';
+import { BOSSES as BB_BOSSES, getBoss as bbGetBoss, BossBattle } from './boss-battle.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -122,6 +123,8 @@ let scfKbEcho = null;       // 曲谱跟弹键盘回显：真实 MIDI note-on �
 let scfKbEchoOff = null;    // 曲谱跟弹键盘回显：真实 MIDI note-off → 屏幕键抬起
 let playStageOnNote = null; // 🎬 演奏台跟弹判分的 note-on 回调（演奏台模块注册）
 let playStageOnNoteOff = null; // 🎬 演奏台的 note-off 回调（真琴松键 → 屏幕键抬起）
+let bossOnNote = null;      // 🐉 Boss 战的 note-on 回调（Boss 战模块注册）
+let bossOnNoteOff = null;   // 🐉 Boss 战的 note-off 回调（真琴松键 → 屏幕键抬起）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -329,6 +332,8 @@ function onMidiIn(bytes) {
     if (scaleOnNote) scaleOnNote(m.note);
     // 驱动视奏闪卡
     if (sightOnNote) sightOnNote(m.note);
+    // 驱动 Boss 战
+    if (bossOnNote) bossOnNote(m.note, m.velocity);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -430,6 +435,8 @@ function onMidiIn(bytes) {
     if (scfKbEchoOff) scfKbEchoOff(m.note);
     // 🎬 演奏台：真琴松键 → 屏幕键抬起
     if (playStageOnNoteOff) playStageOnNoteOff(m.note);
+    // 🐉 Boss 战：真琴松键 → 屏幕键抬起
+    if (bossOnNoteOff) bossOnNoteOff(m.note);
     // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
     PianoKeyboard.echoOff(m.note);
   }
@@ -11741,6 +11748,173 @@ function renderPitchDirection() {
   pitchDirOnNote = (midi) => feed(midi);
 }
 
+// ========== 模块: 🐉 Boss 战（把难片段做成打怪，等待模式无时间压力）==========
+function renderBossBattle() {
+  const root = $('#module-boss');
+  let bb = null;          // BossBattle 实例
+  let bossId = BB_BOSSES[0].id;
+  let octAgn = true;      // 忽略八度（默认开，适合初学）
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🐉 Boss 战</h2>
+    <p style="color:var(--muted);margin-bottom:14px">把一小段乐句变成<b>打怪游戏</b>：按顺序在琴上弹对它就给 Boss <b>削血</b>，弹够几遍就<b>击败</b>它！<b>没有时间压力</b>——慢慢弹、弹对才前进。弹错只掉一颗 ❤（有容错），掉光了再来一次。<b>无伤通关得 ⭐⭐⭐</b>。可接 CA99 真琴，也可点屏幕键盘。</p>
+
+    <div class="bb-pick" id="bb-pick"></div>
+
+    <div class="bb-arena" id="bb-arena">
+      <div class="bb-boss">
+        <div class="bb-boss-emoji" id="bb-emoji">🟢</div>
+        <div class="bb-boss-name" id="bb-name">果冻史莱姆</div>
+        <div class="bb-hpbar"><div class="bb-hpfill" id="bb-hpfill"></div><span class="bb-hptext" id="bb-hptext">50 / 50</span></div>
+        <div class="bb-hearts" id="bb-hearts"></div>
+      </div>
+      <div class="bb-passage" id="bb-passage"></div>
+      <div class="bb-feedback" id="bb-feedback">选好 Boss，按"开始挑战"</div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap" id="bb-kbcap">🎹 按高亮的键，按顺序弹出乐句</div>
+      <div id="bb-kb"></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="bb-start" class="big-btn">▶ 开始挑战</button>
+      <label class="scaffold-toggle"><input type="checkbox" id="bb-oct" checked> 忽略八度（任意八度同名键都算对）</label>
+      <span id="bb-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  const arena = $('#bb-arena');
+
+  function drawPicker() {
+    $('#bb-pick').innerHTML = BB_BOSSES.map((b) =>
+      `<button class="bb-chip${b.id === bossId ? ' on' : ''}" data-id="${b.id}">${b.emoji} ${b.name}<small>${b.passage.length} 音 · ${b.reps} 遍</small></button>`).join('');
+    $('#bb-pick').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { if (bb) return; bossId = el.dataset.id; drawPicker(); previewBoss(); };
+    });
+  }
+
+  function previewBoss() {
+    const b = bbGetBoss(bossId);
+    $('#bb-emoji').textContent = b.emoji;
+    $('#bb-name').textContent = b.name;
+    $('#bb-hpfill').style.width = '100%';
+    $('#bb-hptext').textContent = `${b.hp} / ${b.hp}`;
+    $('#bb-hearts').innerHTML = '❤❤❤';
+    drawPassage(b.passage, -1);
+    $('#bb-feedback').textContent = `准备迎战 ${b.emoji} ${b.name}！乐句：${b.passage.map((m) => kbNoteName(m)).join(' → ')}`;
+  }
+
+  function drawPassage(passage, idx) {
+    $('#bb-passage').innerHTML = passage.map((m, i) =>
+      `<span class="bb-pnote${i === idx ? ' cur' : ''}${idx >= 0 && i < idx ? ' done' : ''}">${kbNoteName(m)}</span>`).join('<i class="bb-arrow">→</i>');
+  }
+
+  function refresh() {
+    const b = bb.boss;
+    $('#bb-hpfill').style.width = (bb.progress() * 100).toFixed(1) + '%';
+    $('#bb-hptext').textContent = `${bb.hp} / ${bb.maxHp}`;
+    $('#bb-hearts').innerHTML = '❤'.repeat(bb.hearts) + '🖤'.repeat(bb.maxHearts - bb.hearts);
+    drawPassage(bb.passage, bb.idx);
+  }
+
+  function showTarget() {
+    const t = bb.current();
+    bbKb.clear();
+    if (t != null) bbKb.highlightMany([{ midi: t, color: '#fbbf24', text: kbNoteName(t) }]);
+  }
+
+  function handlePress(midi) {
+    if (!bb || bb.defeated || bb.failed) return;
+    const r = bb.press(midi);
+    refresh();
+    if (r.hit) {
+      bbKb.flash(midi, '#34d399');
+      if (r.passageDone) {
+        arena.classList.remove('bb-hit'); void arena.offsetWidth; arena.classList.add('bb-hit');
+        $('#bb-emoji').classList.remove('bb-shake'); void $('#bb-emoji').offsetWidth; $('#bb-emoji').classList.add('bb-shake');
+        popDamage(r.dmg);
+        $('#bb-feedback').textContent = `💥 -${r.dmg}！再削 ${Math.ceil(bb.hp / bb.dmgPerPass)} 遍击败它！`;
+      } else {
+        $('#bb-feedback').textContent = `⚔️ 对了！连击 ${bb.combo}`;
+      }
+    } else if (r.miss) {
+      bbKb.flash(midi, '#f87171');
+      $('#bb-feedback').textContent = bb.failed ? '' : '🤔 不是这个音，从乐句开头再来～（少了一颗 ❤）';
+    }
+    if (bb.defeated) return victory();
+    if (bb.failed) return defeat();
+    showTarget();
+  }
+
+  function popDamage(dmg) {
+    const el = document.createElement('div');
+    el.className = 'bb-dmg';
+    el.textContent = '-' + dmg;
+    arena.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  }
+
+  function victory() {
+    const b = bb.boss, stars = bb.stars();
+    bbKb.clear();
+    $('#bb-kbcap').textContent = '🎉 击败 Boss！';
+    $('#bb-feedback').innerHTML = `🏆 击败 ${b.emoji} ${b.name}！ ${'⭐'.repeat(stars)}${'·'.repeat(3 - stars)} · 获得 ${b.reward}`;
+    cheerBurst(arena, 90);
+    cheerToast(`🏆 ${b.name} 被击败！`, arena);
+    recordPractice('boss', 'Boss战', bb.passes, stars * 100 + bb.bestCombo, bb.bestCombo);
+    finish();
+  }
+
+  function defeat() {
+    bbKb.clear();
+    $('#bb-feedback').textContent = '💪 这次没成功，没关系——再来一次，你会更熟练！';
+    finish();
+  }
+
+  function finish() {
+    bb = null; bossOnNote = null; bossOnNoteOff = null;
+    $('#bb-start').textContent = '▶ 再来一次';
+    $('#bb-start').classList.remove('running');
+    $('#bb-status').textContent = '已结束';
+    $('#bb-pick').querySelectorAll('.bb-chip').forEach((el) => el.classList.remove('locked'));
+  }
+
+  const bbKb = new PianoKeyboard($('#bb-kb'), {
+    labels: 'c',
+    recognizeExternal: true,
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); handlePress(m); },
+  });
+  bbKb.scrollToShow(55, 79);
+
+  $('#bb-oct').onchange = () => { if (!bb) octAgn = $('#bb-oct').checked; };
+
+  $('#bb-start').onclick = () => {
+    if (bb) {
+      bb = null; bossOnNote = null; bossOnNoteOff = null;
+      $('#bb-start').textContent = '▶ 开始挑战';
+      $('#bb-start').classList.remove('running');
+      $('#bb-status').textContent = '已停止';
+      bbKb.clear();
+      previewBoss();
+      return;
+    }
+    bb = new BossBattle({ boss: bossId, octaveAgnostic: octAgn });
+    $('#bb-start').textContent = '⏸ 放弃';
+    $('#bb-start').classList.add('running');
+    $('#bb-status').textContent = '战斗中…';
+    $('#bb-kbcap').textContent = '🎹 按高亮的键，按顺序弹出乐句';
+    refresh();
+    showTarget();
+    $('#bb-feedback').textContent = `开战！按高亮键弹出：${bb.passage.map((m) => kbNoteName(m)).join(' → ')}`;
+    // 真实 CA99 物理按键驱动
+    bossOnNote = (m) => handlePress(m);
+    bossOnNoteOff = (m) => { try { bbKb.release(m); } catch (_) {} };
+  };
+
+  drawPicker();
+  previewBoss();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -12388,7 +12562,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderCircleFifths(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderCircleFifths(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
