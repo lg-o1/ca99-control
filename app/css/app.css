@@ -2084,3 +2084,13 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sw-over-score b { color:#ffd24a; font-size:20px; }
 .sw-over-best { color:#7cffd2; font-weight:700; margin-bottom:16px; }
 .sw-kb { margin-top:14px; }
+
+/* 🫧 接音水滴（Drops） */
+.dr-hud { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:10px; font-size:15px; color:var(--muted); }
+.dr-hud .dr-stat b { color:var(--text); font-size:17px; }
+.dr-bar { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-bottom:12px; }
+.dr-opt { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:14px; }
+.dr-opt select { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:5px 8px; }
+.dr-stage { display:flex; justify-content:center; }
+.dr-stage canvas { max-width:100%; height:auto; border-radius:14px; border:1px solid var(--line); box-shadow:0 8px 30px rgba(0,0,0,.4); }
+.dr-kb { margin-top:14px; }
