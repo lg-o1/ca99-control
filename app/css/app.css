@@ -2355,3 +2355,21 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .ts-cat{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;background:#2d3a57;color:#a9b6d6;font-size:12px;font-weight:700}
 .ts-loading{color:var(--muted);padding:8px}
 #ts-preview.ts-playing{background:#f59e0b}
+
+/* 🌳 层级曲库浏览器：面包屑 + 选曲入口按钮（演奏台/Boss战/曲谱跟弹 统一）*/
+.scf-lib-crumb { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; font-size: 13px; }
+.scf-crumb-link { cursor: pointer; border: none; background: none; color: #8aa0ff; font-size: 13px; font-weight: 700; padding: 2px 4px; border-radius: 6px; }
+.scf-crumb-link:hover { background: rgba(124,92,255,.18); }
+.scf-crumb-sep { color: var(--muted); opacity: .6; }
+.scf-crumb-cur { color: var(--text); font-weight: 800; padding: 2px 4px; }
+.scf-pick-btn {
+  font-size: 15px; font-weight: 800; padding: 10px 18px; border-radius: 12px; cursor: pointer;
+  color: #fff; border: none; background: linear-gradient(135deg, #7c5cff, #5566d6);
+  box-shadow: 0 4px 14px rgba(102,126,234,.4); transition: transform .08s, box-shadow .12s;
+}
+.scf-pick-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(102,126,234,.55); }
+.scf-pick-btn:active { transform: translateY(1px); }
+/* 弹窗内的曲库列表：撑满弹窗高度、可滚动 */
+#scf-modal .scf-lib, #scf-modal .ps-pane { min-height: 0; flex: 1 1 auto; }
+#scf-modal .scf-lib-list { max-height: none; flex: 1 1 auto; min-height: 200px; }
+#scf-modal .scf-lib-cats { max-height: 132px; overflow-y: auto; }

@@ -65,6 +65,7 @@ import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GR
 import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js';
 import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
 import { dayKey as dsDayKey, pickDailyIndex as dsPickIndex, prettyName as dsPretty, catEmoji as dsCatEmoji } from './daily-song.js';
+import { buildSongTree as stBuildTree, findNode as stFindNode, findSub as stFindSub, searchSongs as stSearch, countMatches as stCount } from './song-tree.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
@@ -8139,6 +8140,114 @@ function renderDashboard() {
   paint();
 }
 
+// ---------- 共享：层级曲库浏览器（分类 › 子分类 › 选曲）----------
+// 演奏台 / Boss战 / 曲谱跟弹 三处统一用它选曲：顶层分类 chips → 子分类 chips → 曲目列表，
+// 面包屑可逐级返回；搜索框输入即跨全库扁平匹配。els 传入真实 DOM：
+//   { cats, search, list, count?, status?, statusClass? }。onPick(song) 由调用方决定怎么载入。
+function mountHierBrowser(els, catalog, onPick, opts = {}) {
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const tree = stBuildTree(catalog);
+  const total = (catalog && catalog.songs) ? catalog.songs.length : 0;
+  const st = { fn: null, sub: null, query: '' };
+  let visible = [];
+
+  const setCount = (txt) => { if (els.count) els.count.textContent = txt || ''; };
+  const setStatus = (msg, cls) => {
+    if (!els.status) return;
+    els.status.textContent = msg || '';
+    els.status.className = (els.statusClass || 'scf-lib-status') + (cls ? ' ' + cls : '');
+  };
+  const crumb = (parts) => '<div class="scf-lib-crumb">' + parts.map((p) =>
+    (p.go !== undefined)
+      ? `<button class="scf-crumb-link" data-go="${p.go}">${esc(p.label)}</button>`
+      : `<span class="scf-crumb-cur">${esc(p.label)}</span>`
+  ).join('<span class="scf-crumb-sep">›</span>') + '</div>';
+  const ctxLabel = (s) => {
+    const node = stFindNode(tree, s.fn);
+    const cat = (s.cat || '').trim();
+    return (node ? node.emoji + ' ' + node.label : '') + (cat && cat !== (node && node.label) ? ' · ' + cat : '');
+  };
+  const songBtn = (s, idx, withCtx) => {
+    const tail = withCtx
+      ? `<span class="scf-lib-c">${esc(ctxLabel(s))}</span>`
+      : (s.composer ? `<span class="scf-lib-c">${esc(s.composer)}</span>` : '');
+    return `<button class="scf-lib-item" data-i="${idx}"><span class="scf-lib-t">${esc(s.title)}</span>${tail}</button>`;
+  };
+  const bindCrumb = () => els.cats.querySelectorAll('.scf-crumb-link').forEach((b) => {
+    b.onclick = () => {
+      const g = b.dataset.go;
+      if (g === 'root') { st.fn = null; st.sub = null; } else if (g === 'fn') { st.sub = null; }
+      st.query = ''; if (els.search) els.search.value = '';
+      draw();
+    };
+  });
+  const bindSongs = () => els.list.querySelectorAll('.scf-lib-item[data-i]').forEach((b) => {
+    b.onclick = () => { const s = visible[+b.dataset.i]; if (s) onPick(s); };
+  });
+  const bindSubChips = () => els.cats.querySelectorAll('.scf-lib-cat[data-sub]').forEach((b) => {
+    b.onclick = () => { st.sub = b.dataset.sub; draw(); };
+  });
+
+  function draw() {
+    if (!tree.length) { els.cats.innerHTML = ''; els.list.innerHTML = '<div class="scf-lib-empty">曲库为空</div>'; setCount(''); return; }
+    if (st.query.trim()) return drawSearch();
+    if (!st.fn) return drawCats();
+    const node = stFindNode(tree, st.fn);
+    if (!node) { st.fn = null; return drawCats(); }
+    if (!st.sub) {
+      if (node.singleSub) { st.sub = node.subs[0].key; return drawSongs(node, node.subs[0]); }
+      return drawSubs(node);
+    }
+    const sub = stFindSub(node, st.sub);
+    if (!sub) { st.sub = null; return drawSubs(node); }
+    return drawSongs(node, sub);
+  }
+  function drawCats() {
+    visible = [];
+    els.cats.innerHTML = crumb([{ label: '📚 全部分类' }])
+      + tree.map((n) => `<button class="scf-lib-cat" data-fn="${esc(n.slug)}">${n.emoji} ${esc(n.label)} <em>${n.count}</em></button>`).join('');
+    els.cats.querySelectorAll('.scf-lib-cat[data-fn]').forEach((b) => { b.onclick = () => { st.fn = b.dataset.fn; st.sub = null; draw(); }; });
+    els.list.innerHTML = '<div class="scf-lib-empty">👆 选一个分类</div>';
+    setCount(`${tree.length} 个分类 · 共 ${total} 首`);
+  }
+  function drawSubs(node) {
+    visible = [];
+    els.cats.innerHTML = crumb([{ label: '📚 全部', go: 'root' }, { label: node.emoji + ' ' + node.label }])
+      + node.subs.map((s) => `<button class="scf-lib-cat" data-sub="${esc(s.key)}">${esc(s.label)} <em>${s.count}</em></button>`).join('');
+    bindCrumb(); bindSubChips();
+    els.list.innerHTML = '<div class="scf-lib-empty">👆 选一个子分类</div>';
+    setCount(`${node.subs.length} 个子分类 · 共 ${node.count} 首`);
+  }
+  function drawSongs(node, sub) {
+    visible = sub.songs;
+    const single = node.singleSub;
+    const parts = single
+      ? [{ label: '📚 全部', go: 'root' }, { label: node.emoji + ' ' + node.label }]
+      : [{ label: '📚 全部', go: 'root' }, { label: node.emoji + ' ' + node.label, go: 'fn' }, { label: sub.label }];
+    let html = crumb(parts);
+    if (!single) html += node.subs.map((s) => `<button class="scf-lib-cat${s.key === sub.key ? ' on' : ''}" data-sub="${esc(s.key)}">${esc(s.label)} <em>${s.count}</em></button>`).join('');
+    els.cats.innerHTML = html;
+    bindCrumb(); bindSubChips();
+    els.list.innerHTML = sub.songs.map((s, i) => songBtn(s, i, false)).join('') || '<div class="scf-lib-empty">这个子分类暂时没有曲子</div>';
+    bindSongs();
+    setCount(`${sub.songs.length} 首`);
+  }
+  function drawSearch() {
+    const res = stSearch(catalog, st.query, 400);
+    const tot = stCount(catalog, st.query);
+    visible = res;
+    els.cats.innerHTML = crumb([{ label: '🔍 搜索结果（点这里清除）', go: 'root' }]);
+    bindCrumb();
+    els.list.innerHTML = res.map((s, i) => songBtn(s, i, true)).join('') || '<div class="scf-lib-empty">没有匹配的曲子</div>';
+    bindSongs();
+    setCount(`${res.length} 首` + (res.length < tot ? ` / 共 ${tot}（再细化关键词）` : ''));
+  }
+
+  if (els.search) els.search.oninput = (e) => { st.query = e.target.value; draw(); };
+  if (opts.idleMsg) setStatus(opts.idleMsg);
+  draw();
+}
+
 // ---------- 模块45：曲谱跟弹（Synthesia 式）----------
 function renderScoreFollow() {
   const root = $('#module-scf');
@@ -8309,32 +8418,50 @@ function renderScoreFollow() {
           </label>
           <span style="color:var(--muted);font-size:13px">支持标准 MIDI 文件（多轨/和弦/双手/变速）</span>
         </div></div>
-      <div class="param-row" style="align-items:flex-start"><label>📚 CA99 曲库</label>
-        <div class="scf-lib" id="scf-lib">
-          <div class="scf-lib-cats" id="scf-lib-cats"></div>
-          <div class="scf-lib-search-row">
-            <input type="text" id="scf-lib-search" class="scf-lib-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…" spellcheck="false" autocomplete="off">
-            <span class="scf-lib-count" id="scf-lib-count"></span>
-          </div>
-          <div class="scf-lib-list" id="scf-lib-list"></div>
-          <div class="scf-lib-status" id="scf-lib-status">正在载入 CA99 自带曲库…</div>
+      <div class="param-row" style="align-items:center"><label>📚 选择曲库</label>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button class="scf-pick-btn" id="scf-pick">📚 打开曲库（分类 › 子分类 › 选曲）</button>
+          <span style="color:var(--muted);font-size:13px">CA99 内置 1500+ 首 + 你自己的 MIDI，按分类层级浏览</span>
         </div></div>
-      <div class="param-row" style="align-items:flex-start"><label>🎵 我的曲库</label>
-        <div class="scf-lib" id="scf-ulib">
-          <div class="scf-ulib-root-row">
-            <span class="scf-ulib-lbl">目录</span>
-            <input type="text" id="scf-ulib-root" class="scf-lib-search" style="max-width:200px" placeholder="data" spellcheck="false" autocomplete="off">
-            <button class="ear-chip" id="scf-ulib-scan">🔄 重新扫描</button>
-            <span class="scf-ulib-hint">把你整理好的 .mid 放进 <code>app/&lt;目录&gt;/&lt;分类&gt;/歌曲.mid</code>（子目录即分类），点扫描即出现</span>
+      <div class="ps-modal" id="scf-modal" hidden>
+        <div class="ps-modal-card">
+          <div class="ps-modal-head">
+            <div class="ps-tabs">
+              <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
+              <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
+            </div>
+            <button class="ps-modal-x" id="scf-modal-x">✕</button>
           </div>
-          <div class="scf-lib-cats" id="scf-ulib-cats"></div>
-          <div class="scf-lib-search-row">
-            <input type="text" id="scf-ulib-search" class="scf-lib-search" placeholder="🔎 搜曲名 / 分类…" spellcheck="false" autocomplete="off">
-            <span class="scf-lib-count" id="scf-ulib-count"></span>
+          <div class="ps-pane" id="scf-pane-builtin">
+            <div class="scf-lib" id="scf-lib">
+              <div class="scf-lib-cats" id="scf-lib-cats"></div>
+              <div class="scf-lib-search-row">
+                <input type="text" id="scf-lib-search" class="scf-lib-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…" spellcheck="false" autocomplete="off">
+                <span class="scf-lib-count" id="scf-lib-count"></span>
+              </div>
+              <div class="scf-lib-list ps-songlist" id="scf-lib-list"></div>
+              <div class="scf-lib-status" id="scf-lib-status">正在载入 CA99 自带曲库…</div>
+            </div>
           </div>
-          <div class="scf-lib-list" id="scf-ulib-list"></div>
-          <div class="scf-lib-status" id="scf-ulib-status">正在扫描你的曲库…</div>
-        </div></div>
+          <div class="ps-pane" id="scf-pane-user" hidden>
+            <div class="scf-lib" id="scf-ulib">
+              <div class="scf-ulib-root-row">
+                <span class="scf-ulib-lbl">目录</span>
+                <input type="text" id="scf-ulib-root" class="scf-lib-search" style="max-width:200px" placeholder="data" spellcheck="false" autocomplete="off">
+                <button class="ear-chip" id="scf-ulib-scan">🔄 重新扫描</button>
+                <span class="scf-ulib-hint">把你整理好的 .mid 放进 <code>app/&lt;目录&gt;/&lt;分类&gt;/歌曲.mid</code>（子目录即分类），点扫描即出现</span>
+              </div>
+              <div class="scf-lib-cats" id="scf-ulib-cats"></div>
+              <div class="scf-lib-search-row">
+                <input type="text" id="scf-ulib-search" class="scf-lib-search" placeholder="🔎 搜曲名 / 分类…" spellcheck="false" autocomplete="off">
+                <span class="scf-lib-count" id="scf-ulib-count"></span>
+              </div>
+              <div class="scf-lib-list ps-songlist" id="scf-ulib-list"></div>
+              <div class="scf-lib-status" id="scf-ulib-status">正在扫描你的曲库…</div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="param-row" style="align-items:flex-start"><label>📷 拍谱识别</label>
         <div class="scf-omr">
           <div class="scf-omr-line">
@@ -8488,8 +8615,23 @@ function renderScoreFollow() {
     });
   }
   drawSongChips();
-  setupCa99Library();   // 📚 异步载入 CA99 自带曲库浏览器
+  setupCa99Library();   // 📚 异步载入 CA99 自带曲库浏览器（DOM 在弹窗内，隐藏也能预建）
   setupUserLibrary();   // 🎵 异步扫描用户自定义曲库
+  // 选曲弹窗：开关 + 内置/我的 tab 切换（统一成 popup 点选，和演奏台一致）
+  const scfModal = $('#scf-modal');
+  if ($('#scf-pick') && scfModal) {
+    $('#scf-pick').onclick = () => { scfModal.hidden = false; };
+    if ($('#scf-modal-x')) $('#scf-modal-x').onclick = () => { scfModal.hidden = true; };
+    scfModal.onclick = (e) => { if (e.target === scfModal) scfModal.hidden = true; };
+    root.querySelectorAll('#scf-modal .ps-tab').forEach((tab) => {
+      tab.onclick = () => {
+        root.querySelectorAll('#scf-modal .ps-tab').forEach((t) => t.classList.toggle('on', t === tab));
+        const which = tab.dataset.tab;
+        $('#scf-pane-builtin').hidden = which !== 'builtin';
+        $('#scf-pane-user').hidden = which !== 'user';
+      };
+    });
+  }
   bindChips('#scf-speed', 's', (v) => { speed = parseFloat(v); prepare(); });
   bindChips('#scf-easy', 'e', (v) => { easy = (v === '1'); });
   bindChips('#scf-hand', 'h', (v) => { hand = v; prepare(); });
@@ -8836,74 +8978,27 @@ function renderScoreFollow() {
   });
 
 
-  // 渲染成分类 chips + 搜索 + 分组列表，点击即 fetch 对应路径复用 loadMidiBuffer 载入跟弹。
+  // 渲染层级曲库（分类 › 子分类 › 选曲），点击即 fetch 对应路径复用 loadMidiBuffer 载入跟弹。
   // els = { cats, search, list, count, status }（DOM 元素），prefix = 载入后曲名前缀，idleMsg = 空闲提示。
   function buildLibBrowser({ els, catalog, prefix, idleMsg }) {
-    const escH = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    const songs = catalog.songs || [];
-    const cats = catalog.categories || [];
-    if (!songs.length || !cats.length) {
-      els.status.textContent = '⚠️ 曲库为空';
-      els.status.className = 'scf-lib-status err';
-      return;
-    }
-    let curFn = cats[0].slug;
-    let query = '';
-    const matches = (s, q) => s.title.toLowerCase().includes(q)
-      || (s.composer || '').toLowerCase().includes(q)
-      || (s.cat || '').toLowerCase().includes(q);
-    function visible() {
-      const q = query.trim().toLowerCase();
-      if (q) return songs.filter((s) => matches(s, q)).slice(0, 400);
-      return songs.filter((s) => s.fn === curFn);
-    }
-    function drawCats() {
-      els.cats.innerHTML = cats.map((c) =>
-        `<button class="scf-lib-cat${(c.slug === curFn && !query.trim()) ? ' on' : ''}" data-fn="${c.slug}">${c.emoji} ${escH(c.label)} <em>${c.count}</em></button>`).join('');
-      els.cats.querySelectorAll('.scf-lib-cat').forEach((b) => {
-        b.onclick = () => { curFn = b.dataset.fn; query = ''; els.search.value = ''; drawCats(); drawList(); };
-      });
-    }
-    function drawList() {
-      const vis = visible();
-      const q = query.trim().toLowerCase();
-      const total = q ? songs.filter((s) => matches(s, q)).length : songs.filter((s) => s.fn === curFn).length;
-      els.count.textContent = `${vis.length} 首` + (vis.length < total ? ` / 共 ${total}（请用搜索缩小）` : '');
-      let html = '', lastCat = null;
-      vis.forEach((s) => {
-        if (s.cat !== lastCat) { lastCat = s.cat; if (s.cat) html += `<div class="scf-lib-sub">${escH(s.cat)}</div>`; }
-        html += `<button class="scf-lib-item" data-path="${escH(s.path)}" data-title="${escH(s.title)}">`
-          + `<span class="scf-lib-t">${escH(s.title)}</span>`
-          + (s.composer ? `<span class="scf-lib-c">${escH(s.composer)}</span>` : '')
-          + `</button>`;
-      });
-      els.list.innerHTML = html || '<div class="scf-lib-empty">没有匹配的曲子</div>';
-      els.list.querySelectorAll('.scf-lib-item').forEach((b) => {
-        b.onclick = () => loadLibrarySong(b.dataset.path, b.dataset.title);
-      });
-    }
-    async function loadLibrarySong(path, title) {
-      els.status.textContent = '⏳ 载入「' + title + '」…';
+    mountHierBrowser(els, catalog, async (s) => {
+      if (!s.path) return;
+      els.status.textContent = '⏳ 载入「' + s.title + '」…';
       els.status.className = 'scf-lib-status';
       try {
-        const url = String(path).split('/').map(encodeURIComponent).join('/');
+        const url = String(s.path).split('/').map(encodeURIComponent).join('/');
         const r = await fetch(url, { cache: 'no-cache' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        const buf = await r.arrayBuffer();
-        const info = loadMidiBuffer(buf, title, prefix);
-        els.status.textContent = `✅ 已载入「${title}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。下面选一档训练开始。`;
+        const info = loadMidiBuffer(await r.arrayBuffer(), s.title, prefix);
+        els.status.textContent = `✅ 已载入「${s.title}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。下面选一档训练开始。`;
         els.status.className = 'scf-lib-status ok';
+        const m = $('#scf-modal'); if (m) m.hidden = true;   // 选好即关弹窗，回到练习区
         const sec = $('#module-scf'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
         els.status.textContent = '❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）';
         els.status.className = 'scf-lib-status err';
       }
-    }
-    els.search.oninput = (e) => { query = e.target.value; drawCats(); drawList(); };
-    els.status.textContent = idleMsg;
-    els.status.className = 'scf-lib-status';
-    drawCats();
-    drawList();
+    }, { idleMsg });
   }
 
   // 📚 CA99 自带曲库：读取 app/midi/catalog.json（由 scripts/build_midi_catalog.py 生成）。
@@ -9841,42 +9936,16 @@ function renderPlayStage() {
   }
 
   // 渲染分类 chips + 列表（内置 / 我的 共用）
-  let libState = { catalog: null, prefix: '', curFn: null, query: '' };
+  // 选曲：统一用共享层级浏览器（分类 › 子分类 › 选曲）。onPick 区分启蒙小曲（_scfId）与曲库路径。
   function renderLib(catalog, prefix) {
-    libState = { catalog, prefix, curFn: (catalog.categories[0] || {}).slug || null, query: '' };
-    $('#ps-search').value = '';
-    drawCats(); drawList();
-  }
-  function matches(s, q) {
-    return s.title.toLowerCase().includes(q) || (s.composer || '').toLowerCase().includes(q) || (s.cat || '').toLowerCase().includes(q);
-  }
-  function drawCats() {
-    const { catalog, curFn, query } = libState;
-    $('#ps-cats').innerHTML = (catalog.categories || []).map((c) =>
-      `<button class="scf-lib-cat${(c.slug === curFn && !query.trim()) ? ' on' : ''}" data-fn="${c.slug}">${c.emoji || '🎵'} ${escH(c.label)} <em>${c.count}</em></button>`).join('');
-    $('#ps-cats').querySelectorAll('.scf-lib-cat').forEach((b) => {
-      b.onclick = () => { libState.curFn = b.dataset.fn; libState.query = ''; $('#ps-search').value = ''; drawCats(); drawList(); };
-    });
-  }
-  function drawList() {
-    const { catalog, curFn, query } = libState;
-    const songs = catalog.songs || [];
-    const q = query.trim().toLowerCase();
-    const vis = q ? songs.filter((s) => matches(s, q)).slice(0, 400) : songs.filter((s) => s.fn === curFn);
-    let html = '', lastCat = null;
-    vis.forEach((s) => {
-      if (s.cat !== lastCat) { lastCat = s.cat; if (s.cat) html += `<div class="scf-lib-sub">${escH(s.cat)}</div>`; }
-      html += `<button class="scf-lib-item ps-lib-item" data-sid="${escH(s._scfId || '')}" data-path="${escH(s.path || '')}" data-title="${escH(s.title)}">`
-        + `<span class="scf-lib-t">${escH(s.title)}</span>`
-        + (s.composer ? `<span class="scf-lib-c">${escH(s.composer)}</span>` : '') + `</button>`;
-    });
-    $('#ps-songlist').innerHTML = html || '<div class="scf-lib-empty">没有匹配的曲子</div>';
-    $('#ps-songlist').querySelectorAll('.ps-lib-item').forEach((b) => {
-      b.onclick = () => {
-        if (b.dataset.sid) { const s = SCF_SONGS.find((x) => x.id === b.dataset.sid); if (s) { loadSong(s); closeModal(); } }
-        else if (b.dataset.path) loadPath(b.dataset.path, b.dataset.title);
-      };
-    });
+    mountHierBrowser(
+      { cats: $('#ps-cats'), search: $('#ps-search'), list: $('#ps-songlist'), status: $('#ps-modal-status'), statusClass: 'ps-modal-status' },
+      catalog,
+      (s) => {
+        if (s._scfId) { const hit = SCF_SONGS.find((x) => x.id === s._scfId); if (hit) { loadSong(hit); closeModal(); } }
+        else if (s.path) loadPath(s.path, s.title);
+      },
+    );
   }
   async function loadPath(path, title) {
     setModalStatus('⏳ 载入「' + title + '」…');
@@ -9921,7 +9990,6 @@ function renderPlayStage() {
       if (song) loadSong(song);   // 重建引擎（按手过滤）+ 键盘区间 + 重绘
     };
   });
-  $('#ps-search').oninput = (e) => { libState.query = e.target.value; drawCats(); drawList(); };
   $('#ps-file').onchange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -10294,31 +10362,15 @@ function renderBackingBand() {
     }
   }
 
-  let libState = { catalog: null, curFn: null, query: '' };
-  function renderLib(catalog) { libState = { catalog, curFn: (catalog.categories[0] || {}).slug || null, query: '' }; $('#bb-search').value = ''; drawCats(); drawList(); }
-  function matchesQ(s, q) { return s.title.toLowerCase().includes(q) || (s.composer || '').toLowerCase().includes(q) || (s.cat || '').toLowerCase().includes(q); }
-  function drawCats() {
-    const { catalog, curFn, query } = libState;
-    $('#bb-cats').innerHTML = (catalog.categories || []).map((c) => `<button class="scf-lib-cat${(c.slug === curFn && !query.trim()) ? ' on' : ''}" data-fn="${c.slug}">${c.emoji || '🎵'} ${escH(c.label)} <em>${c.count}</em></button>`).join('');
-    $('#bb-cats').querySelectorAll('.scf-lib-cat').forEach((b) => { b.onclick = () => { libState.curFn = b.dataset.fn; libState.query = ''; $('#bb-search').value = ''; drawCats(); drawList(); }; });
-  }
-  function drawList() {
-    const { catalog, curFn, query } = libState;
-    const songs = catalog.songs || [];
-    const q = query.trim().toLowerCase();
-    const vis = q ? songs.filter((s) => matchesQ(s, q)).slice(0, 400) : songs.filter((s) => s.fn === curFn);
-    let html = '', lastCat = null;
-    vis.forEach((s) => {
-      if (s.cat !== lastCat) { lastCat = s.cat; if (s.cat) html += `<div class="scf-lib-sub">${escH(s.cat)}</div>`; }
-      html += `<button class="scf-lib-item bb-lib-item" ${s._demo ? 'data-demo="1"' : ''} data-path="${escH(s.path || '')}" data-title="${escH(s.title)}"><span class="scf-lib-t">${escH(s.title)}</span>${s.composer ? `<span class="scf-lib-c">${escH(s.composer)}</span>` : ''}</button>`;
-    });
-    $('#bb-songlist').innerHTML = html || '<div class="scf-lib-empty">没有匹配的曲子</div>';
-    $('#bb-songlist').querySelectorAll('.bb-lib-item').forEach((b) => {
-      b.onclick = () => {
-        if (b.dataset.demo) { loadParsed(makeBandDemo(), '🎼 小星星合奏'); closeModal(); }
-        else if (b.dataset.path) loadPath(b.dataset.path, b.dataset.title);
-      };
-    });
+  function renderLib(catalog) {
+    mountHierBrowser(
+      { cats: $('#bb-cats'), search: $('#bb-search'), list: $('#bb-songlist'), status: $('#bb-modal-status'), statusClass: 'ps-modal-status' },
+      catalog,
+      (s) => {
+        if (s._demo) { loadParsed(makeBandDemo(), '🎼 小星星合奏'); closeModal(); }
+        else if (s.path) loadPath(s.path, s.title);
+      },
+    );
   }
   async function loadPath(path, name) {
     setModalStatus('⏳ 载入「' + name + '」…');
@@ -10343,7 +10395,6 @@ function renderBackingBand() {
   $('#bb-count').onchange = (e) => { countIn = e.target.checked; };
   $('#bb-loop').onchange = (e) => { loopOn = e.target.checked; };
   $('#bb-drums').onchange = (e) => { includeDrums = e.target.checked; if (playing) stop(); rebuildSchedule(); drawParts(); refreshStat(); };
-  $('#bb-search').oninput = (e) => { libState.query = e.target.value; drawCats(); drawList(); };
   $('#bb-file').onchange = async (e) => {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
