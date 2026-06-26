@@ -88,6 +88,7 @@ import { StaffWars, makeRng as swMakeRng, noteLetter as swNoteLetter, diatonicIn
 import { Drops, makeRng as dropsMakeRng, noteLetter as dropsNoteLetter, POOL_C as DROPS_POOL } from './drops.js';
 import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
 import * as MagicJam from './magic-jam.js';
+import { LoopComposer, QUANTIZE_OPTIONS as LC_QUANTIZE } from './loop-composer.js';
 import * as XpLevel from './xp-level.js';
 import * as WeeklyQuest from './weekly-quest.js';
 import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhostFrac, playerFrac as grPlayerFrac, lead as grLead, formatMs as grFormatMs } from './ghost-race.js';
@@ -178,6 +179,8 @@ let cofPuzzleOnNote = null;  // 🧩 五度圈拼图的 note-on 回调（注册�
 let staffViewOnNote = null;  // 🎼 五线谱播放器·等待练习的 note-on 回调（注册）
 let magicJamOnNote = null;   // 🪄 魔法即兴沙盒的 note-on 回调（带力度，吸附到五声音阶）
 let magicJamOffNote = null;  // 🪄 魔法即兴沙盒的 note-off 回调
+let loopComposerOnNote = null;  // 🎼 循环作曲台的 note-on 回调（叠录到当前层）
+let loopComposerOffNote = null; // 🎼 循环作曲台的 note-off 回调
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -699,6 +702,8 @@ function onMidiIn(bytes) {
     if (staffViewOnNote) staffViewOnNote(m.note, m.velocity);
     // 驱动 🪄 魔法即兴沙盒（吸附到五声音阶，怎么弹都好听）
     if (magicJamOnNote) magicJamOnNote(m.note, m.velocity);
+    // 驱动 🎼 循环作曲台（吸附到五声音阶 + 叠录到当前层）
+    if (loopComposerOnNote) loopComposerOnNote(m.note, m.velocity);
     // 通用键盘回显：真实 CA99 按键点亮所有"当前可见"练习的屏幕 88 键（之前只有曲谱跟弹能亮）
     PianoKeyboard.echoOn(m.note);
     // 通用识别：对"点击即作答"且无全局钩子的练习（ni/sr/mpl），让真实按键等价于点击该键
@@ -726,6 +731,8 @@ function onMidiIn(bytes) {
     if (lightShowOffNote) lightShowOffNote(m.note);
     // 🪄 魔法即兴沙盒：真琴松键 → 屏幕键抬起
     if (magicJamOffNote) magicJamOffNote(m.note);
+    // 🎼 循环作曲台：真琴松键 → 结束该音叠录 + 屏幕键抬起
+    if (loopComposerOffNote) loopComposerOffNote(m.note);
     // 曲谱跟弹键盘回显：真实 CA99 松键 → 屏幕键抬起
     if (scfKbEchoOff) scfKbEchoOff(m.note);
     // 🎬 演奏台：真琴松键 → 屏幕键抬起
@@ -12048,6 +12055,382 @@ function renderMagicJam() {
   applyScale();
 }
 
+// ---------- 🎼 循环作曲台（Loop Composer，把即兴升级成「作品」：一层层叠录成自己的小曲子） ----------
+// 复用 magic-jam 的零失败五声 + loop-composer.js 引擎（多层叠录/网格量化/合并导出 MIDI）。
+// 录一段 4 小节旋律 → 自动循环 → 再叠一层和声/低音…… 攒成一首歌，导出 MIDI / 作品卡。
+// 「我创作了一首歌」= 拥有感+成就感，专治易放弃、爱音乐讨厌重复练的孩子。发声只走浏览器
+// Web Audio（绝不发往 CA99，真琴完全留给孩子弹）。
+function renderLoopComposer() {
+  const root = $('#module-loopcomposer');
+  if (!root) return;
+  const LK = { root: 'ca99_lc_root', mood: 'ca99_lc_mood', bpm: 'ca99_lc_bpm', bars: 'ca99_lc_bars', q: 'ca99_lc_q' };
+  let rootPc = 0, moodId = 'major', bpm = 90, bars = 4, qDiv = 2;
+  try {
+    const r = parseInt(localStorage.getItem(LK.root), 10); if (MagicJam.ROOTS.some(x => x.pc === r)) rootPc = r;
+    const md = localStorage.getItem(LK.mood); if (MagicJam.MOODS.some(x => x.id === md)) moodId = md;
+    const bp = parseInt(localStorage.getItem(LK.bpm), 10); if (bp >= 50 && bp <= 140) bpm = bp;
+    const bs = parseInt(localStorage.getItem(LK.bars), 10); if ([2, 4, 8].includes(bs)) bars = bs;
+    const q = parseInt(localStorage.getItem(LK.q), 10); if (LC_QUANTIZE.some(o => o.div === q)) qDiv = q;
+  } catch (_) {}
+  const moodType = () => (MagicJam.MOODS.find(m => m.id === moodId) || MagicJam.MOODS[0]).type;
+  const beatsPerBar = 4;
+
+  const lc = new LoopComposer({ bars, beatsPerBar, bpm, quantizeDiv: qDiv });
+  let activeLayer = lc.addLayer('🎵 旋律').id;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎼 循环作曲台</h2>
+    <p style="color:var(--muted);margin-bottom:14px">在这里你不是「练琴」，是<b>作曲家</b> 🎹✨！键盘被施了<b>魔法</b>——只会响出好听的音，<b>怎么弹都不会错</b>。录一小段旋律 → 它会<b>自动循环</b>播放 → 你再<b>叠一层</b>和声、再叠一层低音……几层叠起来，就是<b>你自己创作的一首歌</b>！弹完可以<b>导出成 MIDI</b> 或存成<b>作品卡</b>给爸爸妈妈看。没有分数、没有对错，只管创作 🌈。</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>选个调</label>
+        <div id="lc-roots" class="ear-chips">${MagicJam.ROOTS.map(r => `<button class="ear-chip${r.pc === rootPc ? ' on' : ''}" data-pc="${r.pc}">${r.name}</button>`).join('')}</div></div>
+      <div class="param-row"><label>心情</label>
+        <div id="lc-moods" class="ear-chips">${MagicJam.MOODS.map(m => `<button class="ear-chip${m.id === moodId ? ' on' : ''}" data-m="${m.id}">${m.label}</button>`).join('')}</div></div>
+      <div class="param-row"><label>循环长度</label>
+        <div id="lc-bars" class="ear-chips">${[2, 4, 8].map(b => `<button class="ear-chip${b === bars ? ' on' : ''}" data-b="${b}">${b} 小节</button>`).join('')}</div></div>
+      <div class="param-row"><label>对齐节奏</label>
+        <div id="lc-quant" class="ear-chips">${LC_QUANTIZE.map(o => `<button class="ear-chip${o.div === qDiv ? ' on' : ''}" data-q="${o.div}">${o.label}</button>`).join('')}</div></div>
+      <div class="param-row" style="gap:18px;flex-wrap:wrap;align-items:center">
+        <label style="display:flex;align-items:center;gap:8px">速度 <input type="range" id="lc-bpm" min="50" max="140" step="2" value="${bpm}"> <b id="lc-bpmv">${bpm}</b></label>
+        <label class="ls-check"><input type="checkbox" id="lc-metro" checked> 🥁 节拍器（含 4 拍预备）</label>
+      </div>
+    </div>
+
+    <div class="lc-transport">
+      <button id="lc-rec" class="lc-btn lc-rec">⏺ 录到当前层</button>
+      <button id="lc-play" class="lc-btn">▶ 循环播放</button>
+      <button id="lc-clearlayer" class="lc-btn lc-ghost">🗑 清空当前层</button>
+      <span id="lc-status" class="lc-status">准备好就按「⏺ 录到当前层」，会先打 4 拍预备 🥁</span>
+    </div>
+
+    <canvas id="lc-roll" class="lc-roll" height="150"></canvas>
+
+    <div class="lc-layers-wrap">
+      <div class="lc-layers-head"><b>🎚 音轨层</b><button id="lc-addlayer" class="mini-btn">➕ 新一层</button></div>
+      <div id="lc-layers" class="lc-layers"></div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 <b>彩色键</b>＝魔法五声键。接 CA99 弹<b>任何</b>键都会自动吸到最近的好听音上（录制时直接叠进当前层）</div>
+      <div id="lc-kb"></div>
+    </div>
+
+    <div class="lc-export">
+      <button id="lc-midi" class="lc-btn lc-go">💾 导出 MIDI</button>
+      <button id="lc-card" class="lc-btn lc-go">🎉 存成作品卡</button>
+      <span class="lc-status" id="lc-exinfo"></span>
+    </div>`;
+
+  const kb = new PianoKeyboard($('#lc-kb'), { first: 21, last: 108, labels: 'c' });
+  const roll = $('#lc-roll');
+  const statusEl = $('#lc-status');
+
+  function pcDegreeColor(midi) {
+    const pcs = MagicJam.scalePitchClasses(rootPc, moodType());
+    const idx = pcs.indexOf(((midi % 12) + 12) % 12);
+    return MagicJam.padColor(idx < 0 ? 0 : idx);
+  }
+  function applyScale() {
+    const scaleMidis = MagicJam.scaleMidis(rootPc, moodType(), 36, 96);
+    kb.highlightMany(scaleMidis.map(m => ({ midi: m, color: pcDegreeColor(m) })));
+  }
+
+  // ---- 音轨层面板 ----
+  function refreshLayers() {
+    const wrap = $('#lc-layers');
+    wrap.innerHTML = lc.layers.map(l => {
+      const act = l.id === activeLayer;
+      return `<div class="lc-layer${act ? ' active' : ''}" data-id="${l.id}">
+        <span class="lc-dot" style="background:${l.color}"></span>
+        <span class="lc-lname">${l.name}</span>
+        <span class="lc-lcount">${l.notes.length} 音</span>
+        <button class="lc-licon lc-mute${l.muted ? ' on' : ''}" data-act="mute" title="静音/取消">${l.muted ? '🔇' : '🔊'}</button>
+        <button class="lc-licon" data-act="pick" title="选为录制层">${act ? '🎯' : '○'}</button>
+        <button class="lc-licon" data-act="del" title="删除此层">✖</button>
+      </div>`;
+    }).join('');
+    wrap.querySelectorAll('.lc-layer').forEach(row => {
+      const id = parseInt(row.dataset.id, 10);
+      row.querySelectorAll('[data-act]').forEach(btn => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const a = btn.dataset.act;
+          if (a === 'mute') lc.toggleMute(id);
+          else if (a === 'pick') activeLayer = id;
+          else if (a === 'del') {
+            if (lc.layerCount <= 1) { lc.clearLayer(id); }
+            else { lc.removeLayer(id); if (activeLayer === id) activeLayer = lc.layers[0].id; }
+          }
+          refreshLayers(); drawRoll();
+        };
+      });
+      row.onclick = () => { activeLayer = id; refreshLayers(); };
+    });
+  }
+
+  // ---- 钢琴卷帘可视化 ----
+  function drawRoll(phase) {
+    const dpr = window.devicePixelRatio || 1;
+    const W = roll.clientWidth || 600, H = 150;
+    if (roll.width !== Math.round(W * dpr)) { roll.width = Math.round(W * dpr); roll.height = Math.round(H * dpr); }
+    const ctx = roll.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#10131c'; ctx.fillRect(0, 0, W, H);
+    // 小节/拍网格
+    const totalBeats = bars * beatsPerBar;
+    for (let b = 0; b <= totalBeats; b++) {
+      const x = (b / totalBeats) * W;
+      ctx.strokeStyle = (b % beatsPerBar === 0) ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    // 音域范围（动态）
+    let lo = 127, hi = 0, any = false;
+    lc.layers.forEach(l => l.notes.forEach(n => { any = true; lo = Math.min(lo, n.midi); hi = Math.max(hi, n.midi); }));
+    if (!any) { lo = 55; hi = 79; }
+    lo -= 2; hi += 2; const span = Math.max(8, hi - lo);
+    const yFor = (m) => H - 6 - ((m - lo) / span) * (H - 12);
+    const L = lc.loopMs;
+    lc.layers.forEach(l => {
+      ctx.globalAlpha = l.muted ? 0.18 : 0.92;
+      l.notes.forEach(n => {
+        const x = (n.t / L) * W;
+        const w = Math.max(4, (Math.min(n.durMs, L - n.t) / L) * W);
+        const y = yFor(n.midi);
+        ctx.fillStyle = l.color;
+        ctx.fillRect(x, y - 4, w, 8);
+      });
+    });
+    ctx.globalAlpha = 1;
+    if (phase != null) {
+      const px = phase * W;
+      ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, H); ctx.stroke();
+    }
+    if (!any) {
+      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '13px system-ui'; ctx.textAlign = 'center';
+      ctx.fillText('按 ⏺ 录到当前层，弹一段旋律，这里会画出你的音符 🎵', W / 2, H / 2);
+      ctx.textAlign = 'start';
+    }
+  }
+
+  // ---- Web Audio 播放（绝不发往 CA99）----
+  let ac = null, playing = false, recording = false, raf = null;
+  let acAnchorCtx = 0, loopStartPerf = 0, scheduledLoop = -1;
+  let liveVoices = [];
+  const beatSec = () => 60 / bpm;
+  function ensureAC() {
+    if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) { return null; } }
+    if (ac && ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  function voiceAt(ctx, midi, when, durSec, vel) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'triangle'; o.frequency.value = midiToFreq(midi);
+    const peak = Math.max(0.05, Math.min(0.45, (vel / 127) * 0.5));
+    const d = Math.max(0.1, durSec);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(peak, when + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + d);
+    o.connect(g).connect(ctx.destination); o.start(when); o.stop(when + d + 0.05);
+    liveVoices.push(o);
+  }
+  function clickAt(ctx, when, accent) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'square'; o.frequency.value = accent ? 1700 : 1150;
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(accent ? 0.32 : 0.18, when + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 0.05);
+    o.connect(g).connect(ctx.destination); o.start(when); o.stop(when + 0.06);
+    liveVoices.push(o);
+  }
+  function scheduleAudioLoop(idx) {
+    const ctx = ac; if (!ctx) return;
+    const ctxStart = acAnchorCtx + idx * (lc.loopMs / 1000);
+    if ($('#lc-metro').checked) {
+      for (let b = 0; b < bars * beatsPerBar; b++) clickAt(ctx, ctxStart + b * beatSec(), b % beatsPerBar === 0);
+    }
+    lc.layers.forEach(l => {
+      if (l.muted) return;
+      l.notes.forEach(n => voiceAt(ctx, n.midi, ctxStart + n.t / 1000, Math.min(n.durMs, lc.loopMs - n.t) / 1000, n.vel));
+    });
+  }
+  function frame() {
+    if (!playing) return;
+    const now = performance.now();
+    const elapsed = now - loopStartPerf;
+    if (elapsed >= -5) {
+      const loopIdx = Math.max(0, Math.floor(elapsed / lc.loopMs));
+      const phase = (elapsed - loopIdx * lc.loopMs) / lc.loopMs;
+      drawRoll(Math.max(0, Math.min(1, phase)));
+      while (scheduledLoop < loopIdx + 1) { scheduledLoop++; scheduleAudioLoop(scheduledLoop); }
+    } else {
+      drawRoll(); // 预备拍阶段
+    }
+    raf = requestAnimationFrame(frame);
+  }
+  function startTransport(countIn) {
+    const ctx = ensureAC(); if (!ctx) { statusEl.textContent = '⚠️ 浏览器音频未就绪，点一下页面再试'; return; }
+    stopAudioNodes();
+    playing = true; scheduledLoop = -1;
+    const lead = 0.12;
+    const ciSec = countIn ? beatsPerBar * beatSec() : 0;
+    acAnchorCtx = ctx.currentTime + lead + ciSec;
+    loopStartPerf = performance.now() + (lead + ciSec) * 1000;
+    if (countIn) for (let b = 0; b < beatsPerBar; b++) clickAt(ctx, ctx.currentTime + lead + b * beatSec(), b === 0);
+    if (countIn) {
+      setTimeout(() => { if (playing) { recording = true; updateButtons(); } }, (lead + ciSec) * 1000);
+    }
+    updateButtons();
+    raf = requestAnimationFrame(frame);
+  }
+  function stopAudioNodes() { liveVoices.forEach(o => { try { o.stop(); } catch (_) {} }); liveVoices = []; }
+  function stopTransport() {
+    playing = false; recording = false;
+    if (raf) cancelAnimationFrame(raf); raf = null;
+    stopAudioNodes();
+    held.clear();
+    drawRoll();
+    updateButtons();
+  }
+  function updateButtons() {
+    const rb = $('#lc-rec'), pb = $('#lc-play');
+    rb.classList.toggle('armed', recording);
+    rb.textContent = recording ? '⏹ 停止录制' : '⏺ 录到当前层';
+    pb.textContent = (playing && !recording) ? '⏹ 停止' : '▶ 循环播放';
+    if (recording) statusEl.textContent = '🔴 录制中——弹什么都好听，叠进当前层。再按一次停止';
+    else if (playing) statusEl.textContent = '▶ 循环播放中……可按 ⏺ 边听边叠下一层';
+    else statusEl.textContent = lc.isEmpty ? '准备好就按「⏺ 录到当前层」，会先打 4 拍预备 🥁' : '继续叠层，或 💾 导出你的作品';
+  }
+
+  // ---- 录制捕获 ----
+  const held = new Map(); // midi -> perfStart
+  function noteOn(rawMidi, vel, fromScreen) {
+    const snapped = MagicJam.snapToScale(rawMidi, rootPc, moodType());
+    const color = pcDegreeColor(snapped);
+    kb.press(snapped); kb.flash(snapped, color);
+    if (fromScreen) {
+      const ctx = ensureAC();
+      if (ctx) voiceAt(ctx, snapped, ctx.currentTime + 0.01, 0.45, vel);
+    }
+    if (recording) held.set(snapped, performance.now());
+  }
+  function noteOff(rawMidi) {
+    const snapped = MagicJam.snapToScale(rawMidi, rootPc, moodType());
+    kb.release(snapped);
+    if (recording && held.has(snapped)) {
+      const st = held.get(snapped); held.delete(snapped);
+      const dur = Math.max(80, performance.now() - st);
+      lc.addNote(activeLayer, { t: st - loopStartPerf, midi: snapped, vel: 96, durMs: dur });
+      refreshLayers();
+      recordPractice('loopcomposer', '循环作曲', 1, 1, lc.noteCount);
+    }
+  }
+  kb.onNoteOn = (m) => noteOn(m, 100, true);
+  kb.onNoteOff = (m) => noteOff(m);
+
+  // ---- 控件接线 ----
+  $('#lc-roots').querySelectorAll('button').forEach(b => b.onclick = () => {
+    rootPc = parseInt(b.dataset.pc, 10);
+    $('#lc-roots').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    try { localStorage.setItem(LK.root, String(rootPc)); } catch (_) {}
+    applyScale();
+  });
+  $('#lc-moods').querySelectorAll('button').forEach(b => b.onclick = () => {
+    moodId = b.dataset.m;
+    $('#lc-moods').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    try { localStorage.setItem(LK.mood, moodId); } catch (_) {}
+    applyScale();
+  });
+  $('#lc-bars').querySelectorAll('button').forEach(b => b.onclick = () => {
+    if (playing) stopTransport();
+    bars = parseInt(b.dataset.b, 10); lc.bars = bars;
+    $('#lc-bars').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    try { localStorage.setItem(LK.bars, String(bars)); } catch (_) {}
+    drawRoll();
+  });
+  $('#lc-quant').querySelectorAll('button').forEach(b => b.onclick = () => {
+    qDiv = parseInt(b.dataset.q, 10); lc.quantizeDiv = qDiv;
+    $('#lc-quant').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    try { localStorage.setItem(LK.q, String(qDiv)); } catch (_) {}
+  });
+  $('#lc-bpm').oninput = (e) => {
+    bpm = parseInt(e.target.value, 10); lc.bpm = bpm; $('#lc-bpmv').textContent = bpm;
+    try { localStorage.setItem(LK.bpm, String(bpm)); } catch (_) {}
+  };
+  $('#lc-rec').onclick = () => { if (recording || playing) stopTransport(); else startTransport(true); };
+  $('#lc-play').onclick = () => { if (playing) stopTransport(); else startTransport(false); };
+  $('#lc-clearlayer').onclick = () => { lc.clearLayer(activeLayer); refreshLayers(); drawRoll(); };
+  $('#lc-addlayer').onclick = () => {
+    const names = ['🎵 旋律', '🎶 和声', '🎸 低音', '✨ 装饰', '🌟 副旋律', '🔔 点缀'];
+    const l = lc.addLayer(names[lc.layerCount % names.length]);
+    activeLayer = l.id; refreshLayers(); drawRoll();
+  };
+  $('#lc-midi').onclick = () => {
+    if (lc.isEmpty) { $('#lc-exinfo').textContent = '还没有音符，先录一段吧 🎵'; return; }
+    const bytes = lc.toMidiFile({ ppq: 480, repeat: 2 });
+    const blob = new Blob([new Uint8Array(bytes)], { type: 'audio/midi' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `我的作品-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-')}.mid`;
+    a.click(); URL.revokeObjectURL(url);
+    $('#lc-exinfo').textContent = `💾 已导出 MIDI（${lc.noteCount} 个音、${lc.layerCount} 层）`;
+    try { cheerBurst($('#lc-roll'), 30); } catch (_) {}
+  };
+  $('#lc-card').onclick = () => exportCard();
+
+  function exportCard() {
+    if (lc.isEmpty) { $('#lc-exinfo').textContent = '还没有音符，先录一段吧 🎵'; return; }
+    const W = 640, H = 360;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#1b2440'); grad.addColorStop(1, '#2a1740');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 30px system-ui';
+    ctx.fillText('🎼 我创作了一首歌！', 28, 52);
+    ctx.font = '16px system-ui'; ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    const rootName = (MagicJam.ROOTS.find(r => r.pc === rootPc) || {}).name || 'C';
+    const moodLabel = (MagicJam.MOODS.find(m => m.id === moodId) || {}).label || '';
+    ctx.fillText(`${rootName} 调 · ${moodLabel} · ${bars} 小节 · ${bpm} BPM`, 28, 80);
+    ctx.fillText(`🎚 ${lc.layerCount} 层 · 🎵 ${lc.noteCount} 个音`, 28, 104);
+    // mini piano roll
+    const rx = 28, ry = 128, rw = W - 56, rh = 170;
+    ctx.fillStyle = '#10131c'; ctx.fillRect(rx, ry, rw, rh);
+    let lo = 127, hi = 0; lc.layers.forEach(l => l.notes.forEach(n => { lo = Math.min(lo, n.midi); hi = Math.max(hi, n.midi); }));
+    lo -= 2; hi += 2; const span = Math.max(8, hi - lo), L = lc.loopMs;
+    lc.layers.forEach(l => l.notes.forEach(n => {
+      const x = rx + (n.t / L) * rw;
+      const w = Math.max(3, (Math.min(n.durMs, L - n.t) / L) * rw);
+      const y = ry + rh - 6 - ((n.midi - lo) / span) * (rh - 12);
+      ctx.fillStyle = l.color; ctx.fillRect(x, y - 3, w, 6);
+    }));
+    ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '13px system-ui';
+    ctx.fillText('CA99 循环作曲台 · ' + new Date().toLocaleDateString(), 28, H - 14);
+    cv.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `我的作品卡-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click(); URL.revokeObjectURL(url);
+      $('#lc-exinfo').textContent = '🎉 作品卡已存好，快给爸爸妈妈看！';
+      try { cheerBurst($('#lc-roll'), 40); } catch (_) {}
+    });
+  }
+
+  // 切走模块时停止播放，避免后台一直响
+  document.addEventListener('ca99:module-change', (ev) => {
+    if (ev.detail !== 'loopcomposer' && playing) stopTransport();
+  });
+
+  // 真琴输入：吸附到五声音 → 点亮 + 录制（钢琴自身发声，不在此合成）
+  loopComposerOnNote = (midi, vel) => noteOn(midi, vel == null ? 96 : vel, false);
+  loopComposerOffNote = (midi) => noteOff(midi);
+
+  applyScale(); refreshLayers(); drawRoll();
+}
+
 // ---------- 📊 统一经验/等级系统（XP & Level，把所有练习串成一条成长主线） ----------
 // 经验从已有累计统计派生（纯函数 xp-level.js），任何练习都喂经验；攒够升级 → 升级庆祝。
 // 元进度是最强的长期留存胶水，给孩子「我是越来越棒的音乐人」的身份认同。
@@ -16478,7 +16861,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

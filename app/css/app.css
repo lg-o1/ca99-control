@@ -2246,3 +2246,28 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .ps-hand-wrap{display:inline-flex;align-items:center;gap:7px}
 .ps-hand-lbl{font-size:13px;color:var(--muted);user-select:none}
 .ps-hand-chips{display:inline-flex;gap:5px}
+
+/* 🎼 循环作曲台 Loop Composer */
+.lc-transport{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0 10px}
+.lc-btn{padding:9px 16px;border-radius:10px;border:1px solid var(--line,#2a3550);background:#1b2236;color:#e8edf7;font-size:14px;cursor:pointer;transition:all .15s}
+.lc-btn:hover{background:#243049}
+.lc-btn.lc-rec{background:#3a1620;border-color:#7a2438}
+.lc-btn.lc-rec.armed{background:#e2384f;border-color:#ff7088;color:#fff;animation:lc-pulse 1s infinite}
+@keyframes lc-pulse{0%,100%{box-shadow:0 0 0 0 rgba(226,56,79,.5)}50%{box-shadow:0 0 0 7px rgba(226,56,79,0)}}
+.lc-btn.lc-ghost{background:transparent}
+.lc-btn.lc-go{background:#15324a;border-color:#2b6c8f}
+.lc-btn.lc-go:hover{background:#1d4763}
+.lc-status{font-size:13px;color:var(--muted);flex:1;min-width:160px}
+.lc-roll{width:100%;display:block;border-radius:12px;border:1px solid var(--line,#2a3550);margin-bottom:14px}
+.lc-layers-wrap{margin-bottom:14px}
+.lc-layers-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.lc-layers{display:flex;flex-direction:column;gap:6px}
+.lc-layer{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;background:#161d2e;border:1px solid transparent;cursor:pointer;transition:all .12s}
+.lc-layer.active{border-color:#5a8bff;background:#1a2440}
+.lc-dot{width:12px;height:12px;border-radius:50%;flex:none}
+.lc-lname{font-size:14px;color:#e8edf7;min-width:84px}
+.lc-lcount{font-size:12px;color:var(--muted);margin-left:auto}
+.lc-licon{background:none;border:none;color:#9fb0cc;font-size:15px;cursor:pointer;padding:2px 5px;border-radius:6px}
+.lc-licon:hover{background:#222d44;color:#fff}
+.lc-licon.lc-mute.on{color:#ff9f45}
+.lc-export{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px}
