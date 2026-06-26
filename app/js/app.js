@@ -22,6 +22,7 @@ import { DYNAMICS, DynamicsGame, velocityToDynamic } from './dynamics-trainer.js
 import { Transposer, semitoneLabel, targetKeyName } from './transposer.js';
 import { PracticeStats } from './practice-stats.js';
 import { Medals, MEDAL_TIERS, tierOf as medalTier, medalForResult } from './medals.js';
+import { Heatmap, HEAT_BUCKETS, NEVER_BUCKET } from './heatmap.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
 import { PROG_KEYS, PROGRESSIONS, ChordProgression } from './chord-progression.js';
@@ -155,6 +156,28 @@ const medalStore = new Medals({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
 });
 let medalWallOnUpdate = null; // 奖牌墙刷新回调（🏅 模块注册）
+// #2 练习热力图：每个技能按「多久没练」着色（绿=热乎/红=该复习/灰=待探索），不是按正确率
+const heatmap = new Heatmap({
+  storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
+});
+let heatmapOnUpdate = null; // 热力图刷新回调（🌡️ 模块注册）
+// 给 Lily 看的核心练习技能目录（id = recordPractice 的 moduleId）——让从未练的也显示「待探索」卡
+const HEATMAP_CATALOG = [
+  { id: 'staffread',  label: '五线谱识谱卡', icon: '🎼' },
+  { id: 'noteid',     label: '键盘音名认知', icon: '🔤' },
+  { id: 'sight',      label: '视奏闪卡',     icon: '👀' },
+  { id: 'scale',      label: '音阶练习',     icon: '🎼' },
+  { id: 'fing',       label: '音阶指法提示', icon: '🖐️' },
+  { id: 'dynamics',   label: '力度练习',     icon: '💪' },
+  { id: 'rhythm',     label: '节奏跟拍',     icon: '🥁' },
+  { id: 'scorefollow',label: '曲谱跟弹',     icon: '🎹' },
+  { id: 'playstage',  label: '演奏台',       icon: '🎬' },
+  { id: 'boss',       label: 'Boss 战',      icon: '🐉' },
+  { id: 'speedrun',   label: '极速挑战',     icon: '🚀' },
+  { id: 'dice',       label: '骰子热身',     icon: '🎲' },
+  { id: 'bingo',      label: '练习宾果',     icon: '🎯' },
+  { id: 'guess',      label: '猜歌视奏',     icon: '🕵️' },
+];
 // 记一遍曲子成绩，奖牌只升不降；升级时撒花 + 飘字庆祝。返回 award 结果
 function awardMedal(songId, title, summary) {
   if (!summary) return null;
@@ -220,6 +243,8 @@ function achievementCelebrate(a) {
 // 把一次练习成绩记入统计；newly 为新解锁成就，主动弹庆祝
 function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   if (!attempts) return; // 没答过题不记
+  heatmap.touch(moduleId, label); // #2 热力图：标记该技能「刚刚练过」
+  if (heatmapOnUpdate) heatmapOnUpdate();
   const newly = practiceStats.record({ moduleId, label, attempts, correct, bestStreak });
   if (dashboardOnUpdate) dashboardOnUpdate();
   renderDailyStrip();
@@ -12531,6 +12556,51 @@ function renderMedalWall() {
   medalWallOnUpdate = build;
 }
 
+// #2 练习热力图：每个技能按「多久没练」着色。绿=热乎、红=该复习、灰=待探索（友好，非正确率）
+function renderHeatmap() {
+  const root = $('#module-heat');
+  if (!root) return;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ago = (d) => (d == null ? '还没练过' : d === 0 ? '今天练过' : d === 1 ? '昨天练过' : `${d} 天没练`);
+
+  function build() {
+    const items = heatmap.all(HEATMAP_CATALOG);
+    const c = heatmap.counts(HEATMAP_CATALOG);
+    const lit = c.fresh + c.recent; // 「绿」的数量
+    const total = c.total || 1;
+    const pct = Math.round(lit / total * 100);
+
+    const cards = items.map((e) => {
+      const b = e.bucket;
+      return `<div class="hm-card hm-${b.id}" style="--hm:${b.color}">
+        <div class="hm-ico">${e.icon || '🎵'}</div>
+        <div class="hm-label">${esc(e.label)}</div>
+        <div class="hm-state"><span class="hm-dot"></span>${b.emoji} ${b.label}</div>
+        <div class="hm-ago">${ago(e.daysAgo)}</div>
+      </div>`;
+    }).join('');
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🌡️ 练习热力图</h2>
+      <p class="hm-sub">每个练习按<b>多久没练</b>变色——🟢 刚练过、🟡 有点久、🔴 该复习啦、⚪ 待探索。<br>这里看的是<b>时间</b>不是对错：红色只是说「它想你啦，回来玩一下」💚</p>
+      <div class="hm-summary">
+        <div class="hm-tally">
+          <span class="hm-pip" style="--hm:#22c55e">🟢 热乎 ${c.fresh + c.recent}</span>
+          <span class="hm-pip" style="--hm:#f59e0b">🟡 有点久 ${c.fading}</span>
+          <span class="hm-pip" style="--hm:#f87171">🔴 该复习 ${c.stale}</span>
+          <span class="hm-pip" style="--hm:#64748b">⚪ 待探索 ${c.never}</span>
+        </div>
+        <div class="hm-progress"><div class="hm-bar"><span style="width:${pct}%"></span></div><b>${lit} / ${c.total} 个技能热乎着 🔥</b></div>
+      </div>
+      <div class="hm-grid">${cards}</div>
+      <p class="hm-hint">目标：把整面板都点亮成 🟢！每天去练几个不同的技能，颜色就会一直保持新鲜 ✨</p>
+    `;
+  }
+
+  build();
+  heatmapOnUpdate = build;
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -13178,7 +13248,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderCircleFifths(); renderMedalWall(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

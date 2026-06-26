@@ -522,6 +522,34 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .mw-platinum .mw-tier { background: rgba(103,232,249,.2); color: #a5f3fc; }
 .mw-hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
 
+/* ===== 🌡️ 练习热力图（recency heatmap）===== */
+.hm-sub { color: var(--muted); margin: 2px 0 12px; line-height: 1.55; }
+.hm-sub b { color: var(--text); }
+.hm-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 12px; }
+.hm-tally { display: flex; gap: 8px; flex-wrap: wrap; }
+.hm-pip { font-size: 14px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--hm, var(--line)); box-shadow: 0 0 10px -2px var(--hm); }
+.hm-progress { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 180px; }
+.hm-progress b { white-space: nowrap; color: var(--muted); font-size: 13px; }
+.hm-bar { flex: 1; height: 12px; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); overflow: hidden; }
+.hm-bar span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #84cc16, #22c55e); transition: width .5s ease; }
+.hm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 12px; }
+.hm-card {
+  border-radius: 14px; padding: 13px 10px 11px; text-align: center;
+  background: var(--panel2); border: 2px solid var(--hm, var(--line));
+  border-left: 6px solid var(--hm, var(--line));
+  box-shadow: 0 0 14px -4px var(--hm); transition: transform .15s, box-shadow .2s;
+}
+.hm-card:hover { transform: translateY(-2px); box-shadow: 0 0 18px -2px var(--hm); }
+.hm-ico { font-size: 30px; line-height: 1.1; }
+.hm-label { font-weight: 700; margin: 5px 0 4px; font-size: 13.5px; }
+.hm-state { font-size: 12px; font-weight: 700; color: var(--hm); display: flex; align-items: center; justify-content: center; gap: 4px; }
+.hm-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--hm); box-shadow: 0 0 8px var(--hm); }
+.hm-ago { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
+.hm-never { opacity: .6; border-style: dashed; }
+.hm-fresh, .hm-recent { animation: hm-glow 2.4s ease-in-out infinite; }
+@keyframes hm-glow { 0%,100% { box-shadow: 0 0 12px -4px var(--hm); } 50% { box-shadow: 0 0 20px -2px var(--hm); } }
+.hm-hint { color: var(--muted); font-size: 13px; margin-top: 14px; }
+
 /* ===== 曲谱跟弹（Synthesia 式）===== */
 .scf-stage { margin: 16px 0; display: flex; flex-direction: column; gap: 12px; }
 .scf-staff-wrap {
