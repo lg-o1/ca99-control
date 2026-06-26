@@ -69,6 +69,7 @@ import { parseDirListing, buildUserCatalog, catalogFromManifest } from './userli
 import { DEMO_SONGS, pitchRange as mplPitchRange, totalMs as mplTotalMs, layoutRoll as mplLayoutRoll, isBlackKey as mplIsBlackKey, playheadX as mplPlayheadX, triggered as mplTriggered, activeAt as mplActiveAt, rollStats as mplRollStats } from './midi-player.js';
 import { layoutStaff as svLayoutStaff, cursorX as svCursorX, activeAt as svActiveAt, triggered as svTriggered, totalMs as svTotalMs, staffStep as svStaffStep, noteName as svNoteName } from './staff-view.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
+import { noteColor as ncNoteColor, scaffoldStrength as ncStrength, isWeaned as ncWeaned } from './note-color.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -1725,6 +1726,8 @@ function renderSight() {
           <option value="1">是（任意八度都算对，适合初学）</option>
           <option value="0">否（要弹准八度）</option>
         </select></div>
+      <div class="param-row"><label>🌈 彩色音符</label>
+        <label class="scaffold-toggle"><input type="checkbox" id="sight-scaffold"> 给音符按音名上色（练熟后自动淡出）</label></div>
     </div>
 
     <div class="sight-stage">
@@ -1771,8 +1774,9 @@ function renderSight() {
       // 加线（音符超出谱表时）
       if (pos > 8) { for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
       if (pos < 0) { for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
-      // 符头（椭圆，略斜）
-      svg += `<g id="sight-head" transform="translate(${cx},${cy})"><ellipse rx="10" ry="7.5" transform="rotate(-20)" class="note-head"/></g>`;
+      // 符头（椭圆，略斜）— 彩色音符脚手架：按音名上色，练熟后淡出
+      const sStyle = noteHeadScaffoldStyle(note, game ? { correct: Math.round(game.accuracy * game.attempts), attempts: game.attempts } : null);
+      svg += `<g id="sight-head" transform="translate(${cx},${cy})"><ellipse rx="10" ry="7.5" transform="rotate(-20)" class="note-head"${sStyle ? ` style="${sStyle}"` : ''}/></g>`;
       // 升号
       if (isSharpNote(note)) svg += `<text x="${cx - 26}" y="${cy + 5}" class="note-sharp">♯</text>`;
     }
@@ -1805,6 +1809,11 @@ function renderSight() {
   sightKb.scrollToShow(55, 79);
 
   $('#sight-clef').onchange = () => { if (!game) drawStaff(null, $('#sight-clef').value); };
+  $('#sight-scaffold').checked = colorScaffoldOn();
+  $('#sight-scaffold').onchange = () => {
+    setColorScaffold($('#sight-scaffold').checked);
+    if (game && game.current != null) drawStaff(game.current, $('#sight-clef').value);
+  };
 
   $('#sight-start').onclick = () => {
     if (game) {
@@ -1847,6 +1856,24 @@ function renderSight() {
 
 // ========== 模块 17: 音程听辨 ==========
 function midiToFreq(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+
+// 彩色音符脚手架（#8）：启蒙识谱模块给音符头按音名上色（C 红…B 紫），孩子练熟后颜色
+// 自动淡出。偏好全局共享 + localStorage 记忆，默认开。
+const SCAFFOLD_KEY = 'ca99-color-scaffold';
+function colorScaffoldOn() {
+  try { return localStorage.getItem(SCAFFOLD_KEY) !== '0'; } catch { return true; }
+}
+function setColorScaffold(on) {
+  try { localStorage.setItem(SCAFFOLD_KEY, on ? '1' : '0'); } catch {}
+}
+// 给一个音符头返回内联 fill/opacity（脚手架关或已淡尽时返回空串 → 用 CSS 默认色）
+function noteHeadScaffoldStyle(midi, stats) {
+  if (midi == null || !colorScaffoldOn()) return '';
+  const s = ncStrength(stats || {});
+  if (s <= 0.02) return '';
+  return `fill:${ncNoteColor(midi)};opacity:${(0.35 + 0.65 * s).toFixed(2)}`;
+}
+
 
 // 预听是否同时在 CA99 真琴上发声（默认开）。多数练习的「预听/示范」原本只走 Web Audio
 // 振荡器，从不发 MIDI out，所以钢琴连着也只有电脑出声。现在只要输出端口就绪，playTone 会
@@ -6811,6 +6838,8 @@ function renderStaffRead() {
           <button class="ear-chip on" data-o="0">只音名 (C)</button>
           <button class="ear-chip" data-o="1">带八度 (C4)</button>
         </div></div>
+      <div class="param-row"><label>🌈 彩色音符</label>
+        <label class="scaffold-toggle"><input type="checkbox" id="sr-scaffold"> 给音符按音名上色（练熟后自动淡出）</label></div>
     </div>
 
     <div class="sight-stage">
@@ -6855,7 +6884,7 @@ function renderStaffRead() {
       const cx = 150;
       if (pos > 8) { for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
       if (pos < 0) { for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 16}" y1="${yForPos(p)}" x2="${cx + 16}" y2="${yForPos(p)}" class="ledger-line"/>`; }
-      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="10" ry="7.5" transform="rotate(-20)" class="note-head"/></g>`;
+      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="10" ry="7.5" transform="rotate(-20)" class="note-head"${(() => { const s = noteHeadScaffoldStyle(note, game ? { correct: Math.round(game.accuracy * game.attempts), attempts: game.attempts } : null); return s ? ` style="${s}"` : ''; })()}/></g>`;
     }
     svg += `</svg>`;
     $('#sr-staff').innerHTML = svg;
@@ -6883,6 +6912,11 @@ function renderStaffRead() {
 
   $('#sr-mode').onchange = () => { if (!game) mode = $('#sr-mode').value; };
   $('#sr-clef').onchange = () => { if (!game) { clefs = $('#sr-clef').value; drawStaff(null, clefs === 'grand' ? 'treble' : clefs); } };
+  $('#sr-scaffold').checked = colorScaffoldOn();
+  $('#sr-scaffold').onchange = () => {
+    setColorScaffold($('#sr-scaffold').checked);
+    if (game && game.current) drawStaff(game.current.midi, game.current.clef);
+  };
   $('#sr-oct-chips').querySelectorAll('.ear-chip').forEach((b) => {
     b.onclick = () => {
       if (game) return;

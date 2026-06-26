@@ -391,6 +391,8 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sight-svg .clef-glyph { font-size: 56px; fill: var(--text); font-family: serif; }
 .sight-svg .note-head { fill: url(#none); fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
 .sight-svg .note-sharp { font-size: 26px; fill: var(--text); font-family: serif; }
+.scaffold-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.scaffold-toggle input { cursor: pointer; }
 .sight-feedback { font-weight: 700; font-size: 15px; min-height: 22px; color: var(--muted); }
 .sight-feedback.ok { color: var(--ok); }
 .sight-feedback.no { color: #fbbf24; }
