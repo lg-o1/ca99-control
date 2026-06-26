@@ -1893,3 +1893,44 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .bb-judge { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(251,191,36,.85), transparent); pointer-events: none; z-index: 2; }
 .bb-kb-wrap { width: 100%; overflow-x: auto; }
 @media (max-width: 640px) { .bb-title { max-width: 100%; } .bb-spacer { flex-basis: 100%; height: 0; } }
+
+/* ===== T1-① 🔥 打卡火焰日历 (streak calendar) ===== */
+.sc-sub { color: var(--muted); margin-bottom: 14px; line-height: 1.65; }
+.sc-hero { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: 16px;
+  background: linear-gradient(135deg, rgba(249,115,22,.16), rgba(234,88,12,.06)); border: 1px solid rgba(249,115,22,.35); margin-bottom: 12px; }
+.sc-hero.sc-welcome { background: linear-gradient(135deg, rgba(34,197,94,.16), rgba(16,185,129,.06)); border-color: rgba(34,197,94,.4); }
+.sc-big { font-size: 46px; line-height: 1; display: flex; align-items: center; position: relative; }
+.sc-num { font-size: 30px; font-weight: 800; margin-left: 4px;
+  background: linear-gradient(90deg,#f97316,#ef4444); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sc-htext { display: flex; flex-direction: column; gap: 4px; }
+.sc-htext b { font-size: 19px; }
+.sc-htext span { color: var(--muted); font-size: 14px; }
+.sc-ok { color: #22c55e !important; font-weight: 600; }
+.sc-todo { color: #f59e0b !important; font-weight: 600; }
+.sc-shield { font-size: 15px; }
+.sc-token { display: inline-block; padding: 8px 14px; border-radius: 999px; font-size: 14px; margin-bottom: 14px;
+  background: rgba(99,102,241,.12); border: 1px solid rgba(99,102,241,.35); color: var(--text); }
+.sc-token-used { background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.4); }
+.sc-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.sc-pip { padding: 6px 12px; border-radius: 10px; background: var(--panel-2, rgba(255,255,255,.04));
+  border: 1px solid var(--border, rgba(255,255,255,.1)); font-size: 14px; }
+.sc-pip b { font-size: 16px; color: #f97316; }
+.sc-cal { max-width: 520px; margin: 0 auto; }
+.sc-cal-head, .sc-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.sc-cal-head { margin-bottom: 6px; }
+.sc-cal-head span { text-align: center; font-size: 12px; color: var(--muted); }
+.sc-week { margin-bottom: 6px; }
+.sc-cell { aspect-ratio: 1 / 1; border-radius: 7px; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; background: rgba(148,163,184,.14); border: 1px solid transparent; transition: transform .12s; }
+.sc-cell:hover { transform: scale(1.12); }
+.sc-l0 { background: rgba(148,163,184,.14); }
+.sc-l1 { background: rgba(249,115,22,.35); }
+.sc-l2 { background: rgba(249,115,22,.55); }
+.sc-l3 { background: rgba(239,68,68,.7); }
+.sc-l4 { background: linear-gradient(135deg,#f97316,#ef4444); box-shadow: 0 0 10px rgba(249,115,22,.6); }
+.sc-today { border-color: #fde047; box-shadow: 0 0 0 2px rgba(253,224,71,.55); }
+.sc-future { background: transparent; border: 1px dashed rgba(148,163,184,.25); }
+.sc-legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 14px 0 6px;
+  font-size: 12px; color: var(--muted); }
+.sc-legend .sc-cell { width: 16px; height: 16px; aspect-ratio: auto; }
+.sc-hint { color: var(--muted); font-size: 13px; text-align: center; margin-top: 6px; }

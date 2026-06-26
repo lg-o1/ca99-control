@@ -70,6 +70,7 @@ import { RhythmSight, rhythmGlyph as rsGlyph } from './rhythm-sight.js';
 import { parseMidi, countHand } from './midi-file.js';
 import { parseDirListing, buildUserCatalog, catalogFromManifest } from './userlib.js';
 import { splitParts as bbSplitParts, suggestMyPart as bbSuggestMyPart, buildSchedule as bbBuildSchedule, familyInfo as bbFamilyInfo } from './backing-band.js';
+import { buildCalendar as scBuildCalendar, streakSummary as scStreakSummary } from './streak-calendar.js';
 import { DEMO_SONGS, pitchRange as mplPitchRange, totalMs as mplTotalMs, layoutRoll as mplLayoutRoll, isBlackKey as mplIsBlackKey, playheadX as mplPlayheadX, triggered as mplTriggered, activeAt as mplActiveAt, rollStats as mplRollStats } from './midi-player.js';
 import { layoutStaff as svLayoutStaff, cursorX as svCursorX, activeAt as svActiveAt, triggered as svTriggered, totalMs as svTotalMs, staffStep as svStaffStep, noteName as svNoteName } from './staff-view.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
@@ -227,6 +228,7 @@ function awardMedal(songId, title, summary) {
   return res;
 }
 let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
+let streakCalOnUpdate = null; // 🔥 打卡日历刷新回调（注册于 renderStreakCalendar）
 const DAILY_GOAL = 3; // 今日微目标：练 3 次就达成（超小目标，降低抗拒）
 
 // 顶栏下方「每日鼓励横幅」——复用 practice-stats 把连练天数/今日进度点亮出来
@@ -279,6 +281,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   const newly = practiceStats.record({ moduleId, label, attempts, correct, bestStreak });
   if (dashboardOnUpdate) dashboardOnUpdate();
   renderDailyStrip();
+  if (streakCalOnUpdate) streakCalOnUpdate(); // 🔥 打卡日历同步点亮今天
   syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
   newly.forEach((id, i) => {
     const a = practiceStats.allAchievements().find((x) => x.id === id);
@@ -13092,6 +13095,71 @@ function renderMicroStars() {
   microStarsOnUpdate = build;
 }
 
+// T1-① 🔥 打卡火焰日历：把已有的连胜引擎「露出来」成可见的火焰日历 + 豁免券 + 欢迎回来
+// 逻辑全在 streak-calendar.js（14 单元测试），这里只渲染 + 接 recordPractice 的刷新钩子
+function renderStreakCalendar() {
+  const root = $('#module-streak');
+  if (!root) return;
+  const WK = ['日', '一', '二', '三', '四', '五', '六'];
+
+  function build() {
+    const days = practiceStats.data.days || {};
+    const todayKey = practiceStats.recentDays(1)[0].day;
+    const s = scStreakSummary(days, todayKey, { forgiveTokens: 1 });
+    const cal = scBuildCalendar(days, todayKey, { weeks: 6, weekStart: 0 });
+
+    // 英雄区文案（与顶栏鼓励横幅同一温柔语气）
+    let hero;
+    if (s.practicedToday && s.comebackGap >= 2) {
+      hero = `<div class="sc-hero sc-welcome"><div class="sc-big">👋</div>
+        <div class="sc-htext"><b>欢迎回来！</b><span>进度都帮你存好了 💛 新的连胜从今天开始 🌟</span></div></div>`;
+    } else if (s.current > 0) {
+      const shield = s.forgiveUsed ? ' <span class="sc-shield" title="漏练一天已用豁免券保护">🛡️</span>' : '';
+      const todayTag = s.practicedToday
+        ? '<span class="sc-ok">今天已打卡 ✓</span>'
+        : '<span class="sc-todo">今天还没练，去点亮它 🔥</span>';
+      hero = `<div class="sc-hero"><div class="sc-big">🔥<span class="sc-num">${s.current}</span></div>
+        <div class="sc-htext"><b>连续打卡 ${s.current} 天${shield}</b>${todayTag}</div></div>`;
+    } else {
+      hero = `<div class="sc-hero"><div class="sc-big">🌱</div>
+        <div class="sc-htext"><b>今天点亮第一天！</b><span>每天练一点点，火焰就会连成一串 🔥</span></div></div>`;
+    }
+
+    const token = s.forgiveUsed
+      ? `<div class="sc-token sc-token-used">🎟️ 豁免券已生效——帮你保住了连胜（漏 1 天没关系）💚</div>`
+      : `<div class="sc-token">🎟️ 本周豁免券 ×1：就算漏练 1 天，连胜也不会断 🛡️</div>`;
+
+    const stats = `<div class="sc-stats">
+      <span class="sc-pip">🔥 当前 <b>${s.current}</b> 天</span>
+      <span class="sc-pip">🏆 最长 <b>${s.longest}</b> 天</span>
+      <span class="sc-pip">📅 累计打卡 <b>${s.activeDays}</b> 天</span>
+    </div>`;
+
+    const head = `<div class="sc-cal-head">${WK.map((w) => `<span>${w}</span>`).join('')}</div>`;
+    const grid = cal.weeks.map((week) => `<div class="sc-week">${week.map((c) => {
+      if (c.inFuture) return `<span class="sc-cell sc-future" title="${c.key}"></span>`;
+      const cls = `sc-cell sc-l${c.level}${c.isToday ? ' sc-today' : ''}`;
+      const tip = c.practiced ? `${c.key} · 练了 ${c.sessions} 次` : `${c.key} · 未练`;
+      const glyph = c.practiced ? '🔥' : '';
+      return `<span class="${cls}" title="${tip}">${glyph}</span>`;
+    }).join('')}</div>`).join('');
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🔥 打卡日历</h2>
+      <p class="sc-sub">每天来练一点，就在日历上点亮一团 🔥——<b>火越多说明那天练得越久</b>。这里只记录<b>你来过</b>，不打分、不评判。<br>连续打卡会累成「连胜」，断了也别怕：每周有一张 <b>🎟️ 豁免券</b> 帮你兜底，回来时我们只说「欢迎回来」💛</p>
+      ${hero}
+      ${token}
+      ${stats}
+      <div class="sc-cal">${head}${grid}</div>
+      <div class="sc-legend">少 <span class="sc-cell sc-l0"></span><span class="sc-cell sc-l1"></span><span class="sc-cell sc-l2"></span><span class="sc-cell sc-l3"></span><span class="sc-cell sc-l4"></span> 多</div>
+      <p class="sc-hint">目标：让火焰连成不断的一条 🔥🔥🔥 去任意练习弹一弹，今天的格子就会亮起来！</p>
+    `;
+  }
+
+  build();
+  streakCalOnUpdate = build;
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -13739,7 +13807,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
