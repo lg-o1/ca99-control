@@ -1581,6 +1581,28 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   transition: transform .06s, box-shadow .06s; touch-action: manipulation;
 }
 .mj-pad:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.28), 0 0 18px 0 var(--pc, #5a8bff); }
+/* 📊 经验等级 */
+.xpl-hero { display: flex; align-items: center; gap: 18px; margin: 6px 0 16px; padding: 18px; border-radius: 16px;
+  background: linear-gradient(120deg, rgba(99,102,241,.22), rgba(236,72,153,.16)); border: 1px solid rgba(167,139,250,.3); }
+.xpl-badge { font-size: 54px; line-height: 1; filter: drop-shadow(0 0 12px rgba(251,191,36,.6)); }
+.xpl-head { flex: 1; min-width: 0; }
+.xpl-lv { font-size: 20px; margin-bottom: 8px; }
+.xpl-bar { position: relative; height: 22px; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,.32); border: 1px solid rgba(255,255,255,.1); }
+.xpl-bar-fill { height: 100%; border-radius: 12px; background: linear-gradient(90deg, #34d399, #22d3ee, #a78bfa); transition: width .5s ease; }
+.xpl-bar-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+.xpl-next { margin-top: 8px; color: var(--muted); font-size: 13px; }
+.xpl-total { margin-top: 4px; font-size: 13px; }
+.xpl-bd-row { display: flex; align-items: center; gap: 10px; padding: 6px 2px; border-bottom: 1px dashed rgba(255,255,255,.08); }
+.xpl-bd-l { flex: 1; }
+.xpl-bd-c { color: var(--muted); min-width: 48px; text-align: right; }
+.xpl-bd-xp { min-width: 60px; text-align: right; font-weight: 800; color: #34d399; }
+.xpl-ladder { display: flex; flex-direction: column; gap: 4px; }
+.xpl-rung { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 10px; opacity: .5; }
+.xpl-rung.done { opacity: .8; }
+.xpl-rung.cur { opacity: 1; background: rgba(167,139,250,.18); border: 1px solid rgba(167,139,250,.45); }
+.xpl-rung-ic { font-size: 22px; }
+.xpl-rung-nm { flex: 1; font-weight: 700; }
+.xpl-rung-xp { color: var(--muted); font-size: 12px; }
   position: absolute; border-radius: 50%; opacity: 1; pointer-events: none;
   box-shadow: 0 0 8px 1px currentColor; color: inherit;
   animation: lsSpark ease-out forwards;

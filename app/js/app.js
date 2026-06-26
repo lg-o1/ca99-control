@@ -87,6 +87,7 @@ import { StaffWars, makeRng as swMakeRng, noteLetter as swNoteLetter, diatonicIn
 import { Drops, makeRng as dropsMakeRng, noteLetter as dropsNoteLetter, POOL_C as DROPS_POOL } from './drops.js';
 import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
 import * as MagicJam from './magic-jam.js';
+import * as XpLevel from './xp-level.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -256,6 +257,7 @@ function awardMedal(songId, title, summary) {
 }
 let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
 let streakCalOnUpdate = null; // 🔥 打卡日历刷新回调（注册于 renderStreakCalendar）
+let xpLevelOnUpdate = null;   // 📊 经验/等级刷新回调（注册于 renderXpLevel，含升级检测）
 const DAILY_GOAL = 3; // 今日微目标：练 3 次就达成（超小目标，降低抗拒）
 
 // 顶栏下方「每日鼓励横幅」——复用 practice-stats 把连练天数/今日进度点亮出来
@@ -309,6 +311,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   if (dashboardOnUpdate) dashboardOnUpdate();
   renderDailyStrip();
   if (streakCalOnUpdate) streakCalOnUpdate(); // 🔥 打卡日历同步点亮今天
+  if (xpLevelOnUpdate) xpLevelOnUpdate(); // 📊 经验/等级同步累加（升级则庆祝）
   syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
   mysteryRoll(); // 🎁 练完摇盲盒：小概率解锁一个好玩音色
   dailyGoalProgress(moduleId); // 🎯 今日目标：练的正是所选则达成
@@ -11899,6 +11902,84 @@ function renderMagicJam() {
   applyScale();
 }
 
+// ---------- 📊 统一经验/等级系统（XP & Level，把所有练习串成一条成长主线） ----------
+// 经验从已有累计统计派生（纯函数 xp-level.js），任何练习都喂经验；攒够升级 → 升级庆祝。
+// 元进度是最强的长期留存胶水，给孩子「我是越来越棒的音乐人」的身份认同。
+function renderXpLevel() {
+  const root = $('#module-xplevel');
+  if (!root) return;
+  const SEEN = 'ca99_xp_seen_level';
+
+  function gatherStats() {
+    const s = practiceStats.snapshot();
+    return {
+      totalCorrect: s.totalCorrect,
+      totalSessions: s.totalSessions,
+      modulesPlayed: s.modulesPlayed,
+      dayStreak: s.dayStreak,
+      achievements: practiceStats.unlockedAchievements().length,
+    };
+  }
+
+  function buildHtml(info, st) {
+    const pct = Math.round(info.progress * 100);
+    const ladder = XpLevel.LEVEL_TITLES.map((t, i) => {
+      const lv = i + 1;
+      const need = XpLevel.xpThreshold(lv);
+      const cur = lv === info.level, done = lv < info.level;
+      return `<div class="xpl-rung${cur ? ' cur' : ''}${done ? ' done' : ''}">
+        <span class="xpl-rung-ic">${t.icon}</span>
+        <span class="xpl-rung-nm">Lv${lv} ${t.name}</span>
+        <span class="xpl-rung-xp">${done ? '✓' : need + ' XP'}</span>
+      </div>`;
+    }).join('');
+    const bd = XpLevel.xpBreakdown(st).map(p => `<div class="xpl-bd-row">
+      <span class="xpl-bd-l">${p.icon} ${p.label}</span>
+      <span class="xpl-bd-c">×${p.count}</span>
+      <span class="xpl-bd-xp">+${p.xp}</span>
+    </div>`).join('');
+    return `
+      <h2 style="margin-bottom:6px">📊 经验等级</h2>
+      <p style="color:var(--muted);margin-bottom:14px">你做的<b>每一次练习</b>——答对题、玩新玩法、坚持连练、解锁成就——都会变成<b>经验值</b>，攒够就<b>升级</b>、解锁新<b>称号</b> 🎉。这是把所有练习串成的一条<b>成长主线</b>：你正在一步步成为更棒的音乐人。</p>
+
+      <div class="xpl-hero">
+        <div class="xpl-badge">${info.title.icon}</div>
+        <div class="xpl-head">
+          <div class="xpl-lv">Lv ${info.level} · <b>${info.title.name}</b></div>
+          <div class="xpl-bar"><div class="xpl-bar-fill" style="width:${pct}%"></div><span class="xpl-bar-txt">${info.intoLevel} / ${info.span} XP</span></div>
+          <div class="xpl-next">${info.level >= XpLevel.LEVEL_TITLES.length ? '🏆 已达最高称号，继续累计经验！' : `还差 <b>${info.toNext}</b> 经验 → 升到 Lv ${info.level + 1} ${XpLevel.titleForLevel(info.level + 1).icon} ${XpLevel.titleForLevel(info.level + 1).name}`}</div>
+          <div class="xpl-total">🌟 总经验 <b>${info.totalXp}</b></div>
+        </div>
+      </div>
+
+      <div class="card-panel">
+        <h3 style="margin:0 0 8px">经验从哪来</h3>
+        <div class="xpl-bd">${bd}</div>
+      </div>
+
+      <div class="card-panel">
+        <h3 style="margin:0 0 8px">称号阶梯</h3>
+        <div class="xpl-ladder">${ladder}</div>
+      </div>`;
+  }
+
+  function update() {
+    const st = gatherStats();
+    const info = XpLevel.levelFromStats(st);
+    root.innerHTML = buildHtml(info, st);
+    let seen = NaN;
+    try { seen = parseInt(localStorage.getItem(SEEN), 10); } catch (_) {}
+    // 升级检测：等级比上次记录的高 → 全屏庆祝（首次 seen 为 NaN 则只记录不庆祝）
+    if (Number.isFinite(seen) && info.level > seen) {
+      try { victoryLightShow(document.body, { confetti: 130, text: `🎉 升级啦！Lv ${info.level} ${info.title.icon} ${info.title.name}` }); } catch (_) {}
+    }
+    try { localStorage.setItem(SEEN, String(info.level)); } catch (_) {}
+  }
+
+  update();
+  xpLevelOnUpdate = update;
+}
+
 // ---------- 模块60：🔁 旋律回声（Simon 式记忆游戏） ----------
 function renderMelodyEcho() {
   const root = $('#module-melecho');
@@ -15197,7 +15278,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
