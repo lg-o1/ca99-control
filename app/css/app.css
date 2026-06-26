@@ -2346,3 +2346,12 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .mp-prog-wrap{position:relative;height:16px;background:var(--panel2);border-radius:8px;margin:12px 0 8px;overflow:hidden}
 .mp-prog{height:16px;background:linear-gradient(90deg,#a78bfa,#34d399);border-radius:8px;width:0;transition:width .5s ease}
 .mp-prog-lbl{position:absolute;right:10px;top:0;line-height:16px;font-size:11px;font-weight:700;color:#e6e9f2;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+/* 🎲 今日推荐曲 */
+.ts-card{display:flex;align-items:center;gap:18px;min-height:96px;padding:18px;border-radius:14px;background:linear-gradient(135deg,#1c2740,#23304d);border:1px solid #33405e}
+.ts-emoji{font-size:46px;line-height:1;flex:0 0 auto}
+.ts-meta{flex:1;min-width:0}
+.ts-title{font-size:22px;font-weight:800;color:#eef1f8;word-break:break-word}
+.ts-composer{color:var(--muted);margin-top:4px;font-size:14px}
+.ts-cat{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:999px;background:#2d3a57;color:#a9b6d6;font-size:12px;font-weight:700}
+.ts-loading{color:var(--muted);padding:8px}
+#ts-preview.ts-playing{background:#f59e0b}

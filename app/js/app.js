@@ -64,6 +64,7 @@ import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBui
 import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi, beatToMs as scfBeatToMs } from './score-follow.js';
 import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js';
 import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
+import { dayKey as dsDayKey, pickDailyIndex as dsPickIndex, prettyName as dsPretty, catEmoji as dsCatEmoji } from './daily-song.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
@@ -8818,7 +8819,23 @@ function renderScoreFollow() {
     return { title, notes: parsed.notes.length, handTxt, bpm: parsed.bpm };
   }
 
-  // 📚 通用曲库浏览器：CA99 内置曲库与用户自定义曲库共用。把 catalog（含 categories/songs）
+  // 🎲 「今日推荐曲」桥接：其它模块派发 scf:load-path 事件（含 midi 路径 + 曲名）→ 切到本模块并载入跟弹
+  document.addEventListener('scf:load-path', async (ev) => {
+    const d = ev && ev.detail; if (!d || !d.path) return;
+    try {
+      const r = await fetch(d.path, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const buf = await r.arrayBuffer();
+      const info = loadMidiBuffer(buf, d.title || '推荐曲', '🎲 ');
+      $('#scf-feedback').textContent = `✅ 已载入「${info.title.replace('🎲 ', '')}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。选一档训练开始。`;
+      $('#scf-feedback').className = 'sight-feedback ok';
+    } catch (err) {
+      $('#scf-feedback').textContent = '❌ 推荐曲载入失败：' + (err && err.message ? err.message : err);
+      $('#scf-feedback').className = 'sight-feedback err';
+    }
+  });
+
+
   // 渲染成分类 chips + 搜索 + 分组列表，点击即 fetch 对应路径复用 loadMidiBuffer 载入跟弹。
   // els = { cats, search, list, count, status }（DOM 元素），prefix = 载入后曲名前缀，idleMsg = 空闲提示。
   function buildLibBrowser({ els, catalog, prefix, idleMsg }) {
@@ -16304,6 +16321,164 @@ function renderMelodyPalace() {
 }
 
 
+// ========== 🎲 今日推荐曲（从 1543 首内置曲库按日期推一首，试听 + 一键去跟弹）==========
+let todaySongCatalog = null;     // 缓存的 midi/catalog.json
+let todaySongAc = null;          // 试听用 AudioContext
+let todaySongStop = null;        // 停止当前试听的句柄
+function renderTodaySong() {
+  const root = $('#module-todaysong');
+  if (!root) return;
+
+  let salt = 0;          // 「换一首」递增 → 同一天换到不同曲
+  let cur = null;        // 当前推荐曲对象
+  const DKEY = 'ca99_todaysong_tried';
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎲 今日推荐曲</h2>
+    <p style="color:var(--muted);margin-bottom:14px">不知道今天弹什么？让钢琴帮你<b>挑一首</b>！从内置的 <b>1500+ 首曲子</b>里，每天给你推一首「<b>今天试试这首</b>」——<b>先 ▶ 试听</b>听个旋律，喜欢就<b>🎹 去跟弹</b>（自动载入「曲谱跟弹」，可分级慢练）。不喜欢就 <b>🎲 换一首</b>。每天的推荐固定不变，像一个小小的每日惊喜 🎁。</p>
+
+    <div class="card-panel">
+      <div id="ts-card" class="ts-card">
+        <div class="ts-loading">正在打开曲库…</div>
+      </div>
+      <div class="rotate-bar" style="margin-top:14px">
+        <button id="ts-preview" class="big-btn" disabled>▶ 试听</button>
+        <button id="ts-follow" class="big-btn" style="background:#34d399" disabled>🎹 去跟弹这首</button>
+        <button id="ts-reroll" class="big-btn" style="background:var(--panel2)" disabled>🎲 换一首</button>
+      </div>
+      <div id="ts-status" class="sight-feedback">每天一首推荐，固定不变；换一首会随机跳到另一首。</div>
+    </div>`;
+
+  const cardEl = $('#ts-card'), statusEl = $('#ts-status');
+  const previewBtn = $('#ts-preview'), followBtn = $('#ts-follow'), rerollBtn = $('#ts-reroll');
+
+  function triedToday() {
+    try { return localStorage.getItem(DKEY) === dsDayKey(); } catch (_) { return false; }
+  }
+  function markTried() {
+    try { localStorage.setItem(DKEY, dsDayKey()); } catch (_) { /* ignore */ }
+  }
+
+  function stopPreview() {
+    if (todaySongStop) { try { todaySongStop(); } catch (_) { /* ignore */ } todaySongStop = null; }
+    previewBtn.textContent = '▶ 试听';
+    previewBtn.classList.remove('ts-playing');
+  }
+
+  // 自带 Web Audio 试听：fetch → parseMidi → 调度前 ~28 秒音符（限制并发，绝不发往 CA99）
+  async function preview() {
+    if (todaySongStop) { stopPreview(); return; }
+    if (!cur) return;
+    previewBtn.disabled = true;
+    statusEl.textContent = '正在载入试听…';
+    statusEl.className = 'sight-feedback';
+    try {
+      const r = await fetch(cur.path, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const parsed = parseMidi(await r.arrayBuffer());
+      if (!parsed.notes.length) throw new Error('没有可用音符');
+      if (!todaySongAc) todaySongAc = new (window.AudioContext || window.webkitAudioContext)();
+      const ac = todaySongAc;
+      if (ac.state === 'suspended') { try { ac.resume().catch(() => {}); } catch (_) { /* ignore */ } }
+      const CAP_MS = 28000;
+      const notes = parsed.notes.filter((n) => n.ms <= CAP_MS).slice(0, 600);
+      const t0 = ac.currentTime + 0.12;
+      const master = ac.createGain();
+      master.gain.value = 0.5;
+      master.connect(ac.destination);
+      const oscs = [];
+      notes.forEach((n) => {
+        const o = ac.createOscillator(); const g = ac.createGain();
+        o.type = 'triangle';
+        o.frequency.value = 440 * Math.pow(2, (n.midi - 69) / 12);
+        const when = t0 + n.ms / 1000;
+        const dur = Math.min(2.2, Math.max(0.12, n.durMs / 1000));
+        const peak = 0.06 + 0.16 * ((n.velocity || 80) / 127);
+        g.gain.setValueAtTime(0.0001, when);
+        g.gain.exponentialRampToValueAtTime(peak, when + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+        o.connect(g); g.connect(master);
+        o.start(when); o.stop(when + dur + 0.05);
+        oscs.push(o);
+      });
+      const lastMs = notes.length ? notes[notes.length - 1].ms + 1200 : 0;
+      const endTimer = setTimeout(() => stopPreview(), Math.min(CAP_MS + 1500, lastMs + 300));
+      todaySongStop = () => {
+        clearTimeout(endTimer);
+        oscs.forEach((o) => { try { o.stop(); } catch (_) { /* ignore */ } });
+        try { master.disconnect(); } catch (_) { /* ignore */ }
+      };
+      previewBtn.textContent = '⏹ 停止试听';
+      previewBtn.classList.add('ts-playing');
+      statusEl.textContent = `🔊 试听中（前 ${Math.min(28, Math.round((lastMs) / 1000))} 秒）…喜欢就「🎹 去跟弹」`;
+      statusEl.className = 'sight-feedback ok';
+      markTried();
+      recordPractice('todaysong', '🎲 今日推荐曲', 1, 1, 1);
+    } catch (err) {
+      statusEl.textContent = '试听失败：' + (err && err.message ? err.message : err);
+      statusEl.className = 'sight-feedback err';
+    } finally {
+      previewBtn.disabled = false;
+    }
+  }
+
+  function paintCard() {
+    if (!cur) return;
+    const composer = cur.composer && cur.composer.trim() ? `<div class="ts-composer">✍️ ${cur.composer}</div>` : '';
+    const cat = cur.cat && cur.cat.trim() ? cur.cat : (cur.fn || '曲目');
+    cardEl.innerHTML = `
+      <div class="ts-emoji">${dsCatEmoji(cur.fn)}</div>
+      <div class="ts-meta">
+        <div class="ts-title">${dsPretty(cur)}</div>
+        ${composer}
+        <div class="ts-cat">${dsCatEmoji(cur.fn)} ${cat}</div>
+      </div>`;
+  }
+
+  function pick() {
+    if (!todaySongCatalog || !todaySongCatalog.songs || !todaySongCatalog.songs.length) return;
+    stopPreview();
+    const songs = todaySongCatalog.songs;
+    const idx = dsPickIndex(songs.length, new Date(), salt);
+    cur = songs[idx];
+    paintCard();
+    previewBtn.disabled = false; followBtn.disabled = false; rerollBtn.disabled = false;
+    if (salt === 0) {
+      statusEl.textContent = triedToday() ? '🌟 今天已经试过推荐曲啦！想换换口味就「🎲 换一首」。' : '这是今天为你挑的曲子，点 ▶ 试听听听看 🎧';
+      statusEl.className = 'sight-feedback';
+    }
+  }
+
+  async function ensureCatalog() {
+    if (todaySongCatalog) { pick(); return; }
+    try {
+      const r = await fetch('midi/catalog.json', { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      todaySongCatalog = await r.json();
+      pick();
+    } catch (err) {
+      cardEl.innerHTML = `<div class="ts-loading">⚠️ 曲库未载入（请从 app/ 目录启动服务，确保 midi/catalog.json 可访问）：${err && err.message ? err.message : err}</div>`;
+    }
+  }
+
+  previewBtn.onclick = preview;
+  rerollBtn.onclick = () => { salt += 1; statusEl.textContent = '🎲 换了一首！'; statusEl.className = 'sight-feedback'; pick(); markTried(); };
+  followBtn.onclick = () => {
+    if (!cur) return;
+    stopPreview();
+    markTried();
+    recordPractice('todaysong', '🎲 今日推荐曲', 1, 1, 1);
+    document.dispatchEvent(new CustomEvent('scf:load-path', { detail: { path: cur.path, title: dsPretty(cur) } }));
+    const nav = document.querySelector('[data-module="scf"]');
+    if (nav) nav.click();
+  };
+
+  ensureCatalog();
+
+  document.addEventListener('ca99:module-change', () => { stopPreview(); });
+}
+
+
 // ========== 🎬 演奏卡（录音分享卡）==========
 let shareCardRaf = null;
 function renderShareCard() {
@@ -17781,7 +17956,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
