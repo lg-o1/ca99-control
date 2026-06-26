@@ -2045,3 +2045,26 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 @keyframes dg-pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
 .dg-done-title { font-size: 22px; font-weight: 800; color: #d1fae5; margin-top: 10px; }
 .dg-done-sub { font-size: 15px; color: #a7f3d0; margin-top: 6px; }
+
+/* ===== 🎬 演奏卡（share-card）===== */
+.shc-bar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px; }
+.shc-title-input {
+  flex:1 1 200px; min-width:160px; padding:10px 14px; border-radius:10px;
+  background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  font-size:15px; font-weight:600;
+}
+.shc-title-input:focus { outline:none; border-color:#7c83ff; }
+.shc-info { color:var(--muted); font-size:14px; min-width:130px; }
+.shc-gen { padding:12px 20px; background:linear-gradient(135deg,#7c83ff,#b06bff); border:none; color:#fff; font-weight:700; }
+.shc-canvas-wrap {
+  position:relative; display:flex; justify-content:center; align-items:center;
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:16px; min-height:200px;
+}
+.shc-canvas-wrap canvas {
+  max-width:100%; height:auto; border-radius:12px;
+  box-shadow:0 8px 30px rgba(0,0,0,.4);
+}
+.shc-empty { position:absolute; color:var(--muted); font-size:15px; pointer-events:none; }
+.shc-actions { display:flex; gap:12px; margin-top:14px; justify-content:center; }
+.shc-actions .grid-btn { padding:12px 26px; font-weight:600; }

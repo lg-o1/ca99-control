@@ -82,6 +82,7 @@ import { BingoCard, winLines } from './bingo-card.js';
 import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
+import * as ShareCard from './share-card.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -13430,6 +13431,146 @@ function renderDailyGoal() {
   dailyGoalOnUpdate = build;
 }
 
+// ========== 🎬 演奏卡（录音分享卡）==========
+let shareCardRaf = null;
+function renderShareCard() {
+  const root = $('#module-sharecard');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎬 演奏卡</h2>
+    <p style="color:var(--muted);margin-bottom:14px">录下你的演奏，一键生成一张漂亮的「演奏卡」——带曲名、⭐ 星星和你弹的音符缩略图，存成图片发给爸爸妈妈 💛。需先选好 <b>MIDI 输入</b>端口。</p>
+    <div class="shc-bar">
+      <input id="shc-title" class="shc-title-input" maxlength="24" placeholder="给这次演奏起个名字…" value="我的演奏">
+      <button id="shc-rec" class="big-btn">⏺ 开始录制</button>
+      <span id="shc-info" class="shc-info">未录制 · 0 音</span>
+      <button id="shc-gen" class="grid-btn shc-gen">✨ 生成分享卡</button>
+    </div>
+    <div class="shc-canvas-wrap">
+      <canvas id="shc-canvas" width="640" height="400"></canvas>
+      <div id="shc-empty" class="shc-empty">录一小段，再点「✨ 生成分享卡」🎴</div>
+    </div>
+    <div class="shc-actions" id="shc-actions" style="display:none">
+      <button id="shc-save" class="grid-btn">⬇ 保存图片</button>
+      <button id="shc-share" class="grid-btn">📤 分享</button>
+    </div>`;
+
+  const canvas = root.querySelector('#shc-canvas');
+  const info = root.querySelector('#shc-info');
+  const recBtn = root.querySelector('#shc-rec');
+
+  function paintInfo() {
+    const s = ShareCard.summarize(recorder.events);
+    if (recorder.recording) info.textContent = `🔴 录制中 · ${s.notes} 音 · ${ShareCard.fmtDuration(s.durationMs)}`;
+    else info.textContent = recorder.isEmpty ? '未录制 · 0 音' : `已录 · ${s.notes} 音 · ${ShareCard.fmtDuration(s.durationMs)}`;
+  }
+  function loop() { paintInfo(); if (recorder.recording) shareCardRaf = requestAnimationFrame(loop); }
+
+  recBtn.onclick = () => {
+    if (recorder.recording) {
+      recorder.stop();
+      recBtn.textContent = '⏺ 开始录制'; recBtn.classList.remove('running');
+      if (shareCardRaf) cancelAnimationFrame(shareCardRaf);
+      paintInfo();
+    } else {
+      recorder.start(performance.now());
+      recBtn.textContent = '⏹ 停止录制'; recBtn.classList.add('running');
+      log('开始录制…弹琴吧', 'ok');
+      loop();
+    }
+  };
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function drawCard() {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const events = recorder.events;
+    const sum = ShareCard.summarize(events);
+    const stars = ShareCard.starRating(sum);
+    const title = (root.querySelector('#shc-title').value || '我的演奏').slice(0, 24);
+
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#1b1f3a'); g.addColorStop(1, '#2a1840');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(124,131,255,.5)'; ctx.lineWidth = 3; ctx.strokeRect(8, 8, W - 16, H - 16);
+
+    ctx.fillStyle = '#8b93b8'; ctx.font = '600 16px system-ui,Segoe UI,sans-serif';
+    ctx.textAlign = 'left'; ctx.fillText('🎹 CA99 Control', 28, 42);
+    ctx.textAlign = 'right'; ctx.fillText(new Date().toLocaleDateString(), W - 28, 42);
+
+    ctx.textAlign = 'left'; ctx.fillStyle = '#eef0f8'; ctx.font = '800 34px system-ui,Segoe UI,sans-serif';
+    ctx.fillText(title, 28, 92);
+
+    ctx.font = '30px system-ui,Segoe UI,sans-serif';
+    let sx = 28;
+    for (let i = 0; i < 5; i++) { ctx.fillStyle = i < stars ? '#ffd24a' : '#3a3f63'; ctx.fillText('★', sx, 134); sx += 38; }
+
+    const rollX = 28, rollY = 162, rollW = W - 56, rollH = 148;
+    ctx.fillStyle = 'rgba(255,255,255,.04)'; roundRect(ctx, rollX, rollY, rollW, rollH, 10); ctx.fill();
+    const notes = ShareCard.extractNotes(events);
+    const rects = ShareCard.rollLayout(notes, { width: rollW, height: rollH, pad: 8 });
+    for (const r of rects) {
+      const hue = (r.midi * 5) % 360;
+      ctx.fillStyle = `hsl(${hue},70%,62%)`;
+      roundRect(ctx, rollX + r.x, rollY + r.y, r.w, Math.max(3, r.h - 1), 2); ctx.fill();
+    }
+    if (!rects.length) {
+      ctx.fillStyle = '#6b73a0'; ctx.font = '16px system-ui,Segoe UI,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('（这次没录到音符）', W / 2, rollY + rollH / 2);
+      ctx.textAlign = 'left';
+    }
+
+    ctx.fillStyle = '#b9c0e6'; ctx.font = '600 17px system-ui,Segoe UI,sans-serif';
+    const statY = 344;
+    ctx.fillText(`🎵 ${sum.notes} 音`, 28, statY);
+    ctx.fillText(`⏱ ${ShareCard.fmtDuration(sum.durationMs)}`, 168, statY);
+    ctx.fillText(`🎚 ${ShareCard.midiName(sum.lowMidi)}–${ShareCard.midiName(sum.highMidi)}`, 300, statY);
+
+    ctx.fillStyle = '#eef0f8'; ctx.font = 'italic 600 20px system-ui,Segoe UI,sans-serif';
+    ctx.fillText(ShareCard.praiseLine(stars, sum.notes), 28, 384);
+  }
+
+  root.querySelector('#shc-gen').onclick = () => {
+    if (recorder.isEmpty) { cheerToast('先录一小段再生成哦 🎹', root); return; }
+    drawCard();
+    root.querySelector('#shc-empty').style.display = 'none';
+    root.querySelector('#shc-actions').style.display = 'flex';
+    cheerBurst(root, 40);
+  };
+
+  root.querySelector('#shc-save').onclick = () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `ca99-card-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+    a.click();
+    cheerToast('图片已保存 💾', root);
+  };
+
+  root.querySelector('#shc-share').onclick = () => {
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'ca99-card.png', { type: 'image/png' });
+      try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: '我的演奏卡 🎹' });
+          return;
+        }
+      } catch (e) { return; /* 用户取消 */ }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'ca99-card.png'; a.click();
+      cheerToast('已保存图片，可手动分享 📤', root);
+    }, 'image/png');
+  };
+
+  paintInfo();
+}
+if (typeof window !== 'undefined') {
+  window.__sharecard = { recorder, ShareCard };
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -14077,7 +14218,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
