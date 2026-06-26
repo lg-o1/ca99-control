@@ -90,6 +90,7 @@ import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
 import * as MagicJam from './magic-jam.js';
 import * as XpLevel from './xp-level.js';
 import * as WeeklyQuest from './weekly-quest.js';
+import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhostFrac, playerFrac as grPlayerFrac, lead as grLead, formatMs as grFormatMs } from './ghost-race.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -148,6 +149,8 @@ let bossOnNote = null;      // 🐉 Boss 战的 note-on 回调（Boss 战模块�
 let bossOnNoteOff = null;   // 🐉 Boss 战的 note-off 回调（真琴松键 → 屏幕键抬起）
 let speedRunOnNote = null;  // 🚀 极速挑战的 note-on 回调（极速挑战模块注册）
 let speedRunOnNoteOff = null; // 🚀 极速挑战的 note-off 回调
+let ghostRaceOnNote = null;  // 👻 幽灵竞速的 note-on 回调（幽灵竞速模块注册）
+let ghostRaceOnNoteOff = null; // 👻 幽灵竞速的 note-off 回调
 let diceOnNote = null;      // 🎲 骰子热身的 note-on 回调
 let diceOnNoteOff = null;   // 🎲 骰子热身的 note-off 回调
 let guessOnNote = null;     // 🕵️ 猜歌视奏的 note-on 回调
@@ -591,6 +594,8 @@ function onMidiIn(bytes) {
     if (bossOnNote) bossOnNote(m.note, m.velocity);
     // 驱动极速挑战
     if (speedRunOnNote) speedRunOnNote(m.note, m.velocity);
+    // 驱动幽灵竞速
+    if (ghostRaceOnNote) ghostRaceOnNote(m.note, m.velocity);
     // 驱动骰子热身
     if (diceOnNote) diceOnNote(m.note, m.velocity);
     // 驱动猜歌视奏
@@ -716,6 +721,7 @@ function onMidiIn(bytes) {
     if (bossOnNoteOff) bossOnNoteOff(m.note);
     // 🚀 极速挑战：真琴松键 → 屏幕键抬起
     if (speedRunOnNoteOff) speedRunOnNoteOff(m.note);
+    if (ghostRaceOnNoteOff) ghostRaceOnNoteOff(m.note);
     // 🎲 骰子热身：真琴松键 → 屏幕键抬起
     if (diceOnNoteOff) diceOnNoteOff(m.note);
     // 🕵️ 猜歌视奏：真琴松键 → 屏幕键抬起
@@ -13328,6 +13334,228 @@ function renderSpeedRun() {
   previewRun();
 }
 
+// ========== 模块86: 👻 幽灵竞速（和「过去最快的自己」赛跑，成长思维友好）==========
+function renderGhostRace() {
+  const root = $('#module-ghost');
+  if (!root) return;
+  const BEST = 'ca99_ghost_best'; // {raceId: ms}
+  let raceId = GR_RACES[0].id;
+  let octAgn = true;
+  let running = false;
+  let gr = null;
+  let rafId = 0;
+
+  function loadBest() { try { return JSON.parse(localStorage.getItem(BEST) || '{}') || {}; } catch (_) { return {}; } }
+  function saveBest(map) { try { localStorage.setItem(BEST, JSON.stringify(map)); } catch (_) {} }
+  function bestOf(id) { const v = loadBest()[id]; return v && v > 0 ? v : null; }
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">👻 幽灵竞速</h2>
+    <p style="color:var(--muted);margin-bottom:14px">和<b>过去最快的自己</b>赛跑！选一段乐句<b>按顺序弹对</b>，引擎给你计时。屏幕上的 <b>👻 幽灵</b>就是你<b>上次最快的一跑</b>——它会按那次的速度在赛道上前进。<b>比幽灵先冲线 = 打败昨天的我</b>，刷新纪录！不和别人比、弹错只是从头来（不惩罚），只为<b>超越自己</b> 🌟。可接 CA99 真琴或点屏幕键盘。</p>
+
+    <div class="bb-pick" id="gr-pick"></div>
+
+    <div class="gr-track-wrap">
+      <canvas id="gr-canvas" class="gr-canvas" width="640" height="160"></canvas>
+    </div>
+
+    <div class="sr2-dash">
+      <div class="sr2-gauge"><div class="sr2-big sr2-best" id="gr-best">—</div><div class="sr2-lbl">🏅 个人最佳</div></div>
+      <div class="sr2-gauge"><div class="sr2-big" id="gr-last">—</div><div class="sr2-lbl">⏱️ 上次用时</div></div>
+      <div class="sr2-gauge"><div class="sr2-big" id="gr-live">—</div><div class="sr2-lbl">🏃 本次计时</div></div>
+    </div>
+
+    <div class="sr2-passage" id="gr-passage"></div>
+    <div class="bb-feedback" id="gr-feedback">选好乐句，按"开始"和幽灵赛跑</div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap" id="gr-kbcap">🎹 按高亮的键，按顺序又快又准地弹完整段</div>
+      <div id="gr-kb"></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="gr-start" class="big-btn">▶ 开始竞速</button>
+      <label class="scaffold-toggle"><input type="checkbox" id="gr-oct" checked> 忽略八度</label>
+      <span id="gr-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  const cv = $('#gr-canvas');
+  const cx = cv.getContext('2d');
+
+  function drawPicker() {
+    $('#gr-pick').innerHTML = GR_RACES.map((r) => {
+      const b = bestOf(r.id);
+      return `<button class="bb-chip${r.id === raceId ? ' on' : ''}" data-id="${r.id}">${r.emoji} ${r.name}<small>${b ? grFormatMs(b) : r.notes.length + ' 音'}</small></button>`;
+    }).join('');
+    $('#gr-pick').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { if (running) return; raceId = el.dataset.id; drawPicker(); preview(); };
+    });
+  }
+
+  function drawPassage(notes, idx) {
+    $('#gr-passage').innerHTML = notes.map((m, i) =>
+      `<span class="bb-pnote${i === idx ? ' cur' : ''}${idx > i ? ' done' : ''}">${kbNoteName(m)}</span>`).join('<i class="bb-arrow">→</i>');
+  }
+
+  // 画赛道：两条泳道（🐢 你 / 👻 幽灵），终点旗，按比例放置选手
+  function drawTrack(playerF, ghostF, hasGhost) {
+    const W = cv.width, H = cv.height;
+    cx.clearRect(0, 0, W, H);
+    const padL = 16, padR = 56, lane1 = 56, lane2 = 116;
+    const trackW = W - padL - padR;
+    // 跑道底
+    cx.strokeStyle = 'rgba(255,255,255,.12)'; cx.lineWidth = 2;
+    [lane1, lane2].forEach((y) => {
+      cx.setLineDash([8, 8]);
+      cx.beginPath(); cx.moveTo(padL, y); cx.lineTo(padL + trackW, y); cx.stroke();
+    });
+    cx.setLineDash([]);
+    // 终点线
+    const fx = padL + trackW;
+    cx.fillStyle = 'rgba(255,255,255,.6)';
+    for (let i = 0; i < 8; i++) cx.fillRect(fx + 2, 30 + i * 12, 8, 6);
+    cx.font = '20px serif'; cx.fillStyle = '#fbbf24'; cx.fillText('🏁', fx + 2, 24);
+    // 选手
+    cx.font = '30px serif';
+    const px = padL + Math.max(0, Math.min(1, playerF)) * trackW;
+    cx.fillText('🏃', px - 10, lane1 + 10);
+    cx.font = '13px sans-serif'; cx.fillStyle = '#34d399'; cx.fillText('你', padL, lane1 - 22);
+    if (hasGhost) {
+      cx.font = '30px serif';
+      const gx = padL + Math.max(0, Math.min(1, ghostF)) * trackW;
+      cx.globalAlpha = 0.7; cx.fillText('👻', gx - 10, lane2 + 10); cx.globalAlpha = 1;
+      cx.font = '13px sans-serif'; cx.fillStyle = '#a78bfa'; cx.fillText('幽灵（你的最佳）', padL, lane2 - 22);
+    } else {
+      cx.font = '13px sans-serif'; cx.fillStyle = 'var(--muted)';
+      cx.fillStyle = 'rgba(255,255,255,.4)'; cx.fillText('幽灵（首次跑还没有——这次就是它！）', padL, lane2 - 22);
+    }
+  }
+
+  function preview() {
+    const r = grGetRace(raceId);
+    const b = bestOf(raceId);
+    $('#gr-best').textContent = b ? grFormatMs(b) : '—';
+    $('#gr-last').textContent = '—';
+    $('#gr-live').textContent = '—';
+    drawPassage(r.notes, -1);
+    drawTrack(0, 0, !!b);
+    $('#gr-feedback').innerHTML = `乐句：${r.notes.map((m) => kbNoteName(m)).join(' → ')}`;
+  }
+
+  function showTarget() {
+    const t = gr.current();
+    grKb.clear();
+    if (t != null) grKb.highlightMany([{ midi: t, color: '#fbbf24', text: kbNoteName(t) }]);
+  }
+
+  function loop() {
+    if (!running || !gr) return;
+    const now = performance.now();
+    const el = gr.elapsed(now);
+    const pf = grPlayerFrac(gr.idx, gr.total());
+    const gf = grGhostFrac(el, gr.ghostMs);
+    drawTrack(pf, gf, !!gr.ghostMs);
+    if (gr.idx > 0) $('#gr-live').textContent = grFormatMs(el);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function handlePress(midi) {
+    if (!gr || !running) return;
+    const r = gr.press(midi, performance.now());
+    if (r.wrong) {
+      grKb.flash(midi, '#f87171');
+      $('#gr-feedback').textContent = '🤔 顺序错了，从头再来～（纪录不变，别急）';
+      drawPassage(gr.notes, gr.idx);
+      showTarget();
+      return;
+    }
+    grKb.flash(midi, '#34d399');
+    if (r.complete) {
+      cancelAnimationFrame(rafId);
+      running = false; ghostRaceOnNote = null; ghostRaceOnNoteOff = null;
+      $('#gr-start').textContent = '▶ 开始竞速';
+      $('#gr-start').classList.remove('running');
+      $('#gr-status').textContent = '完成';
+      $('#gr-last').textContent = grFormatMs(r.timeMs);
+      $('#gr-live').textContent = grFormatMs(r.timeMs);
+      // 刷新最佳
+      if (r.newRecord) {
+        const map = loadBest(); map[raceId] = r.timeMs; saveBest(map);
+        $('#gr-best').textContent = grFormatMs(r.timeMs);
+      }
+      grKb.clear();
+      drawTrack(1, r.medal === 'record' ? 0.92 : 1, !!r.ghostMs);
+      drawPassage(gr.notes, -1);
+      drawPicker();
+      if (r.medal === 'first') {
+        $('#gr-feedback').innerHTML = `🎉 <b>${grFormatMs(r.timeMs)}</b>！第一跑完成——这就是你的<b>幽灵</b>啦，下次来打败它！`;
+        cheerBurst(root, 60);
+        try { victoryLightShow(root, { confetti: 60, text: `👻 幽灵诞生！${grFormatMs(r.timeMs)}` }); } catch (_) {}
+      } else if (r.medal === 'record') {
+        $('#gr-feedback').innerHTML = `🏆 <b>新纪录 ${grFormatMs(r.timeMs)}</b>！比幽灵快了 <b>${grFormatMs(-r.deltaMs)}</b> —— 打败昨天的我！🌟`;
+        cheerBurst(root, 90);
+        try { victoryLightShow(root, { confetti: 120, text: `🏆 打破纪录！${grFormatMs(r.timeMs)}` }); } catch (_) {}
+      } else if (r.medal === 'close') {
+        $('#gr-feedback').innerHTML = `🔥 <b>${grFormatMs(r.timeMs)}</b>，离幽灵只差 <b>${grFormatMs(r.deltaMs)}</b>——超近了，再来一次准能赢！`;
+        cheerToast('🔥 就差一点点！', root);
+      } else {
+        $('#gr-feedback').innerHTML = `🏃 <b>${grFormatMs(r.timeMs)}</b>，幽灵这次快一点（${grFormatMs(r.deltaMs)}）。再试一次，你会越来越快！`;
+      }
+      recordPractice('ghostrace', '幽灵竞速', gr.runs, gr.records, gr.records);
+      return;
+    }
+    drawPassage(gr.notes, gr.idx);
+    showTarget();
+  }
+
+  const grKb = new PianoKeyboard($('#gr-kb'), {
+    labels: 'c',
+    // CA99 真琴输入由全局 ghostRaceOnNote 钩子驱动（见 onMidiIn）；勿再开 recognizeExternal，否则 handlePress 双触发。
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
+  });
+  grKb.scrollToShow(55, 84);
+
+  $('#gr-oct').onchange = () => { if (!running) octAgn = $('#gr-oct').checked; };
+
+  $('#gr-start').onclick = () => {
+    if (running) {
+      running = false; ghostRaceOnNote = null; ghostRaceOnNoteOff = null;
+      cancelAnimationFrame(rafId);
+      $('#gr-start').textContent = '▶ 开始竞速';
+      $('#gr-start').classList.remove('running');
+      $('#gr-status').textContent = '已停止';
+      grKb.clear();
+      preview();
+      return;
+    }
+    gr = new GhostRace({ race: raceId, ghostMs: bestOf(raceId), octaveAgnostic: octAgn });
+    running = true;
+    $('#gr-start').textContent = '⏸ 停止';
+    $('#gr-start').classList.add('running');
+    $('#gr-status').textContent = '竞速中…';
+    drawPassage(gr.notes, 0);
+    showTarget();
+    $('#gr-live').textContent = '0.00 秒';
+    $('#gr-feedback').innerHTML = gr.ghostMs
+      ? `开始！从<b>第一个音</b>起计时——👻 幽灵正以你上次最佳（${grFormatMs(gr.ghostMs)}）起跑，赶在它前面冲线！`
+      : `开始！这是你第一次跑这条道——按高亮键弹完整段，立下你的第一个幽灵纪录！`;
+    ghostRaceOnNote = (m) => handlePress(m);
+    ghostRaceOnNoteOff = (m) => { try { grKb.release(m); } catch (_) {} };
+    rafId = requestAnimationFrame(loop);
+  };
+
+  // 切走模块自动停（避免后台 rAF 空转）
+  document.addEventListener('ca99:module-change', (e) => {
+    if (e.detail !== 'ghost' && running) {
+      running = false; ghostRaceOnNote = null; ghostRaceOnNoteOff = null;
+      cancelAnimationFrame(rafId);
+    }
+  });
+
+  drawPicker();
+  preview();
+}
+
 // ========== 模块: 🎲 骰子热身（掷骰随机生成今日小任务，消除"练什么"的选择压力）==========
 function renderDiceWarmup() {
   const root = $('#module-dice');
@@ -15518,7 +15746,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

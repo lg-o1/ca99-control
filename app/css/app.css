@@ -2193,3 +2193,9 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.3); font-size: 30px; }
 .wq-badge span { font-size: 11px; font-weight: 700; color: var(--muted); text-align: center; }
 .wq-badge-empty { color: var(--muted); font-size: 13px; padding: 8px; }
+
+/* 👻 幽灵竞速（Ghost Race） */
+.gr-track-wrap { margin: 8px 0 14px; padding: 10px; border-radius: 14px; background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.08); }
+.gr-canvas { width: 100%; height: auto; display: block; border-radius: 10px;
+  background: linear-gradient(180deg, rgba(34,211,238,.06), rgba(167,139,250,.06)); }
