@@ -94,6 +94,7 @@ import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhos
 import { PATTERNS as RJ_PATTERNS, patternById as rjPatternById, RhythmJump } from './rhythm-jump.js';
 import { FamilyDuel, DEFAULT_PLAYERS as FD_PLAYERS } from './family-duel.js';
 import { SoundPainting } from './sound-paint.js';
+import * as PetGrow from './pet-grow.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -269,6 +270,7 @@ function awardMedal(songId, title, summary) {
 let dashboardOnUpdate = null; // 仪表盘刷新回调（模块20注册）
 let streakCalOnUpdate = null; // 🔥 打卡日历刷新回调（注册于 renderStreakCalendar）
 let xpLevelOnUpdate = null;   // 📊 经验/等级刷新回调（注册于 renderXpLevel，含升级检测）
+let petGrowOnUpdate = null;   // 🐣 养成小伙伴刷新回调（注册于 renderPet，含进化检测）
 let weeklyQuestOnPractice = null; // 🗓️ 限时赛季进度回调（注册于 renderWeeklyQuest）
 const DAILY_GOAL = 3; // 今日微目标：练 3 次就达成（超小目标，降低抗拒）
 
@@ -324,6 +326,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   renderDailyStrip();
   if (streakCalOnUpdate) streakCalOnUpdate(); // 🔥 打卡日历同步点亮今天
   if (xpLevelOnUpdate) xpLevelOnUpdate(); // 📊 经验/等级同步累加（升级则庆祝）
+  if (petGrowOnUpdate) petGrowOnUpdate(); // 🐣 养成小伙伴同步成长（进化则庆祝）
   if (weeklyQuestOnPractice) weeklyQuestOnPractice(moduleId); // 🗓️ 限时赛季：给本周任务计数
   syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
   mysteryRoll(); // 🎁 练完摇盲盒：小概率解锁一个好玩音色
@@ -14150,6 +14153,89 @@ function renderSoundPaint() {
   drawBgPicker(); paintBg(); updateCount();
 }
 
+// ========== 模块: 🐣 养成小伙伴（随累计练习成长 / 进化的音乐宠物）==========
+function renderPet() {
+  const root = $('#module-pet');
+  if (!root) return;
+  const PET_KEY = 'ca99_pet_stage';
+
+  function petStats() {
+    const s = practiceStats.snapshot();
+    return {
+      totalCorrect: s.totalCorrect,
+      totalSessions: s.totalSessions,
+      modulesPlayed: s.modulesPlayed,
+      dayStreak: s.dayStreak,
+      achievements: practiceStats.unlockedAchievements().length,
+    };
+  }
+  function practicedToday() {
+    try { const d = practiceStats.recentDays(1); return !!(d && d[0] && d[0].sessions > 0); } catch (_) { return false; }
+  }
+
+  function buildHtml(sum, xp) {
+    const idx = PetGrow.stageIndexFor(xp);
+    const pct = Math.round(sum.progress.frac * 100);
+    const gallery = PetGrow.PET_STAGES.map((s, i) => {
+      const done = i < idx, cur = i === idx;
+      return `<div class="pet-egg${cur ? ' cur' : ''}${done ? ' done' : ''}">
+        <span class="pet-egg-ic">${(done || cur) ? s.emoji : '❔'}</span>
+        <span class="pet-egg-nm">${(done || cur) ? s.name : '？？？'}</span>
+        <span class="pet-egg-xp">${done ? '✓' : (cur ? '现在' : s.min + ' 成长值')}</span>
+      </div>`;
+    }).join('');
+    const nextLine = sum.progress.maxed
+      ? '🏆 它已经长成传奇啦——继续一起玩音乐吧！'
+      : `还差 <b>${sum.progress.toNext}</b> 成长值 → 进化成 ${sum.next.emoji} <b>${sum.next.name}</b>`;
+    return `
+      <h2 style="margin-bottom:6px">🐣 养成小伙伴</h2>
+      <p style="color:var(--muted);margin-bottom:14px">你有一只<b>音乐小伙伴</b>！它会<b>随着你每一次练习慢慢长大、进化</b>——和你的经验值是同一条成长线。它<b>只会越长越棒，永远不会死、不会退化</b>。多练琴就是<b>陪它一起成长</b> 💕</p>
+
+      <div class="pet-hero">
+        <div class="pet-avatar">${sum.stage.emoji}</div>
+        <div class="pet-info">
+          <div class="pet-name">${sum.stage.name}</div>
+          <div class="pet-desc">${sum.stage.desc}</div>
+          <div class="pet-mood">${sum.mood.emoji} ${sum.mood.text}</div>
+          <div class="pet-bar"><div class="pet-bar-fill" style="width:${pct}%"></div><span class="pet-bar-txt">${sum.progress.maxed ? 'MAX' : sum.progress.into + ' / ' + sum.progress.span}</span></div>
+          <div class="pet-next">${nextLine}</div>
+          <div class="pet-total">🌱 总成长值 <b>${sum.xp}</b></div>
+        </div>
+      </div>
+
+      <div class="rotate-bar" style="margin:12px 0">
+        <button id="pet-go" class="big-btn">🎹 去玩音乐，陪它长大 →</button>
+      </div>
+
+      <div class="card-panel">
+        <h3 style="margin:0 0 8px">进化之路</h3>
+        <div class="pet-gallery">${gallery}</div>
+      </div>`;
+  }
+
+  function wire() {
+    const go = root.querySelector('#pet-go');
+    if (go) go.onclick = () => { try { switchModule('magicjam'); } catch (_) {} };
+  }
+
+  function update() {
+    const st = petStats();
+    const last = (() => { try { return localStorage.getItem(PET_KEY); } catch (_) { return null; } })();
+    const sum = PetGrow.petSummary(st, { practicedToday: practicedToday(), lastStageId: last });
+    root.innerHTML = buildHtml(sum, sum.xp);
+    wire();
+    // 进化检测：阶段比上次记录更高 → 全屏庆祝（首次 last 为 null 则只记录不庆祝）
+    if (sum.evolved) {
+      try { victoryLightShow(document.body, { confetti: 130, text: `🎉 进化啦！${sum.stage.emoji} ${sum.stage.name}` }); } catch (_) {}
+      try { cheerToast(`你的小伙伴进化成 ${sum.stage.emoji} ${sum.stage.name} 啦！`, root); } catch (_) {}
+    }
+    try { localStorage.setItem(PET_KEY, sum.stage.id); } catch (_) {}
+  }
+
+  update();
+  petGrowOnUpdate = update;
+}
+
 // ========== 模块: 🎲 骰子热身（掷骰随机生成今日小任务，消除"练什么"的选择压力）==========
 function renderDiceWarmup() {
   const root = $('#module-dice');
@@ -16340,7 +16426,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
