@@ -2094,3 +2094,23 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .dr-stage { display:flex; justify-content:center; }
 .dr-stage canvas { max-width:100%; height:auto; border-radius:14px; border:1px solid var(--line); box-shadow:0 8px 30px rgba(0,0,0,.4); }
 .dr-kb { margin-top:14px; }
+
+/* 🧩 五度圈拼图（Circle-of-Fifths Puzzle） */
+.cp-hud { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:10px; font-size:15px; color:var(--muted); }
+.cp-hud .cp-stat b { color:var(--text); font-size:17px; }
+.cp-bar { margin-bottom:12px; }
+.cp-wrap { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.cp-stage { flex:0 0 auto; }
+.cp-stage canvas { max-width:100%; height:auto; }
+.cp-side { flex:1 1 240px; min-width:240px; }
+.cp-target { font-size:20px; font-weight:700; margin-bottom:4px; }
+.cp-target-key { font-weight:800; }
+.cp-target-sig { color:var(--muted); font-size:14px; font-weight:500; margin-left:6px; }
+.cp-scale { display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin:12px 0; }
+.cp-note { display:inline-flex; align-items:center; justify-content:center; min-width:34px; height:38px; padding:0 6px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); font-weight:700; font-size:15px; transition:all .18s; }
+.cp-note.done { background:#74e08c; color:#15182e; border-color:#74e08c; }
+.cp-note.next { border-color:#ffd24a; color:var(--text); box-shadow:0 0 0 2px rgba(255,210,74,.35); animation:cpPulse 1.1s ease-in-out infinite; }
+@keyframes cpPulse { 0%,100%{ box-shadow:0 0 0 2px rgba(255,210,74,.25); } 50%{ box-shadow:0 0 0 5px rgba(255,210,74,.12); } }
+.cp-arrow { color:var(--muted); font-size:14px; opacity:.5; }
+.cp-tip { color:var(--muted); font-size:14px; margin-top:6px; min-height:20px; }
+.cp-kb { margin-top:16px; }

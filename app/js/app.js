@@ -85,6 +85,7 @@ import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
 import { StaffWars, makeRng as swMakeRng, noteLetter as swNoteLetter, diatonicIndex as swDiatonic } from './staff-wars.js';
 import { Drops, makeRng as dropsMakeRng, noteLetter as dropsNoteLetter, POOL_C as DROPS_POOL } from './drops.js';
+import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -159,6 +160,7 @@ let rhythmEchoTap = null;    // 节奏回声的击打回调（模块62注册，�
 let pitchDirOnNote = null;   // 高低音方向感的 note-on 回调（模块63注册）
 let staffWarsOnNote = null;  // 🚀 看谱击落的 note-on 回调（注册）
 let dropsOnNote = null;      // 🫧 接音水滴的 note-on 回调（注册）
+let cofPuzzleOnNote = null;  // 🧩 五度圈拼图的 note-on 回调（注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -626,6 +628,8 @@ function onMidiIn(bytes) {
     if (staffWarsOnNote) staffWarsOnNote(m.note);
     // 驱动 🫧 接音水滴（Drops）
     if (dropsOnNote) dropsOnNote(m.note);
+    // 驱动 🧩 五度圈拼图
+    if (cofPuzzleOnNote) cofPuzzleOnNote(m.note);
     // 通用键盘回显：真实 CA99 按键点亮所有"当前可见"练习的屏幕 88 键（之前只有曲谱跟弹能亮）
     PianoKeyboard.echoOn(m.note);
     // 通用识别：对"点击即作答"且无全局钩子的练习（ni/sr/mpl），让真实按键等价于点击该键
@@ -13960,6 +13964,158 @@ function renderDrops() {
   updateHud(); draw();
 }
 
+// ========== 🧩 五度圈拼图（闯关解锁调号）==========
+function renderCofPuzzle() {
+  const root = $('#module-cofpuzzle');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🧩 五度圈拼图</h2>
+    <p style="color:var(--muted);margin-bottom:12px">从 C 大调出发，沿五度圈顺时针 <b>C → G → D → A …</b> 闯关：<b>弹对当前这一格的整条大调音阶</b>就点亮它、解锁下一格 🔓。把 12 个调一格格收集齐，建立调号肌肉记忆！按<b>音名</b>判定（哪个八度都算对）。可用真琴或下方屏幕键盘。</p>
+    <div class="cp-hud">
+      <span class="cp-stat">🔓 已解锁 <b id="cp-count">1</b>/12</span>
+      <span class="cp-stat" id="cp-sig"></span>
+    </div>
+    <div class="cp-bar">
+      <button id="cp-reset" class="ghost-btn">↺ 重新开始</button>
+    </div>
+    <div class="cp-wrap">
+      <div class="cp-stage"><canvas id="cp-canvas" width="380" height="380"></canvas></div>
+      <div class="cp-side">
+        <div class="cp-target" id="cp-target"></div>
+        <div class="cp-scale" id="cp-scale"></div>
+        <div class="cp-tip" id="cp-tip">弹奏上面的音阶来解锁这一格 🎹</div>
+      </div>
+    </div>
+    <div id="cp-kb" class="cp-kb"></div>`;
+
+  const STORE = 'ca99_cof_puzzle';
+  const puzzle = new CofPuzzle({ unlocked: CofPuzzle.loadUnlocked(localStorage, STORE) || ['C'], storageKey: STORE });
+  const COLORS = ['#ff6b81', '#ffa94d', '#ffd24a', '#74e08c', '#4dd2e0', '#5b8cff', '#7c83ff', '#b06bff', '#ff6bd6', '#ff8aa0', '#6be0c0', '#9fd24a'];
+
+  const canvas = root.querySelector('#cp-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2, R = 150, NR = 34;
+  let pulse = 0, raf = null;
+
+  function nodePos(i) {
+    const ang = -Math.PI / 2 + i * (Math.PI * 2 / 12);
+    return { x: cx + R * Math.cos(ang), y: cy + R * Math.sin(ang) };
+  }
+
+  function drawWheel() {
+    ctx.clearRect(0, 0, W, H);
+    // 连接环
+    ctx.strokeStyle = 'rgba(140,150,200,.25)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    // 中心文字
+    ctx.fillStyle = 'rgba(200,208,255,.6)'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold 15px system-ui,sans-serif'; ctx.fillText('五度圈', cx, cy - 9);
+    ctx.font = '12px system-ui,sans-serif'; ctx.fillStyle = 'rgba(160,170,220,.5)';
+    ctx.fillText(`${puzzle.unlockedCount()}/12`, cx, cy + 11);
+    for (let i = 0; i < COFP_ORDER.length; i++) {
+      const key = COFP_ORDER[i], p = nodePos(i);
+      const unlocked = puzzle.isUnlocked(key), isTarget = puzzle.target === key;
+      ctx.save();
+      if (isTarget) {
+        const gl = 12 + 8 * Math.abs(Math.sin(pulse));
+        ctx.shadowColor = '#ffd24a'; ctx.shadowBlur = gl;
+      } else if (unlocked) { ctx.shadowColor = COLORS[i]; ctx.shadowBlur = 8; }
+      ctx.beginPath(); ctx.arc(p.x, p.y, NR, 0, Math.PI * 2);
+      ctx.fillStyle = unlocked ? COLORS[i] : '#262a45';
+      ctx.fill();
+      ctx.restore();
+      ctx.lineWidth = isTarget ? 3 : 1.5;
+      ctx.strokeStyle = isTarget ? '#ffe27a' : (unlocked ? 'rgba(255,255,255,.5)' : 'rgba(120,128,170,.5)');
+      ctx.beginPath(); ctx.arc(p.x, p.y, NR, 0, Math.PI * 2); ctx.stroke();
+      // 调名
+      ctx.fillStyle = unlocked ? '#15182e' : 'rgba(160,168,210,.7)';
+      ctx.font = 'bold 17px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(key, p.x, p.y - 4);
+      // 小调/锁
+      ctx.font = '10px system-ui,sans-serif';
+      const w = COF_WHEEL.find(x => x.major === key);
+      if (unlocked) { ctx.fillStyle = 'rgba(21,24,46,.65)'; ctx.fillText(w ? w.minor : '', p.x, p.y + 11); }
+      else { ctx.fillText(isTarget ? '🎯' : '🔒', p.x, p.y + 12); }
+    }
+  }
+
+  function buildScaleStrip() {
+    const tEl = root.querySelector('#cp-target');
+    const sEl = root.querySelector('#cp-scale');
+    root.querySelector('#cp-count').textContent = puzzle.unlockedCount();
+    if (puzzle.isComplete()) {
+      tEl.innerHTML = `<span class="cp-target-key">🏆 全部解锁！</span>`;
+      sEl.innerHTML = ''; root.querySelector('#cp-tip').textContent = '你收集齐了全部 12 个调，太棒了！';
+      root.querySelector('#cp-sig').textContent = '';
+      return;
+    }
+    const key = puzzle.target;
+    const w = COF_WHEEL.find(x => x.major === key);
+    tEl.innerHTML = `<span class="cp-target-key" style="color:${COLORS[COFP_ORDER.indexOf(key)]}">🎯 ${key} 大调</span> <span class="cp-target-sig">${w ? cofSigLabel(w) : ''}</span>`;
+    root.querySelector('#cp-sig').textContent = w ? `本格调号：${cofSigLabel(w)}` : '';
+    // 音名：7 个拼写 + 高八度主音
+    const spell = cofSpelling(key);
+    const names = [...spell, spell[0]];
+    sEl.innerHTML = names.map((n, i) => `<span class="cp-note" data-i="${i}">${n}</span>`).join('<span class="cp-arrow">›</span>');
+    markProgress();
+  }
+
+  function markProgress() {
+    const notes = root.querySelectorAll('#cp-scale .cp-note');
+    notes.forEach((el, i) => {
+      el.classList.toggle('done', i < puzzle.idx);
+      el.classList.toggle('next', i === puzzle.idx);
+    });
+  }
+
+  function onNote(m) {
+    if (puzzle.isComplete()) return;
+    const r = puzzle.play(m);
+    if (r.ok) {
+      playTone(midiToFreq(m), 0, 0.4);
+      if (r.complete) {
+        puzzle.save(localStorage);
+        const unlocked = r.unlockedKey;
+        cheerBurst(root, 70);
+        cheerToast(`🔓 解锁 ${unlocked} 大调！`, root);
+        recordPractice('cofpuzzle', '五度圈拼图', 1, 1, puzzle.unlockedCount());
+        buildScaleStrip();
+        drawWheel();
+      } else {
+        markProgress();
+        const tip = root.querySelector('#cp-tip');
+        tip.textContent = `很好，继续… ${puzzle.idx}/${puzzle.expected.length}`;
+      }
+    } else if (r.wrong) {
+      const tip = root.querySelector('#cp-tip');
+      const PCN = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+      const want = PCN[((r.expectedMidi % 12) + 12) % 12];
+      tip.textContent = `还差一点～下一个该弹 ${want} 🤔`;
+    }
+  }
+  cofPuzzleOnNote = onNote;
+
+  const kb = new PianoKeyboard(root.querySelector('#cp-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => onNote(m),
+  });
+  kb.scrollToShow(60, 84);
+
+  root.querySelector('#cp-reset').onclick = () => {
+    puzzle.resetAll(); puzzle.save(localStorage);
+    buildScaleStrip(); drawWheel();
+    root.querySelector('#cp-tip').textContent = '已重置，从 G 大调重新闯关 🎹';
+  };
+
+  function loop() { pulse += 0.08; drawWheel(); raf = requestAnimationFrame(loop); }
+  // 仅在该模块可见时跑动画（pulse 高亮目标格）
+  loop();
+
+  if (typeof window !== 'undefined') window.__cofpuzzle = { play: onNote, puzzle: () => puzzle };
+  buildScaleStrip(); drawWheel();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -14607,7 +14763,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
