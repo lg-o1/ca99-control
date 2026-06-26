@@ -2205,3 +2205,13 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   border: 1px solid rgba(255,255,255,.08); }
 .rj-canvas { width: 100%; height: auto; display: block; border-radius: 10px;
   background: linear-gradient(180deg, rgba(99,102,241,.08), rgba(244,114,182,.06)); }
+
+/* ===== 👯 双人对战 Family Duel ===== */
+.fd-score{display:flex;align-items:center;justify-content:center;gap:14px;margin:8px 0 12px;flex-wrap:wrap}
+.fd-team{display:flex;align-items:center;gap:8px;padding:8px 16px;border-radius:14px;border:2px solid var(--tc,#555);background:rgba(255,255,255,.04);transition:.2s}
+.fd-team.fd-active{background:color-mix(in srgb,var(--tc) 22%,transparent);box-shadow:0 0 16px var(--tc);transform:scale(1.06)}
+.fd-ava{font-size:1.6rem}
+.fd-name{font-weight:700}
+.fd-pts{font-size:1.5rem;font-weight:800;color:var(--tc,#fff);min-width:1.4em;text-align:center}
+.fd-vs{font-weight:800;color:var(--muted);font-size:.9rem;letter-spacing:1px}
+.fd-banner{text-align:center;font-size:1.05rem;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);margin-bottom:8px;line-height:1.5}

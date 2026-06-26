@@ -92,6 +92,7 @@ import * as XpLevel from './xp-level.js';
 import * as WeeklyQuest from './weekly-quest.js';
 import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhostFrac, playerFrac as grPlayerFrac, lead as grLead, formatMs as grFormatMs } from './ghost-race.js';
 import { PATTERNS as RJ_PATTERNS, patternById as rjPatternById, RhythmJump } from './rhythm-jump.js';
+import { FamilyDuel, DEFAULT_PLAYERS as FD_PLAYERS } from './family-duel.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -153,6 +154,7 @@ let speedRunOnNoteOff = null; // 🚀 极速挑战的 note-off 回调
 let ghostRaceOnNote = null;  // 👻 幽灵竞速的 note-on 回调（幽灵竞速模块注册）
 let ghostRaceOnNoteOff = null; // 👻 幽灵竞速的 note-off 回调
 let rhythmJumpOnNote = null; // 🥁 节奏跳跳的 note-on 回调（任意键拍节奏；节奏跳跳模块注册）
+let familyDuelOnNote = null; // 👯 双人对战的 note-on 回调（双人对战模块注册）
 let diceOnNote = null;      // 🎲 骰子热身的 note-on 回调
 let diceOnNoteOff = null;   // 🎲 骰子热身的 note-off 回调
 let guessOnNote = null;     // 🕵️ 猜歌视奏的 note-on 回调
@@ -600,6 +602,8 @@ function onMidiIn(bytes) {
     if (ghostRaceOnNote) ghostRaceOnNote(m.note, m.velocity);
     // 驱动节奏跳跳（任意键拍节奏）
     if (rhythmJumpOnNote) rhythmJumpOnNote(m.note, m.velocity);
+    // 驱动双人对战
+    if (familyDuelOnNote) familyDuelOnNote(m.note, m.velocity);
     // 驱动骰子热身
     if (diceOnNote) diceOnNote(m.note, m.velocity);
     // 驱动猜歌视奏
@@ -13810,6 +13814,208 @@ function renderRhythmJump() {
   drawPicker(); updateDesc(); updateHud(); draw();
 }
 
+// ========== 模块: 👯 双人对战（家庭对战，轮流上场比总分，把练琴变亲子互动）==========
+function renderFamilyDuel() {
+  const root = $('#module-duel');
+  if (!root) return;
+  const POOL = [60, 62, 64, 65, 67, 69, 71, 72]; // C 大调
+  const OPPONENTS = [
+    { name: '爸爸', emoji: '👨', color: '#38bdf8' },
+    { name: '妈妈', emoji: '👩', color: '#a78bfa' },
+    { name: '朋友', emoji: '🧒', color: '#34d399' },
+  ];
+  const me = { name: 'Lily', emoji: '👧', color: '#f472b6' };
+  let oppIdx = 0;
+  let rounds = 3;
+  let seqLen = 4;
+  let phase = 'idle';   // idle | ready | playing | result
+  let duel = null;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">👯 双人对战</h2>
+    <p style="color:var(--muted);margin-bottom:14px">和<b>爸爸 / 妈妈 / 朋友</b>轮流上场！每回合照着<b>高亮的音</b>弹，弹对一个得 1 分，几回合下来比<b>总分</b> 🏆。这不是孤独练习——是<b>一起玩</b>。弹错<b>不扣分</b>，结束时<b>两个人都棒</b>，还有你们的<b>合作总分</b>！可接 CA99 真琴或点屏幕键盘。</p>
+
+    <div class="bb-pick" id="fd-opp"></div>
+
+    <div class="rotate-bar" style="margin:6px 0 10px">
+      <label class="scaffold-toggle">回合
+        <select id="fd-rounds"><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option></select>
+      </label>
+      <label class="scaffold-toggle">每回合音数
+        <select id="fd-len"><option value="3">🌱 3</option><option value="4" selected>🌿 4</option><option value="5">🔥 5</option></select>
+      </label>
+    </div>
+
+    <div class="fd-score" id="fd-score"></div>
+    <div class="fd-banner" id="fd-banner">选好对手，开始你们的家庭对战！</div>
+    <div class="bb-feedback" id="fd-target" style="min-height:34px"></div>
+    <div class="bb-feedback" id="fd-feedback"></div>
+
+    <div class="rotate-bar">
+      <button id="fd-go" class="big-btn">▶ 开始对战</button>
+    </div>
+
+    <div class="kb-wrap" style="margin-top:10px">
+      <div class="kb-cap" id="fd-kbcap">🎹 弹出高亮的音（哪个八度都算对）</div>
+      <div id="fd-kb"></div>
+    </div>`;
+
+  const players = () => [me, OPPONENTS[oppIdx]];
+
+  function drawOpp() {
+    $('#fd-opp').innerHTML = OPPONENTS.map((o, i) =>
+      `<button class="bb-chip${i === oppIdx ? ' on' : ''}" data-i="${i}">${o.emoji} ${me.name} vs ${o.name}</button>`).join('');
+    $('#fd-opp').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { if (phase !== 'idle') return; oppIdx = +el.dataset.i; drawOpp(); drawScore(); };
+    });
+  }
+
+  function drawScore() {
+    const ps = players();
+    const sc = duel ? duel.totals() : [0, 0];
+    $('#fd-score').innerHTML = ps.map((p, i) => {
+      const lead = duel && duel.currentPlayer === i && phase === 'playing';
+      return `<div class="fd-team${lead ? ' fd-active' : ''}" style="--tc:${p.color}">
+        <span class="fd-ava">${p.emoji}</span>
+        <span class="fd-name">${p.name}</span>
+        <span class="fd-pts">${sc[i]}</span>
+      </div>`;
+    }).join('<span class="fd-vs">VS</span>');
+  }
+
+  function genSeq(len) {
+    const out = []; let last = -1;
+    for (let i = 0; i < len; i++) {
+      let n; let guard = 0;
+      do { n = POOL[Math.floor(Math.random() * POOL.length)]; guard++; } while (n === last && guard < 8);
+      out.push(n); last = n;
+    }
+    return out;
+  }
+
+  function drawTarget() {
+    if (!duel || phase !== 'playing') { $('#fd-target').innerHTML = ''; return; }
+    const seq = duel.seq, pos = duel.pos;
+    $('#fd-target').innerHTML = seq.map((m, i) =>
+      `<span class="bb-pnote${i === pos ? ' cur' : ''}${pos > i ? ' done' : ''}">${kbNoteName(m)}</span>`).join('<i class="bb-arrow">→</i>');
+  }
+
+  function showTarget() {
+    fdKb.clear();
+    const t = duel && duel.current();
+    if (t != null) {
+      const col = players()[duel.currentPlayer].color;
+      fdKb.highlightMany([{ midi: t, color: col, text: kbNoteName(t) }]);
+    }
+  }
+
+  function setBanner(html) { $('#fd-banner').innerHTML = html; }
+
+  function toReady() {
+    phase = 'ready';
+    const p = players()[duel.currentPlayer];
+    const rn = duel.roundNumber();
+    drawScore();
+    $('#fd-target').innerHTML = '';
+    fdKb.clear();
+    setBanner(`<span style="color:${p.color}">${p.emoji} ${p.name}</span> 的回合（第 <b>${rn}/${rounds}</b> 回合）—— 换人上场，准备好了就开始！`);
+    $('#fd-feedback').textContent = '';
+    $('#fd-go').style.display = '';
+    $('#fd-go').textContent = `✋ ${p.emoji} ${p.name} 准备好了，开始！`;
+  }
+
+  function beginTurn() {
+    phase = 'playing';
+    duel.startTurn(genSeq(seqLen));
+    $('#fd-go').style.display = 'none';
+    const p = players()[duel.currentPlayer];
+    setBanner(`<span style="color:${p.color}">${p.emoji} ${p.name}</span> 弹奏中…按顺序弹出高亮的音 🎵`);
+    drawScore(); drawTarget(); showTarget();
+  }
+
+  function handlePress(midi) {
+    if (!duel || phase !== 'playing') return;
+    const r = duel.press(midi);
+    if (r.hit) {
+      fdKb.flash(midi, players()[duel.currentPlayer === null ? 0 : duel.currentPlayer].color);
+      drawScore(); drawTarget();
+      if (r.done) {
+        const p = players()[duel.currentPlayer];
+        duel.endTurn();
+        $('#fd-feedback').innerHTML = `✅ <span style="color:${p.color}">${p.emoji} ${p.name}</span> 这回合得 <b>${r.turnScore}</b> 分！`;
+        if (duel.isOver()) { setTimeout(showResult, 600); }
+        else { setTimeout(toReady, 700); }
+        return;
+      }
+      showTarget();
+    } else {
+      fdKb.flash(midi, '#fbbf24');
+    }
+  }
+
+  function showResult() {
+    phase = 'result';
+    drawScore();
+    const res = duel.result();
+    const ps = players();
+    const team = duel.teamTotal();
+    fdKb.clear();
+    $('#fd-target').innerHTML = '';
+    if (res.tie) {
+      setBanner(`🤝 <b>平局！</b>${ps[0].emoji}${ps[0].name} 和 ${ps[1].emoji}${ps[1].name} 旗鼓相当——你们配合得真好！`);
+    } else {
+      const w = ps[res.winner];
+      setBanner(`🏆 <span style="color:${w.color}">${w.emoji} ${w.name}</span> 这局赢啦！但两个人都很棒——下局换你赢回来！`);
+    }
+    $('#fd-feedback').innerHTML = `🎉 你们的<b>合作总分</b>：<b>${team}</b> 分！一起玩音乐最开心～`;
+    recordPractice('familyduel', '双人对战', duel.totalTurns, team, Math.max(...duel.totals()));
+    cheerBurst(root, 70);
+    try { victoryLightShow(root, { confetti: 80, text: res.tie ? '🤝 平局！一起赢' : `🏆 ${ps[res.winner].name} 胜！` }); } catch (_) {}
+    $('#fd-go').style.display = '';
+    $('#fd-go').textContent = '↻ 再来一局';
+  }
+
+  function toIdle() {
+    phase = 'idle';
+    duel = null;
+    drawScore(); drawOpp();
+    $('#fd-target').innerHTML = '';
+    $('#fd-feedback').textContent = '';
+    fdKb.clear();
+    familyDuelOnNote = null;
+    setBanner('选好对手，开始你们的家庭对战！');
+    $('#fd-go').style.display = '';
+    $('#fd-go').textContent = '▶ 开始对战';
+  }
+
+  const fdKb = new PianoKeyboard($('#fd-kb'), {
+    labels: 'c',
+    // CA99 真琴由全局 familyDuelOnNote 钩子驱动；屏幕键盘点键也作答。
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
+  });
+  fdKb.scrollToShow(55, 79);
+
+  $('#fd-go').onclick = () => {
+    if (phase === 'idle') {
+      rounds = +$('#fd-rounds').value; seqLen = +$('#fd-len').value;
+      duel = new FamilyDuel({ players: players(), rounds, octaveAgnostic: true });
+      familyDuelOnNote = (m) => handlePress(m);
+      toReady();
+    } else if (phase === 'ready') {
+      beginTurn();
+    } else if (phase === 'result') {
+      toIdle();
+    }
+  };
+
+  // 切走模块自动清回调
+  document.addEventListener('ca99:module-change', (e) => {
+    if (e.detail !== 'duel') familyDuelOnNote = null;
+  });
+
+  drawOpp(); drawScore();
+}
+
 // ========== 模块: 🎲 骰子热身（掷骰随机生成今日小任务，消除"练什么"的选择压力）==========
 function renderDiceWarmup() {
   const root = $('#module-dice');
@@ -16000,7 +16206,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
