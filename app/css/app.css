@@ -2320,3 +2320,24 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .pmd-stat b{color:var(--text)}
 .pmd-rline{padding:3px 0}
 #pmd-rec.running{background:#b03636;color:#fff}
+
+/* 🔁 AB 循环慢练器 */
+.lt-seg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted)}
+.lt-num{width:58px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:#0e1322;color:var(--text);font-size:15px;text-align:center}
+.lt-status{color:var(--muted);font-size:13px;margin-left:6px}
+.lt-note{color:var(--muted);font-size:12px;margin-top:4px}
+.lt-up-note{color:var(--muted);font-size:13px}
+.lt-check{display:inline-flex;align-items:center;gap:6px;color:var(--text);font-size:14px;margin-top:8px;cursor:pointer}
+.lt-speed{margin-top:8px;color:#e7e3f5;font-size:15px}
+.lt-metro-box{display:flex;align-items:center;gap:8px}
+.lt-pulse{width:18px;height:18px;border-radius:50%;background:#27314a;display:inline-block;transition:none}
+.lt-pulse.on{background:#38bdf8;box-shadow:0 0 12px #38bdf8;transition:background .04s}
+.lt-pulse.on.accent{background:#f59e0b;box-shadow:0 0 16px #f59e0b}
+.lt-beat{color:var(--muted);font-size:13px;min-width:120px}
+.lt-passage{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:10px;background:#0e1322;border-radius:12px;margin-bottom:12px;min-height:42px}
+.lt-pnote{padding:4px 9px;border-radius:8px;background:#1a2236;color:#cbd5e1;font-weight:700;font-size:15px}
+.lt-pnote.cur{background:#38bdf8;color:#06283d;box-shadow:0 0 10px #38bdf8}
+.lt-pnote.done{background:#1f3b2e;color:#34d399}
+.lt-arrow{color:#465069;font-style:normal}
+.lt-empty{color:var(--muted)}
+.ear-chip.locked{opacity:.5;pointer-events:none}

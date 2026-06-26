@@ -62,6 +62,7 @@ import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } fr
 import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
 import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
 import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi, beatToMs as scfBeatToMs } from './score-follow.js';
+import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js';
 import { CadenceGame, CADENCES as CAD_LIST, cadenceInfo, romanOf as cadRoman } from './cadence.js';
 import { NoteIdGame, noteName as niNoteName, isBlack as niIsBlack } from './note-id.js';
 import { StaffReadGame, staffPosition as srStaffPos } from './staff-read.js';
@@ -187,6 +188,8 @@ let warmupOnNote = null;        // 🌅 每日热身例程·音阶步的 note-on
 let warmupOnNoteOff = null;     // 🌅 每日热身例程·音阶步的 note-off 回调
 let playMoodOnNote = null;      // 🎭 情绪演奏的 note-on 回调（带力度，自由表达）
 let playMoodOnNoteOff = null;   // 🎭 情绪演奏的 note-off 回调
+let loopTrainerOnNote = null;   // 🔁 AB 循环慢练器的 note-on 回调（逐组等待）
+let loopTrainerOnNoteOff = null;// 🔁 AB 循环慢练器的 note-off 回调
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -626,6 +629,8 @@ function onMidiIn(bytes) {
     if (warmupOnNote) warmupOnNote(m.note, m.velocity);
     // 驱动情绪演奏（自由表达，带力度）
     if (playMoodOnNote) playMoodOnNote(m.note, m.velocity);
+    // 驱动 AB 循环慢练器（逐组等待）
+    if (loopTrainerOnNote) loopTrainerOnNote(m.note, m.velocity);
     // 驱动猜歌视奏
     if (guessOnNote) guessOnNote(m.note, m.velocity);
     // 驱动力度练习
@@ -760,6 +765,8 @@ function onMidiIn(bytes) {
     if (warmupOnNoteOff) warmupOnNoteOff(m.note);
     // 🎭 情绪演奏：真琴松键 → 屏幕键抬起
     if (playMoodOnNoteOff) playMoodOnNoteOff(m.note);
+    // 🔁 AB 循环慢练器：真琴松键 → 屏幕键抬起
+    if (loopTrainerOnNoteOff) loopTrainerOnNoteOff(m.note);
     // 🕵️ 猜歌视奏：真琴松键 → 屏幕键抬起
     if (guessOnNoteOff) guessOnNoteOff(m.note);
     // 通用键盘回显：真实 CA99 松键 → 所有可见键盘抬起
@@ -15725,6 +15732,317 @@ function renderPlayMood() {
   });
 }
 
+// ========== 🔁 AB 循环慢练器（分段精练：框选 A→B 小节 + 从慢速自动爬升 + 左右手分层）==========
+// 复用 ScoreFollow（音符解析 / 容差等待 waitMatch / 分组 / 手别过滤）+ LoopSession（速度阶梯 + 小节窗口）
+// + metro-kit 浏览器节拍器。这是全 app 唯一直接帮上真钢琴课的「写作业」工具：分段精练难句。
+let loopTrainerMetroTimer = null;
+function renderLoopTrainer() {
+  const root = $('#module-looptrainer');
+  if (!root) return;
+
+  const customSongs = [];          // 上传的双手 MIDI
+  let songId = SCF_SONGS[0].id;
+  let session = null;
+  let running = false;
+  let hand = 'both';               // 'both' | 'r' | 'l'
+  let fromM = 1, toM = 1;
+  let startPct = 60, autoClimb = true;
+  let metroOn = true;
+  const metroSound = 'wood';
+  let kb = null;
+
+  const allSongs = () => [...SCF_SONGS, ...customSongs];
+  const curSong = () => allSongs().find((s) => s.id === songId) || SCF_SONGS[0];
+  const hasHands = (song) => !!song.hands || (Array.isArray(song.notes) && song.notes.some((n) => n.hand === 'l'));
+  const meterOf = (song) => song.meter || 4;
+  const meterId = (song) => {
+    const id = `${meterOf(song)}/4`;
+    return MetroKit.METERS.some((m) => m.id === id) ? id : '4/4';
+  };
+  function measuresOf(song) {
+    const sf = new ScoreFollow(song, { timeScale: 1 });
+    return Math.max(1, Math.ceil(sf.totalBeats / meterOf(song) - 1e-6));
+  }
+
+  function stopMetro() { if (loopTrainerMetroTimer) { clearInterval(loopTrainerMetroTimer); loopTrainerMetroTimer = null; } }
+  function restartMetro() {
+    stopMetro();
+    if (!metroOn || !session || !running) return;
+    const mid = meterId(curSong());
+    const beats = MetroKit.beatsOf(mid);
+    const interval = 60000 / session.bpm;
+    let b = 0;
+    const tick = () => {
+      const inBar = b % beats;
+      const level = MetroKit.accentAt(mid, inBar);
+      playMetroClick(level, metroSound);
+      const pulse = $('#lt-pulse');
+      if (pulse) { pulse.classList.remove('on'); void pulse.offsetWidth; pulse.classList.add('on', level === 'accent' ? 'accent' : ''); }
+      const beatEl = $('#lt-beat');
+      if (beatEl) beatEl.textContent = `♩ ${session.bpm} · 第 ${inBar + 1} 拍${level === 'accent' ? ' ●' : ''}`;
+      b++;
+    };
+    tick();
+    loopTrainerMetroTimer = setInterval(tick, interval);
+  }
+
+  function buildSession() {
+    const song = curSong();
+    if (!hasHands(song)) hand = 'both';
+    session = new LoopSession(song, {
+      meter: meterOf(song), hand, fromM, toM,
+      ladder: { start: startPct, step: 10, target: autoClimb ? 100 : startPct },
+    });
+  }
+
+  function clampWindow() {
+    const tm = measuresOf(curSong());
+    if (toM > tm) toM = tm;
+    if (fromM > tm) fromM = tm;
+    if (fromM < 1) fromM = 1;
+    if (toM < fromM) toM = fromM;
+  }
+
+  function drawPassage() {
+    const el = $('#lt-passage'); if (!el) return;
+    if (!session || !session.groups.length) { el.innerHTML = '<span class="lt-empty">选好小节段落，点「▶ 开始慢练」</span>'; return; }
+    el.innerHTML = session.groups.map((g, i) => {
+      const nm = g.notes.map((n) => kbNoteName(n.midi)).join('+');
+      const cls = i < session.idx ? 'done' : (i === session.idx ? 'cur' : '');
+      return `<span class="lt-pnote ${cls}">${nm}</span>`;
+    }).join('<i class="lt-arrow">›</i>');
+  }
+
+  function showTarget() {
+    if (!kb) return;
+    kb.clear();
+    if (!session || !running) return;
+    const ts = session.currentTargets();
+    if (ts.length) {
+      kb.highlightMany(ts.map((m) => ({ midi: m, color: '#38bdf8', text: kbNoteName(m) })));
+      kb.scrollToShow(Math.min(...ts) - 2, Math.max(...ts) + 2);
+    }
+  }
+
+  function updateSpeedLabel() {
+    const el = $('#lt-speed'); if (!el) return;
+    const pct = session ? session.pct : startPct;
+    const bpm = session ? session.bpm : Math.round((curSong().bpm || 90) * startPct / 100);
+    el.innerHTML = `当前速度 <b>${pct}%</b>　≈ ♩${bpm}${autoClimb ? (pct >= 100 ? '（已到原速 🎯）' : '　弹干净一遍自动 +10%') : '（固定）'}`;
+  }
+
+  function updateStatus() {
+    const el = $('#lt-status'); if (!el) return;
+    const tm = measuresOf(curSong());
+    const seg = `循环第 <b>${fromM}–${toM}</b> / 共 ${tm} 小节`;
+    if (!session || !running) { el.innerHTML = `${seg}`; return; }
+    el.innerHTML = `${seg}　·　已练 <b>${session.passes}</b> 遍（干净 ${session.cleanPasses}）`;
+  }
+
+  function onPassDone(res) {
+    if (res.mastered && session.pct >= 100) {
+      cheerToast('🏆 原速干净弹完——这段练成了！', root); cheerBurst(root, 60);
+      $('#lt-feedback').textContent = `🏆 太棒了！第 ${fromM}–${toM} 小节在 100% 原速下弹得干干净净，可以把它连进整首曲子了！`;
+      $('#lt-feedback').className = 'sight-feedback ok';
+    } else if (res.climbed) {
+      cheerToast(`⏫ 干净一遍！提速到 ${res.toPct}%`, root); cheerBurst(root, 30);
+      $('#lt-feedback').textContent = `👍 干净一遍 → 速度 ${res.fromPct}% ⏫ ${res.toPct}%。手指记住了，再来一遍～`;
+      $('#lt-feedback').className = 'sight-feedback ok';
+    } else if (res.clean) {
+      $('#lt-feedback').textContent = `✅ 干净一遍（${res.toPct}%）。保持这个稳！`;
+      $('#lt-feedback').className = 'sight-feedback ok';
+    } else {
+      $('#lt-feedback').textContent = `🔁 这遍有几个小磕绊，速度先留在 ${res.toPct}%，慢慢再练一遍稳一稳（没关系，慢就是快）。`;
+      $('#lt-feedback').className = 'sight-feedback';
+    }
+    updateSpeedLabel(); updateStatus(); restartMetro();
+  }
+
+  function handlePress(midi) {
+    if (!running || !session) return;
+    const r = session.press(midi);
+    if (r.wrong) {
+      kb.flash(midi, '#f87171');
+      $('#lt-feedback').textContent = '🤔 看蓝色高亮键，慢慢来——弹错不要紧，不会卡住你 💙';
+      $('#lt-feedback').className = 'sight-feedback';
+      return;
+    }
+    kb.flash(midi, r.exact ? '#34d399' : '#fbbf24');
+    if (r.complete) {
+      const res = session.completePass();
+      const n = session.totalGroups || 1;
+      recordPractice('looptrainer', 'AB 循环慢练', n, n, n);
+      onPassDone(res);
+      drawPassage(); showTarget();
+      return;
+    }
+    drawPassage(); showTarget();
+  }
+
+  function stop() {
+    running = false;
+    stopMetro();
+    loopTrainerOnNote = null; loopTrainerOnNoteOff = null;
+    if (kb) kb.clear();
+    $('#lt-go').disabled = false;
+    $('#lt-stop').disabled = true;
+    $('#lt-status') && updateStatus();
+    setControlsDisabled(false);
+  }
+
+  function start() {
+    clampWindow();
+    buildSession();
+    if (!session.totalGroups) {
+      $('#lt-feedback').textContent = '这段没有可弹的音（换个手别或小节段落试试）';
+      $('#lt-feedback').className = 'sight-feedback';
+      return;
+    }
+    running = true;
+    $('#lt-go').disabled = true;
+    $('#lt-stop').disabled = false;
+    setControlsDisabled(true);
+    $('#lt-feedback').textContent = `开始慢练第 ${fromM}–${toM} 小节，从 ${session.pct}% 速度起步——按蓝色高亮键，弹对就走下一个 🐢`;
+    $('#lt-feedback').className = 'sight-feedback';
+    drawPassage(); showTarget(); updateSpeedLabel(); updateStatus();
+    restartMetro();
+    loopTrainerOnNote = (m) => handlePress(m);
+    loopTrainerOnNoteOff = (m) => { try { kb.release(m); } catch (_) {} };
+  }
+
+  function setControlsDisabled(d) {
+    ['#lt-from', '#lt-to', '#lt-all', '#lt-upload-btn'].forEach((s) => { const e = $(s); if (e) e.disabled = d; });
+    root.querySelectorAll('#lt-songs .ear-chip, #lt-hand .ear-chip, #lt-start .ear-chip').forEach((b) => b.classList.toggle('locked', d));
+  }
+
+  function drawSongChips() {
+    $('#lt-songs').innerHTML = allSongs().map((s) =>
+      `<button class="ear-chip${s.id === songId ? ' on' : ''}" data-id="${s.id}">${s.title}</button>`).join('');
+    $('#lt-songs').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => { if (running) return; songId = b.dataset.id; fromM = 1; toM = measuresOf(curSong()); refresh(); };
+    });
+  }
+
+  function drawHandChips() {
+    const hh = hasHands(curSong());
+    const chips = [['both', '🙌 双手'], ['r', '✋ 右手'], ['l', '🤚 左手']];
+    $('#lt-hand').innerHTML = chips.map(([h, lbl]) =>
+      `<button class="ear-chip${h === hand ? ' on' : ''}" data-h="${h}"${(!hh && h !== 'both') ? ' disabled' : ''}>${lbl}</button>`).join('');
+    $('#lt-hand').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => { if (running || b.disabled) return; hand = b.dataset.h; refresh(); };
+    });
+    $('#lt-hand-note').textContent = hh ? '双手 MIDI：可只练单手，练熟再合手' : '这首是单手旋律——上传双手 .mid 即可分手练';
+  }
+
+  function drawStartChips() {
+    $('#lt-start').querySelectorAll('.ear-chip').forEach((b) => {
+      b.classList.toggle('on', parseInt(b.dataset.p, 10) === startPct);
+      b.onclick = () => { if (running) return; startPct = parseInt(b.dataset.p, 10); updateSpeedLabel(); drawStartChips(); };
+    });
+  }
+
+  function refresh() {
+    clampWindow();
+    drawSongChips(); drawHandChips();
+    const tm = measuresOf(curSong());
+    const fEl = $('#lt-from'), tEl = $('#lt-to');
+    if (fEl) { fEl.max = tm; fEl.value = fromM; }
+    if (tEl) { tEl.max = tm; tEl.value = toM; }
+    updateSpeedLabel(); updateStatus(); drawPassage();
+  }
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🔁 AB 循环慢练器</h2>
+    <p style="color:var(--muted);margin-bottom:14px">老师布置的曲子里有<b>难句</b>？把它<b>框出来反复磨</b>——选 <b>A→B 小节</b>只循环这一段，从<b>慢速起步</b>（默认 60%），每<b>弹干净一遍自动提速 +10%</b>，一路爬到 <b>100% 原速</b>。还能<b>左右手分开</b>练（上传双手 MIDI）。这是全 app 唯一直接帮上<b>真钢琴课</b>的「写作业」工具——慢练才是真练。<b>等待式</b>：弹对当前音才走下一个，节奏小磕绊也只提示<b>不卡死</b>。配 🥁 <b>浏览器节拍器</b>稳住拍子（绝不发往 CA99）。没接 MIDI 也能点屏幕琴键。</p>
+
+    <div class="card-panel">
+      <div class="param-row" style="align-items:flex-start"><label>选曲</label>
+        <div class="ear-chips" id="lt-songs"></div></div>
+      <div class="param-row"><label></label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="file" id="lt-upload" accept=".mid,.midi" hidden>
+          <button class="grid-btn" id="lt-upload-btn">📄 上传双手 .mid</button>
+          <span class="lt-up-note" id="lt-up-note"></span>
+        </div></div>
+      <div class="param-row"><label>段落</label>
+        <div class="lt-seg">
+          第 <input type="number" id="lt-from" class="lt-num" min="1" value="1"> –
+          <input type="number" id="lt-to" class="lt-num" min="1" value="1"> 小节
+          <button class="grid-btn" id="lt-all">全曲</button>
+          <span class="lt-status" id="lt-status"></span>
+        </div></div>
+      <div class="param-row"><label>练哪手</label>
+        <div><div class="ear-chips" id="lt-hand"></div><div class="lt-note" id="lt-hand-note"></div></div></div>
+      <div class="param-row"><label>起步速度</label>
+        <div>
+          <div class="ear-chips" id="lt-start">
+            <button class="ear-chip" data-p="50">50%</button>
+            <button class="ear-chip" data-p="60">60%</button>
+            <button class="ear-chip" data-p="70">70%</button>
+            <button class="ear-chip" data-p="80">80%</button>
+            <button class="ear-chip" data-p="100">100%</button>
+          </div>
+          <label class="lt-check"><input type="checkbox" id="lt-climb" checked> 🐢→🐇 弹干净一遍自动提速（爬到 100% 原速）</label>
+          <div class="lt-speed" id="lt-speed"></div>
+        </div></div>
+      <div class="param-row"><label>节拍器</label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label class="lt-check"><input type="checkbox" id="lt-metro" checked> 🥁 浏览器节拍器（跟着拍子稳住，绝不发往 CA99）</label>
+          <div class="lt-metro-box"><span class="lt-pulse" id="lt-pulse"></span><span class="lt-beat" id="lt-beat">▶ 开始后跟着拍</span></div>
+        </div></div>
+    </div>
+
+    <div class="card-panel">
+      <div class="lt-passage" id="lt-passage"></div>
+      <div class="kb-wrap"><div class="kb-cap">🎹 按蓝色高亮键——弹对当前音才走下一个（慢慢来）</div><div id="lt-kb"></div></div>
+      <div class="rotate-bar" style="margin-top:10px">
+        <button class="big-btn" id="lt-go">▶ 开始慢练</button>
+        <button class="grid-btn" id="lt-stop" disabled>⏹ 停止</button>
+      </div>
+      <div class="sight-feedback" id="lt-feedback">选一首曲子、框好难句小节，点「▶ 开始慢练」。</div>
+    </div>`;
+
+  kb = new PianoKeyboard($('#lt-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePress(m); },
+  });
+  kb.scrollToShow(55, 84);
+
+  $('#lt-from').onchange = () => { if (running) return; fromM = parseInt($('#lt-from').value, 10) || 1; clampWindow(); refresh(); };
+  $('#lt-to').onchange = () => { if (running) return; toM = parseInt($('#lt-to').value, 10) || 1; clampWindow(); refresh(); };
+  $('#lt-all').onclick = () => { if (running) return; fromM = 1; toM = measuresOf(curSong()); refresh(); };
+  $('#lt-climb').onchange = (e) => { autoClimb = e.target.checked; updateSpeedLabel(); };
+  $('#lt-metro').onchange = (e) => { metroOn = e.target.checked; if (running) restartMetro(); };
+  $('#lt-go').onclick = () => start();
+  $('#lt-stop').onclick = () => { stop(); $('#lt-feedback').textContent = '已停止。换段落或换手别再来。'; $('#lt-feedback').className = 'sight-feedback'; };
+
+  $('#lt-upload-btn').onclick = () => $('#lt-upload').click();
+  $('#lt-upload').onchange = async (e) => {
+    const file = e.target.files && e.target.files[0]; if (!file) return;
+    try {
+      const parsed = parseMidi(await file.arrayBuffer());
+      if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
+      const id = 'lt-' + Date.now();
+      const title = '📄 ' + file.name.replace(/\.(midi?|MIDI?)$/i, '');
+      customSongs.push(scfFromMidi(parsed, { id, title }));
+      songId = id; fromM = 1; toM = measuresOf(curSong());
+      const rc = countHand(parsed.notes, 'r'), lc = countHand(parsed.notes, 'l');
+      $('#lt-up-note').textContent = parsed.hasHands ? `已载入：右手 ${rc} / 左手 ${lc} 个音，可分手练` : `已载入 ${parsed.notes.length} 个音（单手）`;
+      refresh();
+    } catch (err) {
+      $('#lt-up-note').textContent = '读取失败：' + (err.message || err);
+    }
+    e.target.value = '';
+  };
+
+  drawStartChips();
+  fromM = 1; toM = measuresOf(curSong());
+  refresh();
+
+  document.addEventListener('ca99:module-change', () => { stop(); });
+}
+
+
 // ========== 🎬 演奏卡（录音分享卡）==========
 let shareCardRaf = null;
 function renderShareCard() {
@@ -17202,7 +17520,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
