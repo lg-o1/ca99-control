@@ -66,7 +66,7 @@ import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js
 import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
 import { dayKey as dsDayKey, pickDailyIndex as dsPickIndex, prettyName as dsPretty, catEmoji as dsCatEmoji } from './daily-song.js';
 import { buildSongTree as stBuildTree, findNode as stFindNode, findSub as stFindSub, searchSongs as stSearch, countMatches as stCount } from './song-tree.js';
-import { parseSheetIndex as shParse, measureAtBeat as shMeasureAtBeat, cursorX as shCursorX, sheetPaths as shPaths, pngUrl as shPngUrl, defaultSheetHeight as shDefaultH, clampSheetHeight as shClampH, SHEET_H as SH_CFG } from './sheet-index.js';
+import { parseSheetIndex as shParse, measureAtBeat as shMeasureAtBeat, measureAtBeatRange as shMeasureAtRange, cursorX as shCursorX, sheetPaths as shPaths, pngUrl as shPngUrl, defaultSheetHeight as shDefaultH, clampSheetHeight as shClampH, SHEET_H as SH_CFG } from './sheet-index.js';
 
 // 📖 谱面卷帘显示高度（两 tab 共享）：localStorage 有手动值则用之；否则按视口自适应。
 function sheetActiveH() {
@@ -9258,7 +9258,9 @@ function renderScoreFollow() {
     const wrap = $('#scf-sheet-ribbon'), cur = $('#scf-sheet-cursor');
     if (!wrap || !cur) return;
     const beat = Math.max(0, sf ? sf.beatAt(t) : 0);
-    const { idx, f } = shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, sheet.nMeasures);
+    const { idx, f } = sheet.hasBeats
+      ? shMeasureAtRange(sheet.measures, beat)                       // 精确：按真实拍区间二分（反复/弱起/变拍稳）
+      : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, sheet.nMeasures); // 回退：均匀映射
     const x = shCursorX(sheet.measures, idx, f) * sheetScale;
     cur.style.left = x + 'px';
     wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
@@ -9873,7 +9875,9 @@ function renderPlayStage() {
     const wrap = $('#ps-sheet-ribbon'), cur = $('#ps-sheet-cursor');
     if (!wrap || !cur) return;
     const beat = Math.max(0, sf ? sf.beatAt(t) : 0);
-    const { idx, f } = shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, psSheet.nMeasures);
+    const { idx, f } = psSheet.hasBeats
+      ? shMeasureAtRange(psSheet.measures, beat)
+      : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, psSheet.nMeasures);
     const x = shCursorX(psSheet.measures, idx, f) * psSheetScale;
     cur.style.left = x + 'px';
     wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);

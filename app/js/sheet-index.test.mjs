@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSheetIndex, measureAtBeat, measureAtTime, cursorX, sheetPaths, pngUrl, defaultSheetHeight, clampSheetHeight, SHEET_H } from './sheet-index.js';
+import { parseSheetIndex, measureAtBeat, measureAtBeatRange, measureAtTime, cursorX, sheetPaths, pngUrl, defaultSheetHeight, clampSheetHeight, SHEET_H } from './sheet-index.js';
 
 const SAMPLE = {
   stem: 'blackforestpolka', height: 240, bpm: 120, bar_seconds: 2.0,
@@ -29,6 +29,129 @@ test('parseSheetIndex: defaults + clamps on missing/garbage', () => {
   assert.equal(s.height, 240);
   const s2 = parseSheetIndex({ measures: [{ i: 1, file: 'a.png', w: 0 }] });
   assert.equal(s2.measures[0].w, 1); // w floored to >=1
+});
+
+test('parseSheetIndex: hasBeats false when no beat fields (back-compat)', () => {
+  const s = parseSheetIndex(SAMPLE);
+  assert.equal(s.hasBeats, false);
+  assert.equal(s.measures[0].beatStart, null);
+});
+
+test('parseSheetIndex: hasBeats true with valid monotonic beat ranges', () => {
+  const s = parseSheetIndex({
+    stem: 'x', height: 200, n_measures: 3,
+    measures: [
+      { i: 1, file: 'm001.png', w: 100, beat_start: 0, beat_end: 4 },
+      { i: 2, file: 'm002.png', w: 100, beat_start: 4, beat_end: 8 },
+      { i: 3, file: 'm003.png', w: 100, beat_start: 8, beat_end: 12 },
+    ],
+  });
+  assert.equal(s.hasBeats, true);
+  assert.deepEqual(s.measures.map((m) => [m.beatStart, m.beatEnd]), [[0, 4], [4, 8], [8, 12]]);
+});
+
+test('parseSheetIndex: anacrusis (short pickup measure) keeps hasBeats', () => {
+  // 弱起小节只有 1 拍，后续整小节 4 拍
+  const s = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'm001.png', w: 60, beat_start: 0, beat_end: 1 },
+      { i: 2, file: 'm002.png', w: 120, beat_start: 1, beat_end: 5 },
+    ],
+  });
+  assert.equal(s.hasBeats, true);
+});
+
+test('parseSheetIndex: repeat expands to duplicate file at later beats, still monotonic', () => {
+  // D.S./反复：同一谱面小节 m002 被演奏两遍 → OMR 展开成两条，beatStart 单调
+  const s = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'm001.png', w: 100, beat_start: 0, beat_end: 4 },
+      { i: 2, file: 'm002.png', w: 100, beat_start: 4, beat_end: 8 },
+      { i: 2, file: 'm002.png', w: 100, beat_start: 8, beat_end: 12 }, // 第二遍
+      { i: 3, file: 'm003.png', w: 100, beat_start: 12, beat_end: 16 },
+    ],
+  });
+  assert.equal(s.hasBeats, true);
+  assert.equal(s.nMeasures, 4);
+});
+
+test('parseSheetIndex: hasBeats false if any beat range invalid/non-monotonic', () => {
+  // 第二格 beatStart 真正倒退（< 前一格 beatStart）→ 不可二分 → 回退均匀
+  const bad = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'a.png', w: 100, beat_start: 5, beat_end: 9 },
+      { i: 2, file: 'b.png', w: 100, beat_start: 2, beat_end: 6 },
+    ],
+  });
+  assert.equal(bad.hasBeats, false);
+  // 缺一格 beat → 整体回退
+  const partial = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'a.png', w: 100, beat_start: 0, beat_end: 4 },
+      { i: 2, file: 'b.png', w: 100 },
+    ],
+  });
+  assert.equal(partial.hasBeats, false);
+  // beatEnd<=beatStart → 回退
+  const zero = parseSheetIndex({
+    measures: [{ i: 1, file: 'a.png', w: 100, beat_start: 4, beat_end: 4 }],
+  });
+  assert.equal(zero.hasBeats, false);
+});
+
+test('measureAtBeatRange: binary search locates measure + progress', () => {
+  const s = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'm001.png', w: 100, beat_start: 0, beat_end: 4 },
+      { i: 2, file: 'm002.png', w: 100, beat_start: 4, beat_end: 8 },
+      { i: 3, file: 'm003.png', w: 100, beat_start: 8, beat_end: 12 },
+    ],
+  });
+  const ms = s.measures;
+  assert.deepEqual(measureAtBeatRange(ms, 0), { idx: 0, f: 0 });
+  assert.deepEqual(measureAtBeatRange(ms, 2), { idx: 0, f: 0.5 });
+  assert.deepEqual(measureAtBeatRange(ms, 4), { idx: 1, f: 0 });
+  assert.deepEqual(measureAtBeatRange(ms, 6), { idx: 1, f: 0.5 });
+  assert.deepEqual(measureAtBeatRange(ms, 10), { idx: 2, f: 0.5 });
+});
+
+test('measureAtBeatRange: clamps before start and after end', () => {
+  const ms = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'a.png', w: 100, beat_start: 2, beat_end: 6 },
+      { i: 2, file: 'b.png', w: 100, beat_start: 6, beat_end: 10 },
+    ],
+  }).measures;
+  assert.deepEqual(measureAtBeatRange(ms, -5), { idx: 0, f: 0 });   // 弱起前
+  assert.deepEqual(measureAtBeatRange(ms, 1), { idx: 0, f: 0 });    // 起始拍之前
+  assert.deepEqual(measureAtBeatRange(ms, 999), { idx: 1, f: 1 });  // 超尾 → 停末格
+});
+
+test('measureAtBeatRange: gap between measures parks at previous end (f=1)', () => {
+  // m1 [0,4), 间隙, m2 [6,10)；beat=5 落在间隙 → 停在 m1 末尾
+  const ms = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'a.png', w: 100, beat_start: 0, beat_end: 4 },
+      { i: 2, file: 'b.png', w: 100, beat_start: 6, beat_end: 10 },
+    ],
+  }).measures;
+  assert.deepEqual(measureAtBeatRange(ms, 5), { idx: 0, f: 1 });
+});
+
+test('measureAtBeatRange: repeat — same file at two beat ranges resolves to each instance', () => {
+  const ms = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'm001.png', w: 100, beat_start: 0, beat_end: 4 },
+      { i: 2, file: 'm002.png', w: 100, beat_start: 4, beat_end: 8 },
+      { i: 2, file: 'm002.png', w: 100, beat_start: 8, beat_end: 12 },
+    ],
+  }).measures;
+  assert.equal(measureAtBeatRange(ms, 5).idx, 1);   // 第一遍 m002
+  assert.equal(measureAtBeatRange(ms, 9).idx, 2);   // 第二遍 m002（不同条目）
+});
+
+test('measureAtBeatRange: empty measures safe', () => {
+  assert.deepEqual(measureAtBeatRange([], 5), { idx: 0, f: 0 });
 });
 
 test('measureAtBeat: even distribution across measures', () => {

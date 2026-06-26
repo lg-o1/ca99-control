@@ -12,19 +12,38 @@
 // 纯逻辑、无 DOM，便于单测。
 
 // 解析 + 归一化：算出每小节在 ribbon 中的累计像素 x（x0..x1）与总宽 totalWidth。
+// 若每小节带 beat_start/beat_end（OMR 给出的真实 MIDI 拍区间，按演奏顺序排列、单调不减），
+// 则置 hasBeats=true，渲染时改用「按拍区间二分」精确定位——可正确处理弱起小节、变拍号、
+// D.S./反复/二房等「同一谱面小节被演奏多遍或跳转」的情形（均匀映射在这些跳转点必崩）。
 export function parseSheetIndex(json) {
   const src = (json && Array.isArray(json.measures)) ? json.measures : [];
-  const measures = src.map((m) => ({
-    i: +m.i || 0,
-    file: String(m.file || ''),
-    w: Math.max(1, Math.round(+m.w || 1)),
-    t_start: +m.t_start || 0,
-    t_end: +m.t_end || 0,
-    lowConf: !!m.low_confidence,
-    x0: 0, x1: 0,
-  }));
+  const measures = src.map((m) => {
+    const hasBS = m.beat_start != null && m.beat_end != null;
+    const bs = +m.beat_start, be = +m.beat_end;
+    return {
+      i: +m.i || 0,
+      file: String(m.file || ''),
+      w: Math.max(1, Math.round(+m.w || 1)),
+      t_start: +m.t_start || 0,
+      t_end: +m.t_end || 0,
+      // 拍区间：缺省 null（回退均匀映射）；非法（NaN/非递增）会让 hasBeats 整体置 false
+      beatStart: hasBS && Number.isFinite(bs) ? bs : null,
+      beatEnd: hasBS && Number.isFinite(be) ? be : null,
+      lowConf: !!m.low_confidence,
+      x0: 0, x1: 0,
+    };
+  });
   let x = 0;
   for (const m of measures) { m.x0 = x; x += m.w; m.x1 = x; }
+  // 校验拍区间可用性：每格都得有有效 beatEnd>beatStart，且 beatStart 单调不减（演奏顺序）
+  let hasBeats = measures.length > 0;
+  let prev = -Infinity;
+  for (const m of measures) {
+    if (m.beatStart == null || m.beatEnd == null || !(m.beatEnd > m.beatStart) || m.beatStart < prev) {
+      hasBeats = false; break;
+    }
+    prev = m.beatStart;
+  }
   return {
     stem: (json && json.stem) || '',
     height: Math.max(1, Math.round((json && +json.height) || 240)),
@@ -33,12 +52,14 @@ export function parseSheetIndex(json) {
     nMeasures: measures.length,
     totalSeconds: (json && +json.total_seconds) || 0,
     totalWidth: x,
+    hasBeats,
     measures,
   };
 }
 
-// 主映射：把整曲乐拍区间 [0, totalBeats) 均匀铺到 n 个谱面小节上。
+// 主映射（均匀回退）：把整曲乐拍区间 [0, totalBeats) 均匀铺到 n 个谱面小节上。
 // 返回 { idx(0基), f(该小节内 0..1 进度) }。totalBeats 缺省时退化为「每小节 1 拍」。
+// 仅在 index.json 未提供 beat_start/beat_end 时使用——无法处理反复/弱起/变拍。
 export function measureAtBeat(beat, totalBeats, nMeasures) {
   const n = Math.max(0, nMeasures | 0);
   if (n <= 0) return { idx: 0, f: 0 };
@@ -47,6 +68,28 @@ export function measureAtBeat(beat, totalBeats, nMeasures) {
   if (idx < 0) idx = 0;
   if (idx > n - 1) idx = n - 1;
   let f = span > 0 ? ((beat || 0) - idx * span) / span : 0;
+  if (f < 0) f = 0;
+  if (f > 1) f = 1;
+  return { idx, f };
+}
+
+// 精确映射（首选，当 hasBeats）：按每小节真实 MIDI 拍区间 [beatStart, beatEnd) 二分定位。
+// measures 须按演奏顺序、beatStart 单调不减（反复段会被 OMR 展开成重复条目，各带不同拍区间）。
+// 返回 { idx, f }。落在两格之间的间隙时停在前一格末尾（f=1，等待下一格）；超界两端各自夹紧。
+export function measureAtBeatRange(measures, beat) {
+  const ms = measures || [];
+  if (!ms.length) return { idx: 0, f: 0 };
+  const b = +beat || 0;
+  if (b <= ms[0].beatStart) return { idx: 0, f: 0 };
+  // 二分：取最后一个 beatStart <= b 的小节
+  let lo = 0, hi = ms.length - 1, idx = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (ms[mid].beatStart <= b) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
+  }
+  const m = ms[idx];
+  const span = m.beatEnd - m.beatStart;
+  let f = span > 0 ? (b - m.beatStart) / span : 0;
   if (f < 0) f = 0;
   if (f > 1) f = 1;
   return { idx, f };
