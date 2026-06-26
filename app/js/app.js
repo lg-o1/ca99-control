@@ -83,6 +83,7 @@ import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
+import { StaffWars, makeRng as swMakeRng, noteLetter as swNoteLetter, diatonicIndex as swDiatonic } from './staff-wars.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -155,6 +156,7 @@ let melEchoOnNote = null;    // 旋律回声记忆游戏的 note-on 回调（模
 let callRespOnNote = null;   // 即兴问答的 note-on 回调（模块61注册）
 let rhythmEchoTap = null;    // 节奏回声的击打回调（模块62注册，任意 note-on 当一次敲击）
 let pitchDirOnNote = null;   // 高低音方向感的 note-on 回调（模块63注册）
+let staffWarsOnNote = null;  // 🚀 看谱击落的 note-on 回调（注册）
 // 练习成就仪表盘（模块20）：各训练模块结束时把成绩记进来，仪表盘聚合展示
 const practiceStats = new PracticeStats({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -618,6 +620,8 @@ function onMidiIn(bytes) {
     if (rhythmEchoTap) rhythmEchoTap();
     // 驱动高低音方向感
     if (pitchDirOnNote) pitchDirOnNote(m.note);
+    // 驱动 🚀 看谱击落（Staff Wars）
+    if (staffWarsOnNote) staffWarsOnNote(m.note);
     // 通用键盘回显：真实 CA99 按键点亮所有"当前可见"练习的屏幕 88 键（之前只有曲谱跟弹能亮）
     PianoKeyboard.echoOn(m.note);
     // 通用识别：对"点击即作答"且无全局钩子的练习（ni/sr/mpl），让真实按键等价于点击该键
@@ -13571,6 +13575,222 @@ if (typeof window !== 'undefined') {
   window.__sharecard = { recorder, ShareCard };
 }
 
+// ========== 🚀 看谱击落（Staff Wars 式街机）==========
+function renderStaffWars() {
+  const root = $('#module-staffwars');
+  if (!root) return;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🚀 看谱击落</h2>
+    <p style="color:var(--muted);margin-bottom:12px">音符从右边飞来 👾，<b>读出它、在钢琴上弹出来</b>就能把它击落！飞到左边炮台会少一颗心 💛。按<b>音名</b>判定（哪个八度都算对），最适合练快速认谱。可用真琴或下方屏幕键盘。</p>
+    <div class="sw-hud">
+      <span class="sw-stat">🎯 分数 <b id="sw-score">0</b></span>
+      <span class="sw-stat">🏆 最佳 <b id="sw-best">0</b></span>
+      <span class="sw-stat">⚡ 关卡 <b id="sw-level">1</b></span>
+      <span class="sw-stat" id="sw-lives">💛💛💛</span>
+    </div>
+    <div class="sw-bar">
+      <button id="sw-start" class="big-btn">▶ 开始游戏</button>
+      <label class="sw-opt">谱号
+        <select id="sw-clef"><option value="treble">高音谱号 𝄞</option><option value="bass">低音谱号 𝄢</option></select>
+      </label>
+      <label class="sw-opt"><input type="checkbox" id="sw-help" checked> 显示音名提示</label>
+    </div>
+    <div class="sw-stage">
+      <canvas id="sw-canvas" width="760" height="320"></canvas>
+      <div id="sw-over" class="sw-over" style="display:none"></div>
+    </div>
+    <div id="sw-kb" class="sw-kb"></div>`;
+
+  const canvas = root.querySelector('#sw-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const LX = 78;                 // 炮台 x（左侧危险线）
+  const RX = W - 26;             // 出生 x（右侧）
+  const lineGap = 15;
+  const midY = H * 0.46;
+  const lineY = i => midY + (i - 2) * lineGap;     // i=0..4 自上而下
+  const bottomLineY = lineY(4), topLineY = lineY(0);
+
+  const POOLS = {
+    treble: [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79],
+    bass: [43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62],
+  };
+  const REF = { treble: 64, bass: 43 }; // 五线谱底线对应音高
+  const BEST_KEY = 'ca99_staffwars_best';
+  let best = +(localStorage.getItem(BEST_KEY) || 0);
+
+  let game = null, raf = null, lastT = 0, hitCount = 0, missCount = 0;
+  const lasers = []; // {x0,y0,x1,y1,life}
+  const booms = [];  // {x,y,life,r}
+  let shake = 0;
+  // 固定星空
+  const stars = Array.from({ length: 40 }, (_, i) => {
+    const r = swMakeRng(i + 1);
+    return { x: r() * W, y: r() * H, s: 0.5 + r() * 1.5 };
+  });
+
+  const kb = new PianoKeyboard(root.querySelector('#sw-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.45); shoot(m); },
+  });
+  kb.scrollToShow(48, 79);
+
+  function staffStep(midi, clef) { return swDiatonic(midi) - swDiatonic(REF[clef]); }
+  function noteY(midi, clef) { return bottomLineY - staffStep(midi, clef) * (lineGap / 2); }
+  function invScreenX(x) { return LX + x * (RX - LX); }
+
+  function updateHud() {
+    root.querySelector('#sw-score').textContent = game ? game.score : 0;
+    root.querySelector('#sw-best').textContent = best;
+    root.querySelector('#sw-level').textContent = game ? game.level : 1;
+    const lv = game ? game.lives : 3;
+    root.querySelector('#sw-lives').textContent = '💛'.repeat(lv) + '🖤'.repeat(Math.max(0, 3 - lv));
+  }
+
+  function shoot(m) {
+    if (!game || !game.alive) return;
+    const r = game.hit(m);
+    if (r.hit) {
+      hitCount++;
+      const x = invScreenX(r.note.x), y = noteY(r.note.midi, game.clef);
+      lasers.push({ x0: LX, y0: H * 0.5, x1: x, y1: y, life: 1 });
+      booms.push({ x, y, life: 1, r: 6 });
+    } else {
+      missCount++;
+      shake = Math.min(shake + 0.4, 1); // 轻微反馈，不扣分
+    }
+    updateHud();
+    if (game && !game.alive) endGame();
+  }
+  staffWarsOnNote = shoot;
+
+  function drawLedgers(x, clef, step) {
+    ctx.strokeStyle = 'rgba(210,216,255,.75)'; ctx.lineWidth = 1.4;
+    if (step < 0) {
+      for (let s = -2; s >= step; s -= 2) {
+        const y = bottomLineY - s * (lineGap / 2);
+        ctx.beginPath(); ctx.moveTo(x - 12, y); ctx.lineTo(x + 12, y); ctx.stroke();
+      }
+    } else if (step > 8) {
+      for (let s = 10; s <= step; s += 2) {
+        const y = bottomLineY - s * (lineGap / 2);
+        ctx.beginPath(); ctx.moveTo(x - 12, y); ctx.lineTo(x + 12, y); ctx.stroke();
+      }
+    }
+  }
+
+  function draw() {
+    ctx.save();
+    if (shake > 0) { ctx.translate((Math.random() - 0.5) * 6 * shake, (Math.random() - 0.5) * 6 * shake); shake = Math.max(0, shake - 0.08); }
+    // 背景
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0c0f24'); g.addColorStop(1, '#161a35');
+    ctx.fillStyle = g; ctx.fillRect(-10, -10, W + 20, H + 20);
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    for (const st of stars) { ctx.globalAlpha = 0.3 + 0.5 * Math.abs(Math.sin((Date.now() / 600) + st.x)); ctx.fillRect(st.x, st.y, st.s, st.s); }
+    ctx.globalAlpha = 1;
+    // 五线谱
+    const clef = game ? game.clef : (root.querySelector('#sw-clef').value);
+    ctx.strokeStyle = 'rgba(180,188,230,.5)'; ctx.lineWidth = 1.4;
+    for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(LX - 8, lineY(i)); ctx.lineTo(W - 8, lineY(i)); ctx.stroke(); }
+    ctx.fillStyle = '#c7cdf5'; ctx.font = `${lineGap * 4.2}px serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(clef === 'treble' ? '𝄞' : '𝄢', LX - 4, midY + (clef === 'treble' ? 3 : -2));
+    // 炮台危险线
+    ctx.strokeStyle = 'rgba(255,120,140,.35)'; ctx.setLineDash([4, 6]); ctx.beginPath(); ctx.moveTo(LX, 12); ctx.lineTo(LX, H - 12); ctx.stroke(); ctx.setLineDash([]);
+    // 炮台
+    ctx.fillStyle = '#7c83ff'; ctx.beginPath(); ctx.moveTo(LX - 30, H * 0.5); ctx.lineTo(LX - 6, H * 0.5 - 12); ctx.lineTo(LX - 6, H * 0.5 + 12); ctx.closePath(); ctx.fill();
+    // 激光
+    for (const l of lasers) {
+      ctx.strokeStyle = `rgba(120,255,210,${l.life})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(l.x0, l.y0); ctx.lineTo(l.x1, l.y1); ctx.stroke();
+      l.life -= 0.12;
+    }
+    for (let i = lasers.length - 1; i >= 0; i--) if (lasers[i].life <= 0) lasers.splice(i, 1);
+    // 入侵者
+    const help = root.querySelector('#sw-help').checked;
+    if (game) for (const inv of game.invaders) {
+      const x = invScreenX(inv.x), step = staffStep(inv.midi, clef), y = noteY(inv.midi, clef);
+      drawLedgers(x, clef, step);
+      const danger = inv.x < 0.18;
+      // 符干
+      ctx.strokeStyle = danger ? '#ff8aa0' : '#dfe4ff'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(x + 7, y); ctx.lineTo(x + 7, y - lineGap * 2.4); ctx.stroke();
+      // 符头
+      ctx.save(); ctx.translate(x, y); ctx.rotate(-0.32);
+      ctx.fillStyle = danger ? '#ff6b81' : '#ffd24a';
+      ctx.beginPath(); ctx.ellipse(0, 0, 8.5, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      if (help) {
+        ctx.fillStyle = '#0c0f24'; ctx.font = 'bold 9px system-ui,sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(swNoteLetter(inv.midi), x, y);
+      }
+    }
+    // 爆炸
+    for (const b of booms) {
+      ctx.strokeStyle = `rgba(255,210,74,${b.life})`; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r + (1 - b.life) * 22, 0, Math.PI * 2); ctx.stroke();
+      b.life -= 0.08;
+    }
+    for (let i = booms.length - 1; i >= 0; i--) if (booms[i].life <= 0) booms.splice(i, 1);
+    ctx.restore();
+  }
+
+  function frame(t) {
+    if (!lastT) lastT = t;
+    const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
+    if (game && game.alive) {
+      const r = game.tick(dt);
+      if (r.expired.length) { updateHud(); }
+    }
+    draw();
+    if (game && game.alive) raf = requestAnimationFrame(frame);
+    else { draw(); }
+  }
+
+  function startGame() {
+    const clef = root.querySelector('#sw-clef').value;
+    game = new StaffWars({ pool: POOLS[clef], rng: swMakeRng((Date.now() & 0xffff) || 1), speed: 0.06, spawnEvery: 2.6 });
+    game.clef = clef;
+    hitCount = 0; missCount = 0; lastT = 0;
+    lasers.length = 0; booms.length = 0;
+    root.querySelector('#sw-over').style.display = 'none';
+    root.querySelector('#sw-start').textContent = '⏹ 结束游戏';
+    root.querySelector('#sw-start').classList.add('running');
+    updateHud();
+    raf = requestAnimationFrame(frame);
+  }
+
+  function endGame(quit) {
+    if (raf) cancelAnimationFrame(raf), raf = null;
+    root.querySelector('#sw-start').textContent = '▶ 开始游戏';
+    root.querySelector('#sw-start').classList.remove('running');
+    if (game) {
+      if (game.score > best) { best = game.score; localStorage.setItem(BEST_KEY, best); }
+      const newRecord = game.score >= best && game.score > 0;
+      recordPractice('staffwars', '看谱击落', hitCount + missCount, hitCount, game.level);
+      const over = root.querySelector('#sw-over');
+      over.style.display = 'flex';
+      over.innerHTML = `<div class="sw-over-card">
+        <div class="sw-over-title">${quit ? '🎮 本局结束' : '💥 游戏结束'}</div>
+        <div class="sw-over-score">得分 <b>${game.score}</b> · 击落 ${hitCount} · 关卡 ${game.level}</div>
+        <div class="sw-over-best">${newRecord ? '🎉 新纪录！' : '🏆 最佳 ' + best}</div>
+        <button id="sw-again" class="big-btn">🔁 再来一局</button></div>`;
+      over.querySelector('#sw-again').onclick = startGame;
+      if (newRecord) cheerBurst(root, 70);
+      else cheerToast(`击落 ${hitCount} 个音符，干得好！🌟`, root);
+    }
+    updateHud();
+    draw();
+  }
+
+  root.querySelector('#sw-start').onclick = () => { if (game && game.alive) endGame(true); else startGame(); };
+  root.querySelector('#sw-clef').onchange = () => { if (!(game && game.alive)) draw(); };
+  root.querySelector('#sw-help').onchange = () => draw();
+
+  if (typeof window !== 'undefined') window.__staffwars = { play: m => shoot(m), game: () => game, start: startGame, end: () => endGame(true) };
+  updateHud(); draw();
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -14218,7 +14438,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

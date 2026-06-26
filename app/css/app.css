@@ -2068,3 +2068,19 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .shc-empty { position:absolute; color:var(--muted); font-size:15px; pointer-events:none; }
 .shc-actions { display:flex; gap:12px; margin-top:14px; justify-content:center; }
 .shc-actions .grid-btn { padding:12px 26px; font-weight:600; }
+
+/* ===== 🚀 看谱击落（Staff Wars）===== */
+.sw-hud { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:10px; font-size:15px; color:var(--muted); }
+.sw-hud .sw-stat b { color:var(--text); font-size:17px; }
+.sw-bar { display:flex; flex-wrap:wrap; align-items:center; gap:14px; margin-bottom:12px; }
+.sw-opt { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:14px; }
+.sw-opt select { padding:6px 10px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); color:var(--text); }
+.sw-stage { position:relative; display:flex; justify-content:center; }
+.sw-stage canvas { max-width:100%; height:auto; border-radius:14px; border:1px solid var(--line); box-shadow:0 8px 30px rgba(0,0,0,.4); }
+.sw-over { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(8,10,24,.72); border-radius:14px; }
+.sw-over-card { text-align:center; padding:26px 34px; background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); }
+.sw-over-title { font-size:24px; font-weight:800; color:var(--text); margin-bottom:8px; }
+.sw-over-score { color:var(--muted); margin-bottom:4px; }
+.sw-over-score b { color:#ffd24a; font-size:20px; }
+.sw-over-best { color:#7cffd2; font-weight:700; margin-bottom:16px; }
+.sw-kb { margin-top:14px; }
