@@ -89,7 +89,39 @@ test('judge：已判定的音符不会被重复命中', () => {
   assert.equal(sf.perfect, 1);
 });
 
-// ---- octaveAgnostic ----
+// ---- #7 三色反馈：音高错（wrong=true）vs 时机错（MISS）----
+test('judge：该弹时弹错键 -> wrong=true、断连击、不计入 judgedCount', () => {
+  const song = { id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] };
+  const sf = new ScoreFollow(song, { goodMs: 320 });
+  const r = sf.judge(61, 0); // 此刻该弹 60，却弹了 61 -> 音高错
+  assert.equal(r.grade, null);
+  assert.equal(r.wrong, true);
+  assert.equal(r.due.midi, 60);
+  assert.equal(sf.wrong, 1);
+  assert.equal(sf.judgedCount, 0);   // 不消耗目标音符
+  assert.equal(sf.notes[0].judged, false);
+});
+
+test('judge：无音该弹时的多弹 -> wrong=false、不惩罚', () => {
+  const song = { id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] };
+  const sf = new ScoreFollow(song, { goodMs: 320 });
+  const r = sf.judge(61, 5000); // 远离任何目标
+  assert.equal(r.grade, null);
+  assert.equal(r.wrong, false);
+  assert.equal(sf.wrong, 0);
+});
+
+test('judge：弹错键会重置已积累的连击', () => {
+  const song = { id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1], [62, 1]] };
+  const sf = new ScoreFollow(song, { goodMs: 320 });
+  sf.judge(60, 0);          // combo=1
+  assert.equal(sf.combo, 1);
+  sf.judge(61, 1000);       // 该弹 62 却弹 61 -> 音高错，断连击
+  assert.equal(sf.combo, 0);
+  assert.equal(sf.wrong, 1);
+});
+
+
 test('简单模式忽略八度', () => {
   const song = { id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] };
   const strict = new ScoreFollow(song, { octaveAgnostic: false });

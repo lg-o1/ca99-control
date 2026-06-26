@@ -8707,10 +8707,11 @@ function renderScoreFollow() {
   function popGrade(grade) {
     const pop = $('#scf-pop');
     const map = {
-      perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'], miss: ['MISS', '#f87171'],
+      perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'],
+      miss: ['节奏没跟上', '#f472b6'], wrong: ['弹错音了', '#f87171'],
     };
     const [txt, color] = map[grade] || ['', '#fff'];
-    pop.textContent = sf.combo > 1 && grade !== 'miss' ? `${txt}  ×${sf.combo}` : txt;
+    pop.textContent = sf.combo > 1 && grade !== 'miss' && grade !== 'wrong' ? `${txt}  ×${sf.combo}` : txt;
     pop.style.color = color;
     pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show');
     clearTimeout(popTimer); popTimer = setTimeout(() => pop.classList.remove('show'), 520);
@@ -8792,6 +8793,10 @@ function renderScoreFollow() {
     const t = performance.now() - t0;
     const r = sf.judge(midi, t);
     if (r.grade) { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); hitFx(midi, r.grade, vel); }
+    else if (r.wrong) {                       // #7 此刻该弹却弹错键 → 红色提示，并把正确的键闪一下当提示
+      popGrade('wrong'); scfKb.flash(midi, '#f87171');
+      if (r.due) setTimeout(() => scfKb.flash(r.due.midi, '#34d399'), 140);
+    }
     refreshStats();
   }
 
@@ -9146,9 +9151,12 @@ function renderPlayStage() {
   let popTimer = null;
   function popGrade(grade) {
     const pop = $('#ps-pop');
-    const map = { perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'], miss: ['MISS', '#f87171'] };
+    const map = {
+      perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'],
+      miss: ['节奏没跟上', '#f472b6'], wrong: ['弹错音了', '#f87171'],
+    };
     const [txt, color] = map[grade] || ['', '#fff'];
-    pop.textContent = sf.combo > 1 && grade !== 'miss' ? `${txt}  ×${sf.combo}` : txt;
+    pop.textContent = sf.combo > 1 && grade !== 'miss' && grade !== 'wrong' ? `${txt}  ×${sf.combo}` : txt;
     pop.style.color = color;
     pop.classList.remove('show'); void pop.offsetWidth; pop.classList.add('show');
     clearTimeout(popTimer); popTimer = setTimeout(() => pop.classList.remove('show'), 520);
@@ -9170,6 +9178,10 @@ function renderPlayStage() {
       kb.flash(m, r.grade === 'perfect' ? '#34d399' : '#22d3ee');
       // 屏幕点击 → 浏览器发声试听；真琴按键本身已响，不重复发声
       if (fromScreen) voice(m, 360, vel);
+    } else if (r.wrong) {                      // #7 该弹却弹错键 → 红色，提示正确键
+      popGrade('wrong'); kb.flash(m, '#f87171');
+      if (r.due) setTimeout(() => kb.flash(r.due.midi, '#34d399'), 140);
+      if (fromScreen) voice(m, 300, vel);
     } else if (fromScreen) {
       voice(m, 300, vel);
     }

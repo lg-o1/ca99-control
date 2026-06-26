@@ -200,7 +200,7 @@ export class ScoreFollow {
       this.totalBeats = beat;
     }
     this._byMs = this.notes.slice().sort((a, b) => a.ms - b.ms);
-    this.perfect = 0; this.good = 0; this.miss = 0;
+    this.perfect = 0; this.good = 0; this.miss = 0; this.wrong = 0;
     this.combo = 0; this.maxCombo = 0; this.score = 0;
   }
 
@@ -268,7 +268,11 @@ export class ScoreFollow {
 
   /**
    * 判定一次弹奏：在播放头时间 t（毫秒）找最近的、音高匹配且仍在判定窗内的未判音符。
-   * @returns {{grade, note, deltaMs}} grade=null 表示这次弹奏没有可判定的目标（多弹/弹错时机）
+   * @returns {{grade, note, deltaMs, wrong, due}}
+   *   grade=PERFECT/GOOD 表示弹对；
+   *   grade=null 表示这次弹奏没有可判定的目标。此时若 wrong=true 表示"此刻确有一个该弹的音
+   *   但你弹的是别的键"（音高错，UI 标红）；wrong=false 表示纯属多弹（此刻无音该弹，不惩罚）。
+   *   due 为发生音高错时本该弹的最近音符（供 UI 高亮/提示）。
    */
   judge(midi, t) {
     let best = null, bd = Infinity;
@@ -278,7 +282,17 @@ export class ScoreFollow {
       const d = Math.abs(t - n.ms);
       if (d <= this.goodMs && d < bd) { best = n; bd = d; }
     }
-    if (!best) return { grade: null, note: null, deltaMs: null };
+    if (!best) {
+      // 没弹中任何目标——判断此刻是不是"该弹某个音却弹错了键"（音高错）
+      let due = null, dd = Infinity;
+      for (const n of this.notes) {
+        if (n.judged || !this._handOk(n)) continue;
+        const d = Math.abs(t - n.ms);
+        if (d <= this.goodMs && d < dd) { due = n; dd = d; }
+      }
+      if (due) { this.wrong++; this.combo = 0; return { grade: null, note: null, deltaMs: null, wrong: true, due }; }
+      return { grade: null, note: null, deltaMs: null, wrong: false, due: null };
+    }
     const delta = t - best.ms;
     const grade = Math.abs(delta) <= this.perfectMs ? GRADE.PERFECT : GRADE.GOOD;
     best.judged = true; best.grade = grade; best.deltaMs = delta;
@@ -286,7 +300,7 @@ export class ScoreFollow {
     if (grade === GRADE.PERFECT) { this.perfect++; this.score += 100 + comboBonus * 5; }
     else { this.good++; this.score += 50 + comboBonus * 2; }
     this.combo++; if (this.combo > this.maxCombo) this.maxCombo = this.combo;
-    return { grade, note: best, deltaMs: delta };
+    return { grade, note: best, deltaMs: delta, wrong: false, due: null };
   }
 
   /** 把已经过了判定窗仍未弹的音符标记为 MISS（每帧调用），返回新判漏的音符 */

@@ -408,7 +408,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-staff-svg .note-head { fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
 .scf-staff-svg .note-head.nh-perfect { fill: #34d399; stroke: #1f9d6f; }
 .scf-staff-svg .note-head.nh-good { fill: #22d3ee; stroke: #0e9cb5; }
-.scf-staff-svg .note-head.nh-miss { fill: #f87171; stroke: #c84a4a; opacity: .65; }
+.scf-staff-svg .note-head.nh-miss { fill: #f472b6; stroke: #be3e85; opacity: .65; }
 .scf-staff-svg .scf-cursor-line { stroke: #fbbf24; stroke-width: 2; opacity: .85; }
 /* 乐句视奏 sp-staff */
 .sp-staff { overflow-x: auto; max-width: 100%; }
@@ -476,7 +476,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-note.n-due { background: linear-gradient(#fcd34d, #f59e0b); box-shadow: 0 0 12px rgba(251,191,36,.8); }
 .scf-note.n-perfect { background: linear-gradient(#4ade80, #22a463); box-shadow: 0 0 10px rgba(52,211,153,.8); }
 .scf-note.n-good { background: linear-gradient(#67e8f9, #1ba8c4); box-shadow: 0 0 10px rgba(34,211,238,.8); }
-.scf-note.n-miss { background: linear-gradient(#f87171, #b94b4b); opacity: .5; }
+.scf-note.n-miss { background: linear-gradient(#f472b6, #be3e85); opacity: .5; }
 .scf-note.n-left { background: linear-gradient(#c4b5fd, #8b5cf6); box-shadow: 0 0 6px rgba(139,92,246,.5); }
 /* 左手音符落到判定线 → 亮银色（右手是 .n-due 的亮黄；此规则优先级更高，盖过 .n-left 才不会被紫色覆盖） */
 .scf-note.n-left.n-due { background: linear-gradient(#ffffff, #d3dbe8); box-shadow: 0 0 17px 2px rgba(230,236,246,.95); }
