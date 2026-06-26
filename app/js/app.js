@@ -80,6 +80,7 @@ import { RUNS as SR_RUNS, getRun as srGetRun, SpeedRun } from './speed-run.js';
 import { DiceWarmup } from './dice-warmup.js';
 import { BingoCard, winLines } from './bingo-card.js';
 import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song.js';
+import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -161,6 +162,13 @@ const medalStore = new Medals({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
 });
 let medalWallOnUpdate = null; // 奖牌墙刷新回调（🏅 模块注册）
+// 🎁 惊喜盲盒：每次练习有 10% 概率开盒解锁一个好玩音色（CA99 346 音色库）→ 攒「音色图鉴」
+const mysteryBox = new MysteryBoxEngine({
+  storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
+  chance: 0.1,
+});
+let mysteryOnUpdate = null;  // 🎁 音色图鉴刷新回调（盲盒模块注册）
+let mysteryPool = [];        // 可解锁音色 id 池（SOUNDS 加载后构建）
 // #2 练习热力图：每个技能按「多久没练」着色（绿=热乎/红=该复习/灰=待探索），不是按正确率
 const heatmap = new Heatmap({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -283,6 +291,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   renderDailyStrip();
   if (streakCalOnUpdate) streakCalOnUpdate(); // 🔥 打卡日历同步点亮今天
   syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
+  mysteryRoll(); // 🎁 练完摇盲盒：小概率解锁一个好玩音色
   newly.forEach((id, i) => {
     const a = practiceStats.allAchievements().find((x) => x.id === id);
     if (!a) return;
@@ -317,6 +326,80 @@ function cheerToast(text, host) {
   if (host && getComputedStyle(host).position === 'static') host.style.position = 'relative';
   (host || document.body).appendChild(el);
   setTimeout(() => el.remove(), 1500);
+}
+
+// ---------- 🎁 惊喜盲盒：可解锁音色池 + 摇盒 + 开盒动画 ----------
+// 好玩音色关键词（按这些名字优先挑「值得收藏」的趣味音色，避免普通钢琴）
+const MYSTERY_KEYWORDS = [
+  'harpsichord', 'clavi', 'celesta', 'music box', 'vibraphone', 'marimba',
+  'xylophone', 'glockenspiel', 'bell', 'dulcimer', 'organ', 'accordion',
+  'harmonica', 'guitar', 'banjo', 'sitar', 'koto', 'shamisen', 'harp',
+  'strings', 'violin', 'cello', 'pizzicato', 'choir', 'voice', 'orchestra',
+  'trumpet', 'trombone', 'tuba', 'horn', 'brass', 'sax', 'oboe', 'clarinet',
+  'flute', 'piccolo', 'recorder', 'pan flute', 'whistle', 'ocarina', 'bagpipe',
+  'kalimba', 'steel', 'synth', 'pad', 'square', 'saw', 'fantasia', 'crystal',
+];
+// 从 SOUNDS 构建一个【多样、有趣、规模适中】的可解锁池（图鉴目标 ≈ 40 个）
+function buildMysteryPool() {
+  if (!SOUNDS.length) { mysteryPool = []; return; }
+  const matched = SOUNDS.filter((s) => {
+    const n = (s.name || '').toLowerCase();
+    return MYSTERY_KEYWORDS.some((k) => n.includes(k));
+  });
+  // 按分类轮转挑选，保证图鉴跨多个乐器家族（每类先各取 1，再回填）
+  const byCat = new Map();
+  for (const s of matched) {
+    if (!byCat.has(s.category)) byCat.set(s.category, []);
+    byCat.get(s.category).push(s);
+  }
+  const picked = [];
+  let added = true;
+  while (added && picked.length < 40) {
+    added = false;
+    for (const arr of byCat.values()) {
+      if (arr.length) { picked.push(arr.shift()); added = true; if (picked.length >= 40) break; }
+    }
+  }
+  // 兜底：关键词匹配太少 → 用前 40 个非「Piano 1」音色
+  let pool = picked;
+  if (pool.length < 12) {
+    pool = SOUNDS.filter((s) => s.category !== 'Piano 1').slice(0, 40);
+  }
+  mysteryPool = pool.map((s) => s.id);
+  if (typeof window !== 'undefined') window.__mystery = { box: mysteryBox, pool: () => mysteryPool, reveal: mysteryReveal, refresh: () => mysteryOnUpdate && mysteryOnUpdate() };
+}
+
+// 练习后摇盒；命中则解锁并播开盒动画
+function mysteryRoll() {
+  if (!mysteryPool.length) return;
+  const res = mysteryBox.roll(mysteryPool);
+  if (res.opened && res.reward != null) {
+    const s = SOUNDS.find((x) => x.id === res.reward);
+    mysteryReveal(s);
+    if (mysteryOnUpdate) mysteryOnUpdate();
+  }
+}
+
+// 开盒揭晓：全屏盒子弹跳 → 蹦出音色卡 + 撒花
+function mysteryReveal(sound) {
+  const name = sound ? sound.name : '神秘音色';
+  const stats = mysteryBox.stats(mysteryPool);
+  const overlay = document.createElement('div');
+  overlay.className = 'mb-reveal';
+  overlay.innerHTML = `
+    <div class="mb-reveal-card">
+      <div class="mb-reveal-box">🎁</div>
+      <div class="mb-reveal-title">开出新音色！</div>
+      <div class="mb-reveal-name">🎵 ${name}</div>
+      <div class="mb-reveal-sub">${sound ? sound.category : ''} · 已收集 ${stats.unlocked}/${stats.total}</div>
+      <div class="mb-reveal-hint">去「🎁 音色盲盒」图鉴里试听它～</div>
+    </div>`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+  // 触发盒子开启动画
+  requestAnimationFrame(() => overlay.classList.add('mb-open'));
+  cheerBurst(document.body, 90);
+  setTimeout(() => overlay.remove(), 3600);
 }
 
 // ---------- 工具 ----------
@@ -368,6 +451,7 @@ async function loadData() {
     fetch('data/rhythm.json').then(r => r.json()).catch(() => []),
   ]);
   SOUNDS = s; SYSEX = x; VT = v; RHYTHM = r;
+  buildMysteryPool(); // 🎁 SOUNDS 就绪后构建盲盒可解锁音色池
   log(`数据加载: ${SOUNDS.length} 音色, ${SYSEX.length} SysEx 参数`, 'ok');
 }
 
@@ -13160,6 +13244,88 @@ function renderStreakCalendar() {
   streakCalOnUpdate = build;
 }
 
+// ========== 🎁 惊喜盲盒 × 音色图鉴 ==========
+function renderMysteryBox() {
+  const root = $('#module-mystery');
+  if (!root) return;
+
+  // 试听键盘（共用，点解锁的音色卡 → 切到该音色 → 弹这里听）
+  let kb = null;
+  let auditionPart = 0;
+
+  function build() {
+    const stats = mysteryBox.stats(mysteryPool);
+    const unlocked = new Set(mysteryBox.unlockedIds());
+    const opened = mysteryBox.openCount();
+
+    // 图鉴卡：已解锁=显示音色名+试听；未解锁=❓ 神秘剪影
+    const cards = mysteryPool.map((id) => {
+      const s = SOUNDS.find((x) => x.id === id);
+      if (unlocked.has(id) && s) {
+        return `<div class="mb-card mb-got" data-id="${id}" title="点击试听：${s.name}">
+          <div class="mb-ic">🎵</div>
+          <div class="mb-name">${s.name}</div>
+          <div class="mb-cat">${s.category}</div>
+        </div>`;
+      }
+      return `<div class="mb-card mb-locked" title="还没解锁——继续练习就有机会开出它！">
+        <div class="mb-ic">❓</div>
+        <div class="mb-name">？？？</div>
+        <div class="mb-cat">神秘音色</div>
+      </div>`;
+    }).join('');
+
+    const allDone = stats.total > 0 && stats.remaining === 0;
+    const banner = allDone
+      ? `<div class="mb-banner mb-alldone">🏆 图鉴全收集！${stats.total} 个好玩音色全部到手，你太厉害了！</div>`
+      : `<div class="mb-banner">🎁 每次练习有 <b>10%</b> 概率开出一个盲盒，解锁一个好玩的新音色（大键琴 / 音乐盒 / 弦乐 / 合唱…）。<br>解锁后可以在 CA99 上用它来弹——攒齐整本图鉴吧！</div>`;
+
+    root.innerHTML = `
+      <h2 style="margin-bottom:4px">🎁 音色盲盒</h2>
+      <p class="mb-sub">练琴的<b>惊喜奖励</b>：不是每次都开，但一旦开出，就多一个好玩音色进你的<b>音色图鉴</b> 📖。可变奖励 + 收集，让人想一直练下去～</p>
+      ${banner}
+      <div class="mb-stats">
+        <span class="mb-pip">📖 已收集 <b>${stats.unlocked}</b>/${stats.total}</span>
+        <span class="mb-pip">🎁 开盒 <b>${opened}</b> 次</span>
+        <span class="mb-pip mb-prog"><span class="mb-bar"><span style="width:${stats.pct}%"></span></span> ${stats.pct}%</span>
+      </div>
+      <div class="mb-grid">${cards}</div>
+      <div class="kb-wrap">
+        <div class="kb-cap">🎹 点上面已解锁的音色卡切到它，再点这里的琴键试听（接上 CA99 就在真琴上响）</div>
+        <div class="mb-part">通道(part):
+          <select id="mb-part">
+            <option value="0">Main1</option><option value="1">Main2</option>
+            <option value="8">Layer</option><option value="9">Lower</option>
+          </select></div>
+        <div id="mb-kb"></div>
+      </div>`;
+
+    kb = new PianoKeyboard($('#mb-kb'), {
+      labels: 'c',
+      onNoteOn: (m) => { kbMidiOn(m, auditionPart); },
+      onNoteOff: (m) => { kbMidiOff(m, auditionPart); },
+    });
+    kb.scrollToShow(48, 72);
+    $('#mb-part').onchange = (e) => { auditionPart = +e.target.value; };
+
+    root.querySelectorAll('.mb-card.mb-got').forEach((card) => {
+      card.onclick = () => {
+        const s = SOUNDS.find((x) => x.id === +card.dataset.id);
+        if (!s) return;
+        sendMulti(CA99.buildSoundSelect(s, auditionPart));
+        root.querySelectorAll('.mb-card').forEach((c) => c.classList.remove('mb-active'));
+        card.classList.add('mb-active');
+        log(`🎁 试用解锁音色: ${s.name} (ch${auditionPart})`, 'ok');
+        // 没接真琴也给个浏览器试听音，让点击有反馈
+        playTone(midiToFreq(60), 0, 0.6);
+      };
+    });
+  }
+
+  build();
+  mysteryOnUpdate = build;
+}
+
 function renderCircleFifths() {
   const root = $('#module-cof');
   let selMajor = 'C';   // 当前选中大调
@@ -13807,7 +13973,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
