@@ -8132,6 +8132,7 @@ function renderScoreFollow() {
   let progSpeed = false;    // ⑨ 渐进提速
   let lastBeat = -1;        // 节拍器：上一次触发的整拍
   let hintUntil = 0;        // ⑥ 等待模式提示高亮的截止时刻
+  let waitTolerant = true;  // 🌟 容差等待：节奏对、音高差≤2半音也帮过（宽容 MIDI 毛刺/相邻误触），默认开
   let lastDrawT = 0;        // 最近一次绘制的播放头时间（标签切换时重绘用）
   let loopOn = false;       // ③ 区间循环开关
   let velViz = true;        // ② 力度可视化（上传 MIDI 的 velocity → 音符块亮度）
@@ -8338,6 +8339,7 @@ function renderScoreFollow() {
         <div class="ear-chips" id="scf-aux">
           <button class="ear-chip on" id="scf-aux-labels">🔤 音名标签</button>
           <button class="ear-chip" id="scf-aux-metro">🥁 节拍器</button>
+          <button class="ear-chip on" id="scf-aux-tol" title="开启后，等待练习里节奏对、音高只差一点点（≤2 半音）也会帮你过并温柔提示，不会被 MIDI 小误差卡住">🌟 容差通过</button>
           <button class="ear-chip" id="scf-aux-prog">🐢→🐇 渐进提速</button>
           <button class="ear-chip on" id="scf-aux-velviz">💪 力度可视化</button>
           <button class="ear-chip on" id="scf-aux-fx">✨ 击中特效</button>
@@ -8467,6 +8469,7 @@ function renderScoreFollow() {
   }
   bindToggle('#scf-aux-labels', () => labelsOn, (v) => { labelsOn = v; if (sf) drawHighway(lastDrawT); });
   bindToggle('#scf-aux-metro', () => metroOn, (v) => { metroOn = v; if (mode === 'wait') { v ? startScfBeat() : stopScfBeat(); } });
+  bindToggle('#scf-aux-tol', () => waitTolerant, (v) => { waitTolerant = v; });
   bindToggle('#scf-aux-prog', () => progSpeed, (v) => { progSpeed = v; updateMeta(); });
   bindToggle('#scf-aux-velviz', () => velViz, (v) => { velViz = v; if (sf) drawHighway(lastDrawT); });
   bindToggle('#scf-aux-fx', () => fxOn, (v) => { fxOn = v; });
@@ -9238,21 +9241,29 @@ function renderScoreFollow() {
   }
 
   // 等待模式的击键处理：只接受当前组里还没弹的音，弹齐整组才前进
+  // 🌟 容差通过开启时：节奏对、音高差≤2半音也帮过（黄色提示"差一点点"），不被 MIDI 小误差卡住
   function waitOnNote(midi, vel = 90) {
     if (!sf || mode !== 'wait' || !frozen) return;
     const g = groups[waitIdx];
     if (!g) return;
-    const n = g.notes.find((x) => !x.judged && sf.matches(x.midi, midi));
-    if (n) {
-      sf.judge(midi, g.ms);   // t 冻结在该组时刻 → 判 PERFECT
+    const r = sf.waitMatch(midi, g.notes, { tolerant: waitTolerant, semis: 2 });
+    if (!r) { scfKb.flash(midi, '#f87171'); return; }   // 弹错且不在容差内：红闪提示，不前进
+    if (r.exact) {
+      sf.judge(midi, g.ms);   // t 冻结在该组时刻 → 判 PERFECT（沿用计数/连击）
       scfKb.flash(midi, '#34d399');
       popGrade('perfect');
       hitFx(midi, 'perfect', vel);
-      refreshStats();
-      if (g.notes.every((x) => x.judged)) { waitIdx++; frozen = false; }
     } else {
-      scfKb.flash(midi, '#f87171');  // 弹错键：红闪提示，不前进
+      sf.accept(r.note);                       // 容差命中：记 GOOD，不卡住
+      scfKb.flash(midi, '#fbbf24');            // 你弹的键：黄
+      scfKb.flash(r.note.midi, '#34d399');     // 本该弹的键：绿（温柔指出差在哪）
+      popGrade('good');
+      hitFx(r.note.midi, 'good', vel);
+      $('#scf-feedback').textContent = '差一点点～已经帮你过啦，继续！🌟';
+      $('#scf-feedback').className = 'sight-feedback';
     }
+    refreshStats();
+    if (g.notes.every((x) => x.judged)) { waitIdx++; frozen = false; }
   }
 
   const MODE_BTN = { demo: '#scf-demo', wait: '#scf-wait', practice: '#scf-practice' };
@@ -9415,6 +9426,7 @@ function renderPlayStage() {
 
   let sf = null, raf = null, t0 = 0, mode = null;     // 'demo' | 'follow'
   let song = SCF_SONGS[0];
+  let hand = 'both';                                   // 🖐️ 练哪只手 'both'|'r'|'l'（仅含左右手的 MIDI 可选）
   let realPiano = true;                                // 🎹 默认在 CA99 真琴发声
   let labelsOn = true;
   let layout = null, centerX = new Map();
@@ -9440,6 +9452,13 @@ function renderPlayStage() {
         <label class="ps-toggle" title="开启后，跟弹一首还没听过的曲子前会先自动放一遍示范（铃木教学法：先听后弹），听完自动进入跟弹"><input type="checkbox" id="ps-listen" checked> 🎧 先听后弹</label>
         <label class="ps-toggle" title="开启后预听/示范会同时让连接的 CA99 真琴发声"><input type="checkbox" id="ps-real" checked> 🎹 真琴发声</label>
         <label class="ps-toggle"><input type="checkbox" id="ps-labels" checked> 🔤 音名</label>
+        <span class="ps-hand-wrap" id="ps-hand-wrap" hidden><span class="ps-hand-lbl">🖐️ 练哪只手</span>
+          <span class="ear-chips ps-hand-chips" id="ps-hand">
+            <button class="ear-chip on" data-h="both">双手</button>
+            <button class="ear-chip" data-h="r">右手</button>
+            <button class="ear-chip" data-h="l">左手</button>
+          </span>
+        </span>
         <span class="ps-stat" id="ps-stat"></span>
       </div>
       <div class="ps-staff-wrap scf-staff-wrap"><div id="ps-staff"></div></div>
@@ -9505,7 +9524,15 @@ function renderPlayStage() {
   // ---- 载入一首曲目（统一入口）----
   function loadSong(s) {
     song = s;
-    sf = new ScoreFollow(song, { timeScale: 1, octaveAgnostic: false });
+    const hasHands = !!(song.hands) || (Array.isArray(song.notes) && song.notes.some((n) => n.hand === 'l'));
+    if (!hasHands) hand = 'both';   // 单手曲：强制双手（其实只有一只手的音）
+    sf = new ScoreFollow(song, { timeScale: 1, octaveAgnostic: false, handFilter: hasHands ? hand : 'both' });
+    // 🖐️ 左右手选择器：仅含左右手的 MIDI 才显示
+    const hw = $('#ps-hand-wrap');
+    if (hw) {
+      hw.hidden = !hasHands;
+      if (hasHands) $('#ps-hand').querySelectorAll('.ear-chip').forEach((b) => b.classList.toggle('on', b.dataset.h === hand));
+    }
     let [lo, hi] = sf.range;
     lo = Math.max(21, lo - ((lo % 12 === 0) ? 0 : (lo % 12)));
     hi = Math.min(108, hi + (11 - (hi % 12)));
@@ -9540,7 +9567,8 @@ function renderPlayStage() {
       else if (n.grade === SCF_GRADE.GOOD) cls += ' nh-good';
       else if (n.grade === SCF_GRADE.MISS) cls += ' nh-miss';
       else if (n.hand === 'l') cls += ' nh-left';
-      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${cls}"/></g>`;
+      const op = sf._handOk(n) ? '' : ' opacity="0.22"';   // 🖐️ 非当前练习手 → 淡显
+      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${cls}"${op}/></g>`;
     }
     const cursorBeat = Math.max(0, sf.beatAt(t)), curX = xForBeat(cursorBeat);
     svg += `<line x1="${curX}" y1="14" x2="${curX}" y2="${H - 10}" class="scf-cursor-line"/></svg>`;
@@ -9565,6 +9593,7 @@ function renderPlayStage() {
       const top = HW_H - dt * pxPerMs - h;
       let cls = 'scf-note';
       if (n.hand === 'l') cls += ' n-left';
+      if (!sf._handOk(n)) cls += ' n-dim';                 // 🖐️ 非当前练习手 → 淡显
       if (n.grade === SCF_GRADE.PERFECT) cls += ' n-perfect';
       else if (n.grade === SCF_GRADE.GOOD) cls += ' n-good';
       else if (n.grade === SCF_GRADE.MISS) cls += ' n-miss';
@@ -9835,6 +9864,14 @@ function renderPlayStage() {
   $('#ps-listen').onchange = (e) => { listenFirst = e.target.checked; };
   $('#ps-real').onchange = (e) => { realPiano = e.target.checked; if (!realPiano) allRealOff(); };
   $('#ps-labels').onchange = (e) => { labelsOn = e.target.checked; };
+  $('#ps-hand').querySelectorAll('.ear-chip').forEach((b) => {
+    b.onclick = () => {
+      if (mode) return;   // 演奏中不切手，避免判定状态错乱
+      hand = b.dataset.h;
+      $('#ps-hand').querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+      if (song) loadSong(song);   // 重建引擎（按手过滤）+ 键盘区间 + 重绘
+    };
+  });
   $('#ps-search').oninput = (e) => { libState.query = e.target.value; drawCats(); drawList(); };
   $('#ps-file').onchange = async (e) => {
     const file = e.target.files && e.target.files[0];
@@ -16076,6 +16113,7 @@ function renderStaffView() {
   let svGroups = [];        // 等待模式分组：同一时刻的音符归一组 [{ms, midis:[...]}]
   let waitIdx = 0;          // 当前等待的组
   let waitNeed = null;      // 当前组还没弹到的音（按音高 class，忽略八度更友好）
+  let waitTolerant = true;  // 🌟 容差等待：音高差≤2半音也帮过（宽容 MIDI 毛刺/相邻误触），默认开
   let beat = null;          // 🥁 浏览器节拍器（自由运行，帮孩子把握节奏）
   let metroOn = false;
   const allSongs = () => [...DEMO_SONGS, ...customSongs];
@@ -16119,6 +16157,7 @@ function renderStaffView() {
       <span class="mpl-sep"></span>
       <label class="mpl-check"><input type="checkbox" id="sv-sound" checked> 🔊 声音</label>
       <label class="mpl-check"><input type="checkbox" id="sv-follow" checked> 🎯 跟随</label>
+      <label class="mpl-check" title="开启后，等待练习里音高只差一点点（≤2 半音）也会帮你过并温柔提示，不被 MIDI 小误差卡住"><input type="checkbox" id="sv-tol" checked> 🌟 容差</label>
       <label class="mpl-check"><input type="checkbox" id="sv-labels" checked> 🔤 音名</label>
     </div>
     <div class="mpl-info">
@@ -16329,13 +16368,25 @@ function renderStaffView() {
     if (waitNeed.has(pc)) {
       waitNeed.delete(pc);
       kb.flash(midi, '#34d399');   // 绿=对（声音由屏幕键预听 / 真琴本身发出，避免重音）
-      if (waitNeed.size === 0) {
-        const next = waitIdx + 1;
-        if (next >= svGroups.length) svWaitFinish();
-        else svWaitGoto(next);
+    } else if (waitTolerant) {
+      // 🌟 容差：找还没弹的、音级环形距离 ≤2 半音的最近目标，帮过并温柔提示，不被 MIDI 小误差卡住
+      let target = null, bd = Infinity;
+      for (const need of waitNeed) {
+        let d = Math.abs(need - pc); if (d > 6) d = 12 - d;   // 音级环形距离
+        if (d <= 2 && d < bd) { target = need; bd = d; }
       }
+      if (target == null) { kb.flash(midi, '#fbbf24'); return; }  // 差太远：温和提示，不前进
+      waitNeed.delete(target);
+      kb.flash(midi, '#fbbf24');   // 你弹的键：黄（差一点点也帮过）
+      $('#sv-counts').textContent = '差一点点～已帮你过，继续！🌟';
     } else {
       kb.flash(midi, '#fbbf24');   // 弹错：温和提示，不惩罚、不前进
+      return;
+    }
+    if (waitNeed.size === 0) {
+      const next = waitIdx + 1;
+      if (next >= svGroups.length) svWaitFinish();
+      else svWaitGoto(next);
     }
   }
   function svWaitFinish() {
@@ -16391,6 +16442,7 @@ function renderStaffView() {
   $('#sv-speed').oninput = (e) => { speed = +e.target.value; $('#sv-speed-v').textContent = speed.toFixed(2) + '×'; if (beat && (playing || svMode === 'wait')) startBeat(); };
   $('#sv-sound').onchange = (e) => { soundOn = e.target.checked; };
   $('#sv-follow').onchange = (e) => { follow = e.target.checked; if (follow) drawCursor(t); };
+  $('#sv-tol').onchange = (e) => { waitTolerant = e.target.checked; };
   $('#sv-labels').onchange = (e) => { labels = e.target.checked; build(); drawCursor(t); };
   $('#sv-seek').oninput = (e) => { if (!total || svMode === 'wait') return; t = (+e.target.value / 1000) * total; prevT = t; setActiveGlyphs(t); drawCursor(t); };
   $('#sv-file').onchange = async (e) => {

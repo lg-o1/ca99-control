@@ -267,6 +267,47 @@ export class ScoreFollow {
   matches(a, b) { return this.octaveAgnostic ? pcOf(a) === pcOf(b) : a === b; }
 
   /**
+   * 等待模式的"容差匹配"：在一组待弹音符里，决定该接受哪个音符。
+   * 先找精确（octaveAgnostic 时为八度等价）匹配；若 tolerant 开启且无精确匹配，
+   * 再退一步找音高相差 ≤ semis 个半音、最接近的未判音符——用于宽容 MIDI 偶发毛刺
+   * 或相邻键误触，让孩子"差一点点"也能继续，而不是被彻底卡住。
+   * @param {number} midi 玩家弹下的音
+   * @param {Array} groupNotes 当前组的音符（每个含 .judged/.midi）
+   * @param {object} opts { tolerant=false, semis=2 }
+   * @returns {{note:object, exact:boolean}|null} 命中则返回要标记的音符与是否精确；否则 null
+   */
+  waitMatch(midi, groupNotes, opts = {}) {
+    const tolerant = !!opts.tolerant;
+    const semis = opts.semis ?? 2;
+    for (const n of groupNotes) {
+      if (n.judged) continue;
+      if (this.matches(n.midi, midi)) return { note: n, exact: true };
+    }
+    if (!tolerant) return null;
+    let best = null, bd = Infinity;
+    for (const n of groupNotes) {
+      if (n.judged) continue;
+      const d = Math.abs(n.midi - midi);
+      if (d <= semis && d < bd) { best = n; bd = d; }
+    }
+    return best ? { note: best, exact: false } : null;
+  }
+
+  /**
+   * 直接把某个音符记为"已弹"（容差等待用）：更新计数与连击，不依赖音高匹配。
+   * 精确命中走 judge()；容差命中走本方法记一个 GOOD，既不卡住也仍计入统计。
+   * @param {object} note 要标记的音符（来自 notes）
+   * @param {string} grade GRADE.PERFECT | GRADE.GOOD（默认 GOOD）
+   */
+  accept(note, grade = GRADE.GOOD) {
+    if (!note || note.judged) return;
+    note.judged = true; note.grade = grade; note.deltaMs = 0;
+    if (grade === GRADE.PERFECT) { this.perfect++; this.score += 100; }
+    else { this.good++; this.score += 50; }
+    this.combo++; if (this.combo > this.maxCombo) this.maxCombo = this.combo;
+  }
+
+  /**
    * 判定一次弹奏：在播放头时间 t（毫秒）找最近的、音高匹配且仍在判定窗内的未判音符。
    * @returns {{grade, note, deltaMs, wrong, due}}
    *   grade=PERFECT/GOOD 表示弹对；

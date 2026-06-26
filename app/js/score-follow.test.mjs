@@ -387,3 +387,71 @@ test('timings：未演奏时统计为空、平均误差 0', () => {
   assert.equal(t.avgAbs, 0);
   assert.equal(t.maxAbs, 0);
 });
+
+// ---- waitMatch：容差等待匹配 ----
+test('waitMatch：精确命中（exact=true）', () => {
+  const sf = new ScoreFollow({ id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] });
+  const g = sf.groups();
+  const r = sf.waitMatch(60, g[0].notes, { tolerant: true });
+  assert.ok(r && r.exact === true && r.note.midi === 60);
+});
+
+test('waitMatch：非容差时差一点也判 null', () => {
+  const sf = new ScoreFollow({ id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] });
+  const g = sf.groups();
+  assert.equal(sf.waitMatch(61, g[0].notes, { tolerant: false }), null);
+});
+
+test('waitMatch：容差接受 ≤2 半音内最近音（exact=false）', () => {
+  const sf = new ScoreFollow({ id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] });
+  const g = sf.groups();
+  const r1 = sf.waitMatch(61, g[0].notes, { tolerant: true, semis: 2 });
+  assert.ok(r1 && r1.exact === false && r1.note.midi === 60);
+  const r2 = sf.waitMatch(62, g[0].notes, { tolerant: true, semis: 2 });
+  assert.ok(r2 && r2.note.midi === 60);
+});
+
+test('waitMatch：超出半音容差仍返回 null', () => {
+  const sf = new ScoreFollow({ id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] });
+  const g = sf.groups();
+  assert.equal(sf.waitMatch(64, g[0].notes, { tolerant: true, semis: 2 }), null);
+});
+
+test('waitMatch：和弦里优先精确命中、其次最近', () => {
+  // 同时刻 C(60) 与 G(67) 一组
+  const song = { id: 't', title: 't', clef: 'treble', bpm: 60,
+    notes: [{ midi: 60, ms: 0, durMs: 500, beat: 0, dur: 1, hand: 'r' },
+            { midi: 67, ms: 0, durMs: 500, beat: 0, dur: 1, hand: 'r' }] };
+  const sf = new ScoreFollow(song);
+  const notes = sf.groups()[0].notes;
+  const exact = sf.waitMatch(67, notes, { tolerant: true });
+  assert.ok(exact.exact === true && exact.note.midi === 67);
+  const near = sf.waitMatch(66, notes, { tolerant: true, semis: 2 });
+  assert.ok(near.exact === false && near.note.midi === 67);
+});
+
+test('waitMatch：跳过已判音符', () => {
+  const sf = new ScoreFollow({ id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] });
+  const g = sf.groups();
+  g[0].notes[0].judged = true;
+  assert.equal(sf.waitMatch(60, g[0].notes, { tolerant: true }), null);
+});
+
+// ---- accept：容差命中记 GOOD ----
+test('accept：把音符记为 GOOD，更新计数与连击', () => {
+  const sf = new ScoreFollow({ id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1], [62, 1]] });
+  const n = sf.notes[0];
+  sf.accept(n);
+  assert.equal(n.judged, true);
+  assert.equal(n.grade, GRADE.GOOD);
+  assert.equal(sf.good, 1);
+  assert.equal(sf.combo, 1);
+});
+
+test('accept：已判音符不重复计数', () => {
+  const sf = new ScoreFollow({ id: 't', title: 't', clef: 'treble', bpm: 60, seq: [[60, 1]] });
+  const n = sf.notes[0];
+  sf.accept(n);
+  sf.accept(n);
+  assert.equal(sf.good, 1);
+});

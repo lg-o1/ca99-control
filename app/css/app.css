@@ -2241,3 +2241,8 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .pet-egg-ic{font-size:2rem}
 .pet-egg-nm{font-size:.82rem;font-weight:700;text-align:center}
 .pet-egg-xp{font-size:.72rem;color:var(--muted)}
+
+/* 🎬 演奏台·左右手选择器（仅含左右手的 MIDI 显示） */
+.ps-hand-wrap{display:inline-flex;align-items:center;gap:7px}
+.ps-hand-lbl{font-size:13px;color:var(--muted);user-select:none}
+.ps-hand-chips{display:inline-flex;gap:5px}
