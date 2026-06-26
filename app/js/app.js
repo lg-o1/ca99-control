@@ -93,6 +93,7 @@ import * as WeeklyQuest from './weekly-quest.js';
 import { RACES as GR_RACES, getRace as grGetRace, GhostRace, ghostFrac as grGhostFrac, playerFrac as grPlayerFrac, lead as grLead, formatMs as grFormatMs } from './ghost-race.js';
 import { PATTERNS as RJ_PATTERNS, patternById as rjPatternById, RhythmJump } from './rhythm-jump.js';
 import { FamilyDuel, DEFAULT_PLAYERS as FD_PLAYERS } from './family-duel.js';
+import { SoundPainting } from './sound-paint.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -155,6 +156,7 @@ let ghostRaceOnNote = null;  // 👻 幽灵竞速的 note-on 回调（幽灵竞�
 let ghostRaceOnNoteOff = null; // 👻 幽灵竞速的 note-off 回调
 let rhythmJumpOnNote = null; // 🥁 节奏跳跳的 note-on 回调（任意键拍节奏；节奏跳跳模块注册）
 let familyDuelOnNote = null; // 👯 双人对战的 note-on 回调（双人对战模块注册）
+let soundPaintOnNote = null; // 🎨 音画涂鸦的 note-on 回调（每弹一音画一笔；音画涂鸦模块注册）
 let diceOnNote = null;      // 🎲 骰子热身的 note-on 回调
 let diceOnNoteOff = null;   // 🎲 骰子热身的 note-off 回调
 let guessOnNote = null;     // 🕵️ 猜歌视奏的 note-on 回调
@@ -604,6 +606,8 @@ function onMidiIn(bytes) {
     if (rhythmJumpOnNote) rhythmJumpOnNote(m.note, m.velocity);
     // 驱动双人对战
     if (familyDuelOnNote) familyDuelOnNote(m.note, m.velocity);
+    // 驱动音画涂鸦
+    if (soundPaintOnNote) soundPaintOnNote(m.note, m.velocity);
     // 驱动骰子热身
     if (diceOnNote) diceOnNote(m.note, m.velocity);
     // 驱动猜歌视奏
@@ -14016,6 +14020,136 @@ function renderFamilyDuel() {
   drawOpp(); drawScore();
 }
 
+// ========== 模块: 🎨 音画涂鸦（边弹边作画，零失败可保存分享）==========
+function renderSoundPaint() {
+  const root = $('#module-paint');
+  if (!root) return;
+  const W = 900, H = 520;
+  const BGS = [
+    { id: 'night', name: '🌌 星夜', a: '#0f172a', b: '#1e1b4b' },
+    { id: 'dawn', name: '🌅 朝霞', a: '#1e1b4b', b: '#7c2d12' },
+    { id: 'sea', name: '🌊 深海', a: '#082f49', b: '#0c4a6e' },
+    { id: 'paper', name: '📜 画纸', a: '#1c1917', b: '#292524' },
+  ];
+  let bgIdx = 0;
+  let painting = new SoundPainting({ W, H });
+  let t0 = 0;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎨 音画涂鸦</h2>
+    <p style="color:var(--muted);margin-bottom:14px">这里<b>没有对错、没有分数</b>——你弹的<b>每一个音</b>都会在画布上点亮一笔色彩：<b>音越高颜色越偏紫、音越低越偏红</b>，<b>弹得越响光斑越大</b>。随便弹，画一幅只属于你的画 🌈 弹完按 <b>💾 保存</b> 变成图片，发给爸爸妈妈看！可接 CA99 真琴或点屏幕键盘。</p>
+
+    <div class="bb-pick" id="spt-bg"></div>
+
+    <div class="spt-stage">
+      <canvas id="spt-canvas" width="${W}" height="${H}"></canvas>
+      <div class="spt-hint" id="spt-hint">✨ 弹一个音开始作画…</div>
+    </div>
+
+    <div class="rotate-bar" style="margin-top:10px">
+      <button id="spt-clear" class="big-btn" style="background:#475569">🗑️ 新画布</button>
+      <button id="spt-save" class="big-btn">💾 保存图片</button>
+      <button id="spt-share" class="big-btn" style="background:#0ea5e9">📤 分享</button>
+      <span id="spt-count" class="kb-cap" style="align-self:center"></span>
+    </div>
+
+    <div class="kb-wrap" style="margin-top:10px">
+      <div class="kb-cap">🎹 弹任何键都好看 —— 这是你的自由创作区</div>
+      <div id="spt-kb"></div>
+    </div>`;
+
+  const canvas = root.querySelector('#spt-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function paintBg() {
+    const bg = BGS[bgIdx];
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, bg.a); g.addColorStop(1, bg.b);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawStroke(s) {
+    const grad = ctx.createRadialGradient(s.x, s.y, 1, s.x, s.y, s.r);
+    grad.addColorStop(0, `hsla(${s.hue},${s.sat}%,${Math.min(s.light + 18, 92)}%,${s.alpha})`);
+    grad.addColorStop(0.6, `hsla(${s.hue},${s.sat}%,${s.light}%,${s.alpha * 0.75})`);
+    grad.addColorStop(1, `hsla(${s.hue},${s.sat}%,${s.light}%,0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function redraw() {
+    paintBg();
+    painting.strokes.forEach(drawStroke);
+  }
+
+  function updateCount() {
+    const sm = painting.summary();
+    $('#spt-count').textContent = painting.isEmpty ? '' : `🖌️ ${sm.notes} 笔 · 🎨 ${sm.colors} 种颜色`;
+    const hint = $('#spt-hint');
+    if (hint) hint.style.display = painting.isEmpty ? '' : 'none';
+  }
+
+  function paintNote(midi, velocity) {
+    if (midi < 21 || midi > 108) return;
+    if (painting.isEmpty) t0 = performance.now();
+    const tMs = performance.now() - t0;
+    const s = painting.add(midi, velocity || 90, tMs);
+    drawStroke(s);
+    sptKb.flash(midi, `hsl(${s.hue},85%,62%)`);
+    updateCount();
+  }
+
+  const sptKb = new PianoKeyboard($('#spt-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); paintNote(m, 96); },
+  });
+  sptKb.scrollToShow(48, 84);
+
+  function drawBgPicker() {
+    $('#spt-bg').innerHTML = BGS.map((b, i) =>
+      `<button class="bb-chip${i === bgIdx ? ' on' : ''}" data-i="${i}">${b.name}</button>`).join('');
+    $('#spt-bg').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { bgIdx = +el.dataset.i; drawBgPicker(); redraw(); };
+    });
+  }
+
+  $('#spt-clear').onclick = () => { painting.reset(); redraw(); updateCount(); };
+
+  $('#spt-save').onclick = () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `ca99-painting-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+    a.click();
+    cheerToast('画作已保存 💾', root);
+  };
+
+  $('#spt-share').onclick = () => {
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'ca99-painting.png', { type: 'image/png' });
+      try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: '我的音画 🎨' });
+          return;
+        }
+      } catch (e) { return; }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'ca99-painting.png'; a.click();
+      cheerToast('已保存图片，可手动分享 📤', root);
+    }, 'image/png');
+  };
+
+  // 模块可见时注册真琴回调，切走清空
+  document.addEventListener('ca99:module-change', (e) => {
+    soundPaintOnNote = (e.detail === 'paint') ? ((m, v) => paintNote(m, v)) : null;
+  });
+  // 初次进入若已是当前模块也注册
+  if ($('#module-paint') && $('#module-paint').classList.contains('active')) {
+    soundPaintOnNote = (m, v) => paintNote(m, v);
+  }
+
+  drawBgPicker(); paintBg(); updateCount();
+}
+
 // ========== 模块: 🎲 骰子热身（掷骰随机生成今日小任务，消除"练什么"的选择压力）==========
 function renderDiceWarmup() {
   const root = $('#module-dice');
@@ -16206,7 +16340,7 @@ const mpRollStats = mplRollStats;
 async function main() {
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

@@ -2215,3 +2215,8 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .fd-pts{font-size:1.5rem;font-weight:800;color:var(--tc,#fff);min-width:1.4em;text-align:center}
 .fd-vs{font-weight:800;color:var(--muted);font-size:.9rem;letter-spacing:1px}
 .fd-banner{text-align:center;font-size:1.05rem;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.05);margin-bottom:8px;line-height:1.5}
+
+/* ===== 🎨 音画涂鸦 Sound Painting ===== */
+.spt-stage{position:relative;margin:6px 0 4px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.08);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.spt-stage #spt-canvas{display:block;width:100%;height:auto;background:#0f172a}
+.spt-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.6);font-size:1.2rem;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.6)}
