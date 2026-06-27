@@ -101,6 +101,7 @@ import { RUNS as SR_RUNS, getRun as srGetRun, SpeedRun } from './speed-run.js';
 import { DiceWarmup } from './dice-warmup.js';
 import { BingoCard, winLines } from './bingo-card.js';
 import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song.js';
+import { resolveInstruments as tgResolve, TimbreGuess } from './timbre-guess.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
@@ -185,6 +186,7 @@ let diceOnNote = null;      // 🎲 骰子热身的 note-on 回调
 let diceOnNoteOff = null;   // 🎲 骰子热身的 note-off 回调
 let guessOnNote = null;     // 🕵️ 猜歌视奏的 note-on 回调
 let guessOnNoteOff = null;  // 🕵️ 猜歌视奏的 note-off 回调
+let timbreOnNote = null;    // 🎨 音色猜猜乐的 note-on 回调（弹任意键听音色）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -678,6 +680,8 @@ function onMidiIn(bytes) {
     if (melodyPalaceOnNote) melodyPalaceOnNote(m.note);
     // 驱动猜歌视奏
     if (guessOnNote) guessOnNote(m.note, m.velocity);
+    // 驱动音色猜猜乐（弹任意键听当前音色）
+    if (timbreOnNote) timbreOnNote(m.note, m.velocity);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -15368,9 +15372,105 @@ function renderGuessSong() {
   drawStaff();
 }
 
+// 🎨 音色猜猜乐（CA99 硬件独家）：随机切音色 → 弹几下听 → 从 4 个乐器里猜
+function renderTimbreGuess() {
+  const root = $('#module-timbre');
+  if (!root) return;
+  const pool = tgResolve(SOUNDS);
+  let tg = null;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎨 音色猜猜乐</h2>
+    <p style="color:var(--muted);margin-bottom:6px">CA99 有 <b>346 种音色</b>——别的 app 永远做不了这个游戏 🎹。每题我<b>随机换一个乐器</b>，你<b>随便弹几下听一听</b>，再从下面 4 个里<b>猜这是什么乐器</b>，猜对撒花 🎉！猜错不扣分，再听听就好。</p>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:14px">💡 <b>连上 CA99 真琴</b>（并开启顶部「🎹 预听走真琴」）才能听到真实音色；没连真琴时电脑只能用一种声音，猜不准是正常的。</p>
+
+    <div class="gs-stats">
+      <span class="dw-stat">⭐ 得分 <b id="tg-score">0</b></span>
+      <span class="dw-stat">🔥 连对 <b id="tg-streak">0</b></span>
+      <span class="dw-stat">🏆 最高连对 <b id="tg-best">0</b></span>
+    </div>
+
+    <div class="gs-stage">
+      <div class="gs-mystery" id="tg-mystery">🎧 ？？？</div>
+    </div>
+    <div class="bb-feedback" id="tg-feedback">点"新一题"，我会偷偷换一个乐器音色给你听</div>
+
+    <div class="gs-options" id="tg-options"></div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap" id="tg-kbcap">🎹 随便弹几下，仔细听这是什么乐器的声音</div>
+      <div id="tg-kb"></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="tg-new" class="big-btn">🎲 新一题</button>
+      <span id="tg-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  if (!pool || pool.length < 4) {
+    $('#tg-options').innerHTML = '';
+    $('#tg-feedback').textContent = '⚠️ 没找到足够的乐器音色，无法开始。';
+    return;
+  }
+
+  const tgKb = new PianoKeyboard($('#tg-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); },
+  });
+  tgKb.scrollToShow(48, 84);
+  // 真琴弹奏时让屏幕键盘也亮一下（纯视觉反馈，不判分——本游戏靠"听"）
+  timbreOnNote = (m) => { try { tgKb.flash(m, kbHandColor('r')); } catch (_) {} };
+
+  function drawOptions(revealKey) {
+    const wrap = $('#tg-options');
+    if (!tg || !tg.round) { wrap.innerHTML = ''; return; }
+    wrap.innerHTML = tg.round.options.map((s) =>
+      `<button class="gs-opt" data-key="${s.key}">${s.emoji} ${s.name}</button>`).join('');
+    wrap.querySelectorAll('.gs-opt').forEach((el) => {
+      if (revealKey && el.dataset.key === revealKey) el.classList.add('right');
+      el.onclick = () => onGuess(el.dataset.key, el);
+    });
+  }
+
+  function onGuess(key, el) {
+    if (!tg || !tg.round || tg.answered) return;
+    const r = tg.guess(key);
+    if (r.correct) {
+      $('#tg-score').textContent = r.score;
+      $('#tg-streak').textContent = r.streak;
+      $('#tg-best').textContent = r.bestStreak;
+      $('#tg-mystery').textContent = `${r.target.emoji} ${r.target.name}`;
+      $('#tg-mystery').classList.add('revealed');
+      el.classList.add('right');
+      cheerToast(`🎉 答对啦！是${r.target.name}`, root);
+      cheerBurst(root, 70);
+      $('#tg-feedback').innerHTML = `🎉 <b>答对了！</b>这是 <b>${r.target.emoji} ${r.target.name}</b>（${r.target.category}）——你的耳朵真灵！点"新一题"再来。`;
+      $('#tg-status').textContent = '猜对了！';
+      recordPractice('timbre', '音色猜猜乐', tg.rounds, tg.correctCount, tg.bestStreak);
+      // 揭晓后禁用其余选项
+      $('#tg-options').querySelectorAll('.gs-opt').forEach((b) => { b.disabled = true; });
+    } else {
+      el.classList.add('wrong');
+      el.disabled = true;
+      $('#tg-streak').textContent = '0';
+      $('#tg-feedback').textContent = '🤔 不是这个乐器哦～再弹几下、仔细听听音色（不扣分）';
+    }
+  }
+
+  $('#tg-new').onclick = () => {
+    if (!tg) tg = new TimbreGuess(pool);
+    const round = tg.next();
+    applySound(round.target.soundId);   // 偷偷把真琴切到目标音色
+    $('#tg-mystery').textContent = '🎧 ？？？';
+    $('#tg-mystery').classList.remove('revealed');
+    $('#tg-feedback').innerHTML = '🎹 <b>随便弹几下</b>，仔细听这是什么乐器的声音，然后在下面选 👇';
+    $('#tg-status').textContent = '听音色中…';
+    drawOptions();
+  };
+}
+
 function renderMedalWall() {
   const root = $('#module-medals');
-  if (!root) return;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   function build() {
@@ -18349,7 +18449,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
