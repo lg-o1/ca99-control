@@ -481,6 +481,21 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .bb-pnote.done { background: #14532d; border-color: #22c55e; color: #bbf7d0; }
 .bb-arrow { color: var(--muted); font-size: 13px; }
 .bb-feedback { font-weight: 700; font-size: 15px; min-height: 22px; color: var(--text); margin-top: 8px; }
+/* 🎢 力度过山车 */
+.vc-stage { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 10px; }
+#vc-track { width: 100%; }
+.vc-svg { width: 100%; height: auto; background: linear-gradient(180deg, rgba(96,165,250,.10), rgba(167,139,250,.06)); border-radius: 12px; }
+.vc-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 4 5; opacity: .5; }
+.vc-rail { fill: none; stroke: #60a5fa; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; filter: drop-shadow(0 1px 3px rgba(96,165,250,.5)); }
+.vc-stop { fill: #1e293b; stroke: #60a5fa; stroke-width: 2; }
+.vc-stop.done { fill: #475569; stroke: #94a3b8; }
+.vc-stop.good { fill: #34d399; stroke: #34d399; }
+.vc-stop.cur { fill: #fbbf24; stroke: #fbbf24; filter: drop-shadow(0 0 6px rgba(251,191,36,.8)); }
+.vc-sym { fill: var(--muted); font-size: 12px; font-style: italic; font-weight: 700; }
+.vc-played { fill: #f472b6; stroke: #fff; stroke-width: 1; }
+.vc-car { font-size: 16px; }
+.vc-manual { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+.vc-manual .val { min-width: 28px; font-weight: 700; }
 .bb-dmg { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 34px; font-weight: 900; color: #fca5a5; text-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none; animation: bbDmg .9s ease-out forwards; }
 @keyframes bbDmg { 0% { opacity: 0; transform: translate(-50%, 0) scale(.6) } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2) } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1) } }
 

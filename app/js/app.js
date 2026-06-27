@@ -102,6 +102,7 @@ import { DiceWarmup } from './dice-warmup.js';
 import { BingoCard, winLines } from './bingo-card.js';
 import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song.js';
 import { resolveInstruments as tgResolve, TimbreGuess } from './timbre-guess.js';
+import { SHAPES as VC_SHAPES, makeTrack as vcMakeTrack, velocityToHeight as vcVelToHeight, VelocityCoaster } from './velocity-coaster.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
@@ -187,6 +188,7 @@ let diceOnNoteOff = null;   // 🎲 骰子热身的 note-off 回调
 let guessOnNote = null;     // 🕵️ 猜歌视奏的 note-on 回调
 let guessOnNoteOff = null;  // 🕵️ 猜歌视奏的 note-off 回调
 let timbreOnNote = null;    // 🎨 音色猜猜乐的 note-on 回调（弹任意键听音色）
+let coasterOnNote = null;   // 🎢 力度过山车的 note-on 回调（按 velocity 驾驶）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -682,6 +684,8 @@ function onMidiIn(bytes) {
     if (guessOnNote) guessOnNote(m.note, m.velocity);
     // 驱动音色猜猜乐（弹任意键听当前音色）
     if (timbreOnNote) timbreOnNote(m.note, m.velocity);
+    // 驱动力度过山车（按 velocity 驾驶）
+    if (coasterOnNote) coasterOnNote(m.note, m.velocity);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -15372,6 +15376,152 @@ function renderGuessSong() {
   drawStaff();
 }
 
+// 🎢 力度过山车：屏幕画起伏轨道，按触键轻重"开车"经过每站，真实力度感应才好玩
+function renderVelocityCoaster() {
+  const root = $('#module-coaster');
+  if (!root) return;
+  let game = null;
+  let shapeId = 'hill';
+  let lastPlayedHeight = null;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎢 力度过山车</h2>
+    <p style="color:var(--muted);margin-bottom:6px">屏幕画一条<b>起伏的轨道</b>，你用<b>触键的轻重</b>"开车"经过每一站——轨道<b>高 = 弹得响</b>，轨道<b>低 = 弹得轻</b> 🎢。越接近目标力度评价越高（🌟perfect / 👍good），连续接近攒连击！练强弱控制，是真钢琴课最看重的<b>音乐表现力</b>。</p>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">💡 <b>连上 CA99 真琴</b>才能感应触键力度（最好玩）；没连真琴时用下面的滑杆选力度、点"弹这一站"模拟。</p>
+
+    <div class="card-panel" style="margin-bottom:12px">
+      <div class="param-row" style="align-items:flex-start"><label>轨道形状</label>
+        <div class="ear-chips" id="vc-shapes"></div></div>
+      <div class="param-row"><label>站点数</label>
+        <select id="vc-len"><option value="6">6 站（短）</option><option value="8" selected>8 站</option><option value="12">12 站（长）</option></select></div>
+    </div>
+
+    <div class="vc-stage">
+      <div id="vc-track"></div>
+      <div class="bb-feedback" id="vc-feedback">选好轨道，按"新轨道"出发 🚗</div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="vc-score">0</span><span class="sight-stat-lbl">得分</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="vc-combo">0</span><span class="sight-stat-lbl">连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="vc-best">0</span><span class="sight-stat-lbl">最佳连击</span></div>
+      <div class="sight-stat"><span class="sight-stat-num" id="vc-prog">0/0</span><span class="sight-stat-lbl">进度</span></div>
+    </div>
+
+    <div class="card-panel vc-manual">
+      <div class="param-row"><label>🎚️ 力度（无真琴时用）</label>
+        <input type="range" id="vc-vel" min="1" max="127" value="70"><span class="val" id="vc-vel-val">70</span></div>
+      <button id="vc-hit" class="mini-btn">🎹 弹这一站</button>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="vc-new" class="big-btn">🎢 新轨道</button>
+      <span id="vc-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  function drawShapes() {
+    $('#vc-shapes').innerHTML = VC_SHAPES.map((s) =>
+      `<button class="ear-chip ${s.id === shapeId ? 'on' : ''}" data-id="${s.id}" title="${s.desc}">${s.emoji} ${s.name}</button>`).join('');
+    $('#vc-shapes').querySelectorAll('.ear-chip').forEach((b) => {
+      b.onclick = () => { shapeId = b.dataset.id; drawShapes(); };
+    });
+  }
+  drawShapes();
+
+  function drawTrack() {
+    const W = 640, H = 230, padX = 28, padY = 28;
+    const innerH = H - padY * 2;
+    if (!game) {
+      $('#vc-track').innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="vc-svg" preserveAspectRatio="xMidYMid meet"><text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="var(--muted)">按"新轨道"出发</text></svg>`;
+      return;
+    }
+    const pts = game.track.points;
+    const n = pts.length;
+    const xFor = (i) => padX + (n === 1 ? 0 : i / (n - 1) * (W - padX * 2));
+    const yFor = (h) => padY + (1 - h) * innerH;
+    // 轨道折线
+    let poly = pts.map((p, i) => `${xFor(i)},${yFor(p.height)}`).join(' ');
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="vc-svg" preserveAspectRatio="xMidYMid meet">`;
+    // 力度参考横线（pp/mf/ff 大致位置）
+    for (const hh of [0, 0.5, 1]) {
+      svg += `<line x1="${padX}" y1="${yFor(hh)}" x2="${W - padX}" y2="${yFor(hh)}" class="vc-grid"/>`;
+    }
+    svg += `<polyline points="${poly}" class="vc-rail"/>`;
+    pts.forEach((p, i) => {
+      const x = xFor(i), y = yFor(p.height);
+      const done = i < game.idx;
+      const cur = i === game.idx;
+      const hit = game.hits[i];
+      let cls = 'vc-stop';
+      if (cur) cls += ' cur';
+      else if (done) cls += (hit && (hit.rating === 'perfect' || hit.rating === 'good')) ? ' good' : (done ? ' done' : '');
+      svg += `<circle cx="${x}" cy="${y}" r="${cur ? 9 : 6}" class="${cls}"/>`;
+      svg += `<text x="${x}" y="${y - 13}" text-anchor="middle" class="vc-sym">${p.dyn.sym}</text>`;
+      // 已弹站点：画出实际落点（玩家弹的力度高度）
+      if (done && hit) {
+        const py = yFor(vcVelToHeight(hit.played));
+        svg += `<circle cx="${x}" cy="${py}" r="4" class="vc-played"/>`;
+      }
+    });
+    // 当前站点上方的"小车"
+    if (!game.isDone()) {
+      const x = xFor(game.idx), y = yFor(pts[game.idx].height);
+      svg += `<text x="${x}" y="${y + 5}" text-anchor="middle" class="vc-car">🚗</text>`;
+    }
+    svg += '</svg>';
+    $('#vc-track').innerHTML = svg;
+  }
+
+  function refreshStats() {
+    $('#vc-score').textContent = game ? game.score : 0;
+    $('#vc-combo').textContent = game ? game.combo : 0;
+    $('#vc-best').textContent = game ? game.bestCombo : 0;
+    $('#vc-prog').textContent = game ? `${game.idx}/${game.total}` : '0/0';
+  }
+
+  function doPlay(vel) {
+    if (!game || game.isDone()) return;
+    const r = game.play(vel);
+    lastPlayedHeight = vcVelToHeight(vel);
+    refreshStats();
+    drawTrack();
+    const dirTxt = r.dir === 'loud' ? '（弹太响了点）' : r.dir === 'soft' ? '（弹太轻了点）' : '';
+    const fb = $('#vc-feedback');
+    if (r.rating === 'perfect') fb.innerHTML = `🌟 <b>完美！</b>正好踩在轨道上！连击 ${r.combo}`;
+    else if (r.rating === 'good') fb.innerHTML = `👍 <b>不错！</b>很接近了 ${dirTxt} · 连击 ${r.combo}`;
+    else if (r.rating === 'ok') fb.innerHTML = `🆗 还行 ${dirTxt}，再调一调力度`;
+    else fb.innerHTML = `💨 偏太多啦 ${dirTxt}，看轨道高低控制轻重`;
+    if (r.combo > 0 && r.combo % 5 === 0) cheerBurst(root, 50);
+    if (r.done) finish();
+  }
+
+  function finish() {
+    const stars = game.stars();
+    const starStr = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    $('#vc-feedback').innerHTML = `🏁 <b>到站啦！</b>得分 ${game.score}/${game.maxScore()} · 最佳连击 ${game.bestCombo} · ${starStr}`;
+    $('#vc-status').textContent = '已完成';
+    if (stars >= 1) { cheerToast(`🎢 ${starStr}`, root); cheerBurst(root, 80); }
+    recordPractice('coaster', '力度过山车', game.total, game.score, game.bestCombo);
+    coasterOnNote = null;
+  }
+
+  $('#vc-vel').oninput = (e) => { $('#vc-vel-val').textContent = e.target.value; };
+  $('#vc-hit').onclick = () => doPlay(+$('#vc-vel').value);
+
+  $('#vc-new').onclick = () => {
+    const n = +$('#vc-len').value;
+    game = new VelocityCoaster(vcMakeTrack(shapeId, n));
+    lastPlayedHeight = null;
+    refreshStats();
+    drawTrack();
+    $('#vc-feedback').innerHTML = `🚗 出发！看 <b>${VC_SHAPES.find((s) => s.id === shapeId).name}</b> 轨道的高低，第一站要弹 <b>${game.current().dyn.sym}</b>（${game.current().dyn.name}）`;
+    $('#vc-status').textContent = '行驶中…';
+    coasterOnNote = (note, velocity) => doPlay(velocity);
+  };
+
+  drawTrack();
+}
+
 // 🎨 音色猜猜乐（CA99 硬件独家）：随机切音色 → 弹几下听 → 从 4 个乐器里猜
 function renderTimbreGuess() {
   const root = $('#module-timbre');
@@ -18449,7 +18599,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
