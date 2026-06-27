@@ -514,6 +514,30 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .bb-dmg { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 34px; font-weight: 900; color: #fca5a5; text-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none; animation: bbDmg .9s ease-out forwards; }
 @keyframes bbDmg { 0% { opacity: 0; transform: translate(-50%, 0) scale(.6) } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2) } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1) } }
 
+/* 🌈 多重锚点 */
+.ma-stage { margin-bottom: 12px; }
+.ma-card { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: center; min-height: 120px; padding: 16px; border-radius: 14px; background: linear-gradient(180deg, rgba(148,163,184,.08), transparent); border: 1px solid var(--border); }
+.ma-card.pop { animation: maPop .32s ease-out; }
+@keyframes maPop { 0% { transform: scale(.96); } 60% { transform: scale(1.02); } 100% { transform: scale(1); } }
+.ma-hint-empty { color: var(--muted); font-size: 14px; text-align: center; width: 100%; }
+.ma-swatch { width: 96px; height: 96px; border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 18px rgba(0,0,0,.35); flex: 0 0 auto; }
+.ma-swatch-name { font-size: 40px; font-weight: 900; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.45); }
+.ma-anchors { display: grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap: 8px 14px; }
+.ma-anchor { display: flex; flex-direction: column; gap: 2px; padding: 6px 12px; border-radius: 10px; background: var(--panel-2, rgba(148,163,184,.12)); border: 1px solid var(--border); }
+.ma-anchor-lbl { color: var(--muted); font-size: 12px; }
+.ma-anchor-val { font-size: 22px; font-weight: 900; }
+.ma-chip-sub { font-size: 11px; color: var(--muted); font-weight: 600; margin-left: 6px; }
+.ma-fn { width: 100%; text-align: center; font-weight: 700; font-size: 14px; margin-top: 4px; }
+.ma-scale-ref { margin-top: 12px; }
+.ma-ref-title { color: var(--muted); font-size: 13px; margin-bottom: 6px; text-align: center; }
+.ma-ref-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ma-ref-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 12px; border-radius: 10px; background: var(--panel-2, rgba(148,163,184,.12)); border: 2px solid var(--border); border-bottom: 4px solid var(--mc); cursor: pointer; transition: all .18s; }
+.ma-ref-cell:hover { transform: translateY(-2px); }
+.ma-ref-cell.on { background: color-mix(in srgb, var(--mc) 20%, transparent); border-color: var(--mc); box-shadow: 0 0 12px color-mix(in srgb, var(--mc) 45%, transparent); transform: translateY(-2px); }
+.ma-ref-deg { font-size: 20px; font-weight: 900; color: var(--mc); line-height: 1; }
+.ma-ref-syl { font-size: 13px; font-weight: 700; }
+.ma-ref-name { font-size: 12px; color: var(--muted); }
+
 /* 🧩 节奏拼图 */
 .rpz-cap { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
 .rpz-slot-wrap { background: linear-gradient(180deg, rgba(99,102,241,.08), transparent); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 6px 0 4px; }

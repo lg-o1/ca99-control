@@ -96,6 +96,7 @@ import { DEMO_SONGS, pitchRange as mplPitchRange, totalMs as mplTotalMs, layoutR
 import { layoutStaff as svLayoutStaff, cursorX as svCursorX, activeAt as svActiveAt, triggered as svTriggered, totalMs as svTotalMs, staffStep as svStaffStep, noteName as svNoteName } from './staff-view.js';
 import { WHEEL as COF_WHEEL, diatonicChords as cofChords, chordMidi as cofChordMidi, scaleMidi as cofScaleMidi, signatureLabel as cofSigLabel, majorScaleSpelling as cofSpelling, neighbors as cofNeighbors } from './circle-of-fifths.js';
 import { noteColor as ncNoteColor, scaffoldStrength as ncStrength, isWeaned as ncWeaned } from './note-color.js';
+import { anchorsFor as maAnchorsFor, scaleAnchors as maScaleAnchors } from './multi-anchor.js';
 import { BOSSES as BB_BOSSES, getBoss as bbGetBoss, BossBattle } from './boss-battle.js';
 import { RUNS as SR_RUNS, getRun as srGetRun, SpeedRun } from './speed-run.js';
 import { DiceWarmup } from './dice-warmup.js';
@@ -195,6 +196,7 @@ let guessOnNoteOff = null;  // 🕵️ 猜歌视奏的 note-off 回调
 let timbreOnNote = null;    // 🎨 音色猜猜乐的 note-on 回调（弹任意键听音色）
 let coasterOnNote = null;   // 🎢 力度过山车的 note-on 回调（按 velocity 驾驶）
 let toneTreeOnNote = null;  // 🌲 和弦寻宝的 note-on 回调（弹组成音点亮树）
+let multiAnchorOnNote = null; // 🌈 多重锚点的 note-on 回调（弹键显示四重锚点）
 let paddleOnNote = null;    // 🏓 弹球接音的 note-on 回调（弹对应音弹回音球）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
@@ -704,6 +706,8 @@ function onMidiIn(bytes) {
     if (coasterOnNote) coasterOnNote(m.note, m.velocity);
     // 驱动和弦寻宝（弹组成音点亮树）
     if (toneTreeOnNote) toneTreeOnNote(m.note);
+    // 驱动多重锚点（弹键显示颜色/音名/唱名/级数四重锚点）
+    if (multiAnchorOnNote) multiAnchorOnNote(m.note, m.velocity);
     // 驱动弹球接音（弹对应音弹回音球）
     if (paddleOnNote) paddleOnNote(m.note);
     // 驱动力度练习
@@ -15978,6 +15982,131 @@ function renderToneTrees() {
 }
 const NOTE_NAMES_TT = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+// 🌈 多重锚点：一个音同时给四条记忆路径（颜色/音名/唱名/级数），帮认谱（Prodigies 多通道法）
+function renderMultiAnchor() {
+  const root = $('#module-multianchor');
+  if (!root) return;
+  let tonic = 60;          // 主音 MIDI（音级保留，用 C..B 的就近八度）
+  let scaleType = 'major';
+  let lastMidi = null;
+
+  const TONICS = [
+    { pc: 0, name: 'C' }, { pc: 2, name: 'D' }, { pc: 4, name: 'E' }, { pc: 5, name: 'F' },
+    { pc: 7, name: 'G' }, { pc: 9, name: 'A' }, { pc: 11, name: 'B' },
+    { pc: 1, name: 'C#' }, { pc: 3, name: 'D#' }, { pc: 6, name: 'F#' }, { pc: 8, name: 'G#' }, { pc: 10, name: 'A#' },
+  ];
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🌈 多重锚点</h2>
+    <p style="color:var(--muted);margin-bottom:6px">一个音<b>同时</b>给你<b>四条记忆路径</b>——🎨 颜色、🔤 音名、🎵 唱名、🔢 音级数字。忘了"这是 E"也许还记得"它是<b>黄色</b>"、"是第 <b>3</b> 级"、"唱 <b>Mi</b>"。多一条线索，认谱就多一分把握（Prodigies 多通道识谱法）。</p>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">💡 先选一个<b>调</b>（决定唱名/级数怎么算——可动唱名：主音永远是 Do/1），再<b>弹任意键</b>（CA99 真琴或点屏幕键），上方大卡片立刻显示这个音的四重锚点。下方是这个调的<b>音阶参考表</b>。</p>
+
+    <div class="card-panel" style="margin-bottom:12px">
+      <div class="param-row" style="align-items:flex-start"><label>调（主音）</label>
+        <div class="ear-chips" id="ma-tonics"></div></div>
+      <div class="param-row"><label>调式</label>
+        <div class="ear-chips" id="ma-scale">
+          <button class="ear-chip on" data-sc="major">大调 (Major)</button>
+          <button class="ear-chip" data-sc="minor">小调 (Minor)</button>
+        </div></div>
+    </div>
+
+    <div class="ma-stage">
+      <div class="ma-card" id="ma-card">
+        <div class="ma-hint-empty">弹一个音试试 🎹 → 这里会同时亮出它的颜色 / 音名 / 唱名 / 级数</div>
+      </div>
+      <div class="ma-scale-ref">
+        <div class="ma-ref-title" id="ma-ref-title">音阶参考</div>
+        <div class="ma-ref-row" id="ma-ref"></div>
+      </div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 弹任意键看它的四重锚点（任意八度都行）；点屏幕键也行</div>
+      <div id="ma-kb"></div>
+    </div>`;
+
+  // 调按钮
+  $('#ma-tonics').innerHTML = TONICS.map((t, i) =>
+    `<button class="ear-chip${i === 0 ? ' on' : ''}" data-pc="${t.pc}">${t.name}</button>`).join('');
+
+  const kb = new PianoKeyboard($('#ma-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); showNote(m); },
+  });
+  kb.scrollToShow(48, 84);
+
+  // 把音级映射到中央就近八度（C4 区域），用于键盘高亮
+  function pcToMid(pc) { let m = 60 + ((pc % 12) + 12) % 12; if (m < 54) m += 12; return m; }
+
+  function bigCard(a) {
+    const degTxt = a.diatonic ? a.num : `${a.num}<span class="ma-chip-sub">变化音</span>`;
+    const fnLine = a.diatonic
+      ? `<div class="ma-fn">${a.fn} · <span style="color:var(--muted)">${a.hint}</span></div>`
+      : `<div class="ma-fn" style="color:var(--muted)">调外变化音（半音）——不在这个调的七个音里</div>`;
+    return `
+      <div class="ma-swatch" style="background:${a.color}">
+        <span class="ma-swatch-name">${a.name.replace('#', '♯')}</span>
+      </div>
+      <div class="ma-anchors">
+        <div class="ma-anchor"><span class="ma-anchor-lbl">🔤 音名</span><span class="ma-anchor-val">${a.nameOct.replace('#', '♯')}</span></div>
+        <div class="ma-anchor"><span class="ma-anchor-lbl">🎵 唱名</span><span class="ma-anchor-val" style="color:${a.color}">${a.syllable}</span></div>
+        <div class="ma-anchor"><span class="ma-anchor-lbl">🔢 音级</span><span class="ma-anchor-val">${degTxt}</span></div>
+        <div class="ma-anchor"><span class="ma-anchor-lbl">🎨 颜色</span><span class="ma-anchor-val" style="color:${a.color}">${a.color.toUpperCase()}</span></div>
+      </div>
+      ${fnLine}`;
+  }
+
+  function showNote(midi) {
+    lastMidi = midi;
+    const a = maAnchorsFor(midi, { tonicMidi: tonic, scaleType });
+    $('#ma-card').innerHTML = bigCard(a);
+    $('#ma-card').classList.remove('pop'); void $('#ma-card').offsetWidth; $('#ma-card').classList.add('pop');
+    drawRef(midi);
+    recordPractice('multianchor', '多重锚点', 1, 1, 0);
+  }
+
+  function drawRef(activeMidi) {
+    const arr = maScaleAnchors({ tonicMidi: tonic, scaleType });
+    const activePc = activeMidi == null ? -1 : ((activeMidi % 12) + 12) % 12;
+    $('#ma-ref').innerHTML = arr.map((a) =>
+      `<button class="ma-ref-cell${a.pc === activePc ? ' on' : ''}" data-mid="${a.midi}" style="--mc:${a.color}">
+        <span class="ma-ref-deg">${a.num}</span>
+        <span class="ma-ref-syl">${a.syllable}</span>
+        <span class="ma-ref-name">${a.name.replace('#', '♯')}</span>
+      </button>`).join('');
+    $('#ma-ref').querySelectorAll('.ma-ref-cell').forEach((c) => {
+      c.onclick = () => { const m = +c.dataset.mid; playTone(midiToFreq(m), 0, 0.6); showNote(m); };
+    });
+    // 键盘高亮整条音阶（淡），当前音更亮
+    kb.clear();
+    arr.forEach((a) => {
+      const m = pcToMid(a.pc);
+      kb.flash(m, a.pc === activePc ? a.color : a.color + '66');
+    });
+    const tn = TONICS.find((t) => t.pc === (((tonic % 12) + 12) % 12));
+    $('#ma-ref-title').textContent = `${tn ? tn.name : ''} ${scaleType === 'major' ? '大调' : '小调'} 音阶参考（点格子试听）`;
+  }
+
+  $('#ma-tonics').querySelectorAll('.ear-chip').forEach((b) => {
+    b.onclick = () => {
+      tonic = pcToMid(+b.dataset.pc);
+      $('#ma-tonics').querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+      if (lastMidi != null) showNote(lastMidi); else drawRef(null);
+    };
+  });
+  $('#ma-scale').querySelectorAll('.ear-chip').forEach((b) => {
+    b.onclick = () => {
+      scaleType = b.dataset.sc;
+      $('#ma-scale').querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+      if (lastMidi != null) showNote(lastMidi); else drawRef(null);
+    };
+  });
+
+  multiAnchorOnNote = (note) => showNote(note);
+  drawRef(null);
+}
+
 // 🎢 力度过山车：屏幕画起伏轨道，按触键轻重"开车"经过每站，真实力度感应才好玩
 function renderVelocityCoaster() {
   const root = $('#module-coaster');
@@ -19372,7 +19501,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderMultiAnchor(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
