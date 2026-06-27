@@ -103,6 +103,7 @@ import { BingoCard, winLines } from './bingo-card.js';
 import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song.js';
 import { resolveInstruments as tgResolve, TimbreGuess } from './timbre-guess.js';
 import { SHAPES as VC_SHAPES, makeTrack as vcMakeTrack, velocityToHeight as vcVelToHeight, VelocityCoaster } from './velocity-coaster.js';
+import { pickChord as ttPick, describeChord as ttDescribe, chordsUpToLevel as ttChords, ToneTreeGame } from './tone-trees.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
@@ -189,6 +190,7 @@ let guessOnNote = null;     // 🕵️ 猜歌视奏的 note-on 回调
 let guessOnNoteOff = null;  // 🕵️ 猜歌视奏的 note-off 回调
 let timbreOnNote = null;    // 🎨 音色猜猜乐的 note-on 回调（弹任意键听音色）
 let coasterOnNote = null;   // 🎢 力度过山车的 note-on 回调（按 velocity 驾驶）
+let toneTreeOnNote = null;  // 🌲 和弦寻宝的 note-on 回调（弹组成音点亮树）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -686,6 +688,8 @@ function onMidiIn(bytes) {
     if (timbreOnNote) timbreOnNote(m.note, m.velocity);
     // 驱动力度过山车（按 velocity 驾驶）
     if (coasterOnNote) coasterOnNote(m.note, m.velocity);
+    // 驱动和弦寻宝（弹组成音点亮树）
+    if (toneTreeOnNote) toneTreeOnNote(m.note);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -15376,6 +15380,145 @@ function renderGuessSong() {
   drawStaff();
 }
 
+// 🌲 和弦寻宝（Tone Trees）：给一个和弦名，在琴上把每个组成音都找出来点亮整棵树
+function renderToneTrees() {
+  const root = $('#module-tonetrees');
+  if (!root) return;
+  let game = null;
+  let level = 1;
+  let showHint = true;
+  let solved = 0;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🌲 和弦寻宝</h2>
+    <p style="color:var(--muted);margin-bottom:6px">给你一个<b>和弦名</b>（比如 C、Am、G7），在钢琴上<b>把它的每个组成音都弹一遍</b>——每弹对一个，树上就点亮一颗果子 🍎；集齐全部组成音，<b>整棵树发光通关</b> 🌳✨！<b>八度无关</b>（哪个八度的 C 都算）。弹到不属于这个和弦的音不扣分，温和提示一下。</p>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">💡 可连 CA99 真琴或点屏幕键盘作答。开"提示位置"会在键盘上高亮该按的键，熟了可以关掉自己找。</p>
+
+    <div class="card-panel" style="margin-bottom:12px">
+      <div class="param-row" style="align-items:flex-start"><label>难度</label>
+        <div class="ear-chips" id="tt-levels">
+          <button class="ear-chip on" data-lv="1">🌱 三和弦·白键</button>
+          <button class="ear-chip" data-lv="2">🌿 三和弦·含黑键</button>
+          <button class="ear-chip" data-lv="3">🔥 七和弦·4 音</button>
+        </div></div>
+      <div class="param-row"><label>💡 提示位置</label>
+        <label class="switch-lbl"><input type="checkbox" id="tt-hint" checked> 在键盘上高亮该按的键</label></div>
+    </div>
+
+    <div class="tt-stage">
+      <div class="tt-target-row">
+        <span style="color:var(--muted);font-size:13px">请弹出和弦</span>
+        <span class="tt-target" id="tt-target">—</span>
+        <span class="tt-prog" id="tt-prog"></span>
+      </div>
+      <div class="tt-tree" id="tt-tree"></div>
+      <div class="bb-feedback" id="tt-feedback">选好难度，点"出发寻宝"🌲</div>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-cap">🎹 弹出和弦的组成音（任意八度）来点亮果子；点屏幕键也行</div>
+      <div id="tt-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><span class="sight-stat-num" id="tt-solved">0</span><span class="sight-stat-lbl">已点亮的树</span></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="tt-new" class="big-btn">🌲 出发寻宝</button>
+      <span id="tt-status" style="color:var(--muted)">未开始</span>
+    </div>`;
+
+  const kb = new PianoKeyboard($('#tt-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.6); handlePress(m); },
+  });
+  kb.scrollToShow(48, 84);
+
+  $('#tt-levels').querySelectorAll('.ear-chip').forEach((b) => {
+    b.onclick = () => {
+      level = +b.dataset.lv;
+      $('#tt-levels').querySelectorAll('.ear-chip').forEach((x) => x.classList.toggle('on', x === b));
+    };
+  });
+  $('#tt-hint').onchange = (e) => { showHint = e.target.checked; if (game) paintHint(); };
+
+  // 把目标和弦的组成音映射到中央区域的就近八度（每个音级一个 MIDI）
+  function hintMidisFor(chord) {
+    return chord.pcs.map((pc) => {
+      let m = 60 + pc;
+      if (m < 48) m += 12;
+      return m;
+    });
+  }
+
+  function paintHint() {
+    kb.clear();
+    if (!game) return;
+    const mids = hintMidisFor(game.chord);
+    game.chord.pcs.forEach((pc, i) => {
+      const m = mids[i];
+      if (game.isFound(pc)) kb.flash(m, '#34d399');
+      else if (showHint) kb.flash(m, 'rgba(96,165,250,.5)');
+    });
+  }
+
+  function drawTree() {
+    if (!game) { $('#tt-tree').innerHTML = ''; return; }
+    const fruits = game.chord.names.map((nm, i) => {
+      const pc = game.chord.pcs[i];
+      const lit = game.isFound(pc);
+      return `<div class="tt-fruit ${lit ? 'lit' : ''}"><span class="tt-fruit-ico">${lit ? '🍎' : '⚪'}</span><span class="tt-fruit-name">${nm}</span></div>`;
+    }).join('');
+    const complete = game.isComplete();
+    $('#tt-tree').innerHTML =
+      `<div class="tt-canopy ${complete ? 'done' : ''}">${complete ? '🌳' : '🌲'}</div>
+       <div class="tt-fruits">${fruits}</div>`;
+    const p = game.progress();
+    $('#tt-prog').textContent = `${p.found}/${p.total} 颗果子`;
+  }
+
+  function handlePress(midi) {
+    if (!game || game.isComplete()) return;
+    const r = game.press(midi);
+    const fb = $('#tt-feedback');
+    if (r.isNew) {
+      drawTree(); paintHint();
+      if (r.complete) {
+        fb.innerHTML = `🌳✨ <b>整棵树点亮啦！</b>${game.chord.symbol} = ${game.chord.names.join(' + ')}`;
+        $('#tt-status').textContent = '通关！再来一棵 →';
+        solved += 1;
+        $('#tt-solved').textContent = solved;
+        cheerToast(`🌳 ${game.chord.symbol} 集齐！`, root);
+        cheerBurst(root, 70);
+        recordPractice('tonetrees', '和弦寻宝', game.chord.size, game.chord.size, solved);
+        toneTreeOnNote = null;
+      } else {
+        const rem = game.remaining().length;
+        fb.innerHTML = `🍎 点亮 <b>${NOTE_NAMES_TT[r.pc]}</b>！还差 ${rem} 颗`;
+      }
+    } else if (!r.inChord) {
+      fb.innerHTML = `🌱 <b>${NOTE_NAMES_TT[r.pc]}</b> 不是这个和弦的音，再找找～`;
+    } else {
+      fb.innerHTML = `这颗果子已经点亮过啦 ✅`;
+    }
+  }
+
+  $('#tt-new').onclick = () => {
+    const avoid = game ? game.chord.symbol : null;
+    game = new ToneTreeGame(ttPick({ level, avoidSymbol: avoid }));
+    $('#tt-target').textContent = game.chord.symbol;
+    $('#tt-feedback').innerHTML = `找出 <b>${game.chord.symbol}</b> 的 ${game.chord.size} 个组成音 🌲`;
+    $('#tt-status').textContent = '寻宝中…';
+    drawTree();
+    paintHint();
+    toneTreeOnNote = (note) => handlePress(note);
+  };
+
+  drawTree();
+}
+const NOTE_NAMES_TT = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
 // 🎢 力度过山车：屏幕画起伏轨道，按触键轻重"开车"经过每站，真实力度感应才好玩
 function renderVelocityCoaster() {
   const root = $('#module-coaster');
@@ -18599,7 +18742,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

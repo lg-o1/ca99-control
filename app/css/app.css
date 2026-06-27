@@ -496,6 +496,21 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .vc-car { font-size: 16px; }
 .vc-manual { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
 .vc-manual .val { min-width: 28px; font-weight: 700; }
+/* 🌲 和弦寻宝 */
+.switch-lbl { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.tt-stage { text-align: center; margin-bottom: 10px; }
+.tt-target-row { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.tt-target { font-size: 30px; font-weight: 900; color: #34d399; letter-spacing: 1px; }
+.tt-prog { color: var(--muted); font-size: 13px; }
+.tt-tree { display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 120px; justify-content: center; background: linear-gradient(180deg, rgba(52,211,153,.08), transparent); border-radius: 12px; padding: 12px 8px; }
+.tt-canopy { font-size: 52px; line-height: 1; transition: transform .3s, filter .3s; }
+.tt-canopy.done { transform: scale(1.18); filter: drop-shadow(0 0 14px rgba(52,211,153,.9)); animation: ttGlow 1.2s ease-in-out infinite alternate; }
+@keyframes ttGlow { from { filter: drop-shadow(0 0 8px rgba(52,211,153,.6)); } to { filter: drop-shadow(0 0 18px rgba(250,204,21,.9)); } }
+.tt-fruits { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.tt-fruit { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; border-radius: 10px; background: var(--panel-2, rgba(148,163,184,.12)); border: 1px solid var(--border); opacity: .65; transition: all .25s; }
+.tt-fruit.lit { opacity: 1; background: rgba(52,211,153,.18); border-color: #34d399; box-shadow: 0 0 10px rgba(52,211,153,.4); transform: translateY(-2px); }
+.tt-fruit-ico { font-size: 22px; }
+.tt-fruit-name { font-weight: 800; font-size: 14px; }
 .bb-dmg { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 34px; font-weight: 900; color: #fca5a5; text-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none; animation: bbDmg .9s ease-out forwards; }
 @keyframes bbDmg { 0% { opacity: 0; transform: translate(-50%, 0) scale(.6) } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2) } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1) } }
 
