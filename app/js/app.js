@@ -8373,6 +8373,101 @@ function mountHierBrowser(els, catalog, onPick, opts = {}) {
   draw();
 }
 
+// ---------- 共享：MIDI 曲库选择器（内置 CA99 曲库 + 自动扫描 data/）----------
+// 取代各模块的临时「上传 MIDI」。两个 tab：📚 CA99 内置曲库（midi/catalog.json）/ 🎵 我的 MIDI（扫 data/）。
+// 选曲后 fetch + parseMidi，把 parsed + title 交回模块自行转换、入库、选中（刷新不丢，因为来源是服务器上的曲库文件）。
+function libPickerHTML(prefix) {
+  return `
+    <div class="ps-modal" id="${prefix}-modal" hidden>
+      <div class="ps-modal-card">
+        <div class="ps-modal-head">
+          <div class="ps-tabs">
+            <button class="ps-tab on" data-tab="builtin">📚 CA99 内置曲库</button>
+            <button class="ps-tab" data-tab="user">🎵 我的 MIDI（data/）</button>
+          </div>
+          <button class="ps-modal-x" id="${prefix}-modal-x">✕</button>
+        </div>
+        <div class="ps-pane" id="${prefix}-pane-lib">
+          <input class="ps-search" id="${prefix}-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…">
+          <div class="ps-cats" id="${prefix}-cats"></div>
+          <div class="ps-songlist" id="${prefix}-songlist"></div>
+        </div>
+        <div class="ps-modal-status" id="${prefix}-modal-status"></div>
+      </div>
+    </div>`;
+}
+// onPickPath(parsed, title)：模块拿到 parseMidi 结果 + 曲名后自行处理。返回 { openModal, closeModal }。
+function setupLibraryPicker(prefix, onPickPath) {
+  const $$ = (suffix) => document.getElementById(prefix + suffix);
+  let builtinCatalog = null, userCatalog = null;
+  const modal = $$('-modal');
+  const setStatus = (msg, cls) => { const el = $$('-modal-status'); if (el) { el.textContent = msg || ''; el.className = 'ps-modal-status' + (cls ? ' ' + cls : ''); } };
+  function renderLib(catalog) {
+    mountHierBrowser(
+      { cats: $$('-cats'), search: $$('-search'), list: $$('-songlist'), status: $$('-modal-status'), statusClass: 'ps-modal-status' },
+      catalog,
+      (s) => { if (s.path) loadPick(s.path, s.title); },
+    );
+  }
+  async function loadBuiltin() {
+    let cats = [], songs = [];
+    try {
+      const r = await fetch('midi/catalog.json', { cache: 'no-cache' });
+      if (r.ok) { const cj = await r.json(); cats = cj.categories || []; songs = cj.songs || []; }
+    } catch (_) { /* 无 CA99 曲库也能切到「我的 MIDI」*/ }
+    builtinCatalog = { categories: cats, songs };
+    renderLib(builtinCatalog);
+    if (!songs.length) setStatus('📭 未找到 CA99 曲库（midi/catalog.json）。可切到「我的 MIDI」用 data/ 下的曲子。');
+  }
+  async function loadUser() {
+    setStatus('⏳ 正在扫描「data/」下你整理的 MIDI…');
+    const base = 'data';
+    try {
+      let cat = null;
+      try { const r = await fetch(base + '/userlib.json', { cache: 'no-cache' }); if (r.ok) { const c = catalogFromManifest(await r.json()); if (c && c.total) cat = c; } } catch (_) {}
+      if (!cat) {
+        const rootHtml = await (await fetch(base + '/', { cache: 'no-cache' })).text();
+        const { dirs, files } = parseDirListing(rootHtml);
+        const scanDirs = [];
+        for (const d of dirs) {
+          try { const sub = await (await fetch(`${base}/${encodeURIComponent(d)}/`, { cache: 'no-cache' })).text(); const f = parseDirListing(sub).files; if (f.length) scanDirs.push({ name: d, files: f }); } catch (_) {}
+        }
+        cat = buildUserCatalog({ base, rootFiles: files, dirs: scanDirs });
+      }
+      if (!cat || !cat.total) { setStatus('📭「data/」下还没找到 .mid。把曲子按 data/<分类>/歌曲.mid 放好后重开弹窗。'); userCatalog = null; renderLib({ categories: [], songs: [] }); return; }
+      userCatalog = cat; renderLib(cat); setStatus(`共 ${cat.total} 首你自己的曲目。`);
+    } catch (err) {
+      setStatus('⚠️ 无法扫描 data/：' + (err && err.message ? err.message : err) + '（从 app/ 目录启动服务后重试）', 'err');
+      userCatalog = null; renderLib({ categories: [], songs: [] });
+    }
+  }
+  async function loadPick(path, title) {
+    setStatus('⏳ 载入「' + title + '」…');
+    try {
+      const url = String(path).split('/').map(encodeURIComponent).join('/');
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const parsed = parseMidi(await r.arrayBuffer());
+      if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
+      onPickPath(parsed, title);
+      closeModal();
+    } catch (err) { setStatus('❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）', 'err'); }
+  }
+  function openModal() { if (modal) modal.hidden = false; if (!builtinCatalog) loadBuiltin(); else renderLib(builtinCatalog); }
+  function closeModal() { if (modal) modal.hidden = true; }
+  if ($$('-modal-x')) $$('-modal-x').onclick = closeModal;
+  if (modal) modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+  if (modal) modal.querySelectorAll('.ps-tab').forEach((tab) => {
+    tab.onclick = () => {
+      modal.querySelectorAll('.ps-tab').forEach((t) => t.classList.toggle('on', t === tab));
+      setStatus('');
+      if (tab.dataset.tab === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog); else loadBuiltin(); }
+      else { if (userCatalog) renderLib(userCatalog); else loadUser(); }
+    };
+  });
+  return { openModal, closeModal };
+}
+
 // ---------- 模块45：曲谱跟弹（Synthesia 式）----------
 function renderScoreFollow() {
   const root = $('#module-scf');
@@ -8539,13 +8634,6 @@ function renderScoreFollow() {
           <button class="ear-chip" id="scf-random" title="随机挑一首没在练的曲子">🎲 随机一首</button>
           <span style="color:var(--muted);font-size:13px">想换换口味？让它帮你随机选</span>
         </div></div>
-      <div class="param-row" style="align-items:center"><label>上传 MIDI</label>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <label class="scf-upload-btn">📄 选择 .mid / .midi 文件
-            <input type="file" id="scf-midi-file" accept=".mid,.midi,audio/midi" style="display:none">
-          </label>
-          <span style="color:var(--muted);font-size:13px">支持标准 MIDI 文件（多轨/和弦/双手/变速）</span>
-        </div></div>
       <div class="param-row" style="align-items:center"><label>📚 选择曲库</label>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <button class="scf-pick-btn" id="scf-pick">📚 打开曲库（分类 › 子分类 › 选曲）</button>
@@ -8684,7 +8772,7 @@ function renderScoreFollow() {
       <div id="scf-kb"></div>
     </div>
 
-    <div id="scf-feedback" class="sight-feedback">挑一首曲子或上传 MIDI，选一档训练开始</div>
+    <div id="scf-feedback" class="sight-feedback">从曲库挑一首曲子，选一档训练开始</div>
 
     <div id="scf-next" class="scf-next" style="display:none"></div>
 
@@ -9085,22 +9173,7 @@ function renderScoreFollow() {
   }
 
   // 上传 MIDI 文件 → 解析 → 转 ScoreFollow 曲目 → 加入选曲
-  $('#scf-midi-file').onchange = async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try {
-      const buf = await file.arrayBuffer();
-      const info = loadMidiBuffer(buf, file.name.replace(/\.(midi?|MIDI?)$/i, ''));
-      $('#scf-feedback').textContent = `✅ 已载入「${info.title.replace('📄 ', '')}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。选一档训练开始。`;
-      $('#scf-feedback').className = 'sight-feedback ok';
-    } catch (err) {
-      $('#scf-feedback').textContent = '❌ MIDI 解析失败：' + (err && err.message ? err.message : err);
-      $('#scf-feedback').className = 'sight-feedback err';
-    }
-    e.target.value = ''; // 允许重复上传同一文件
-  };
-
-  // 从 MIDI 字节流载入一首跟弹曲目（上传 / OMR 识别共用）
+  // 从 MIDI 字节流载入一首跟弹曲目（OMR 识别 / 曲库选曲共用）
   function loadMidiBuffer(buf, rawTitle, prefix = '📄 ', sheetPath = null) {
     const parsed = parseMidi(buf);
     if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
@@ -9734,7 +9807,7 @@ function renderScoreFollow() {
       updateBestBadge();
       renderHistory();
     } else {
-      $('#scf-feedback').textContent = wasScored ? '已停止。换一档训练或重来。' : '挑一首曲子或上传 MIDI，选一档训练开始';
+      $('#scf-feedback').textContent = wasScored ? '已停止。换一档训练或重来。' : '从曲库挑一首曲子，选一档训练开始';
     }
     $('#scf-feedback').className = wasScored ? 'sight-feedback ok' : 'sight-feedback';
     drawSongChips();
@@ -9875,7 +9948,6 @@ function renderPlayStage() {
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
             <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
-            <button class="ps-tab" data-tab="upload">📤 上传</button>
           </div>
           <button class="ps-modal-x" id="ps-modal-x">✕</button>
         </div>
@@ -9883,10 +9955,6 @@ function renderPlayStage() {
           <input class="ps-search" id="ps-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…">
           <div class="ps-cats" id="ps-cats"></div>
           <div class="ps-songlist" id="ps-songlist"></div>
-        </div>
-        <div class="ps-pane" id="ps-pane-upload" hidden>
-          <p class="ps-up-tip">选择电脑上的 .mid / .midi 文件，立刻载入演奏台：</p>
-          <input type="file" id="ps-file" accept=".mid,.midi,audio/midi">
         </div>
         <div class="ps-modal-status" id="ps-modal-status"></div>
       </div>
@@ -10333,23 +10401,10 @@ function renderPlayStage() {
       if (song) loadSong(song);   // 重建引擎（按手过滤）+ 键盘区间 + 重绘
     };
   });
-  $('#ps-file').onchange = async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try {
-      const parsed = parseMidi(await file.arrayBuffer());
-      if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
-      loadSong(scfFromMidi(parsed, { id: 'ps-up-' + Date.now(), title: '📄 ' + file.name.replace(/\.(midi?|MIDI?)$/i, '') }));
-      closeModal();
-    } catch (err) { setModalStatus('❌ MIDI 解析失败：' + (err && err.message ? err.message : err), 'err'); }
-    e.target.value = '';
-  };
   root.querySelectorAll('.ps-tab').forEach((tab) => {
     tab.onclick = () => {
       root.querySelectorAll('.ps-tab').forEach((t) => t.classList.toggle('on', t === tab));
       const which = tab.dataset.tab;
-      $('#ps-pane-lib').hidden = which === 'upload';
-      $('#ps-pane-upload').hidden = which !== 'upload';
       setModalStatus('');
       if (which === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog, '📚 '); else loadBuiltin(); }
       else if (which === 'user') { if (userCatalog) renderLib(userCatalog, '🎵 '); else loadUser(); }
@@ -10412,7 +10467,6 @@ function renderBackingBand() {
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
             <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
-            <button class="ps-tab" data-tab="upload">📤 上传</button>
           </div>
           <button class="ps-modal-x" id="bb-modal-x">✕</button>
         </div>
@@ -10420,10 +10474,6 @@ function renderBackingBand() {
           <input class="ps-search" id="bb-search" placeholder="🔎 搜曲名 / 作曲家 / 分类…">
           <div class="ps-cats" id="bb-cats"></div>
           <div class="ps-songlist" id="bb-songlist"></div>
-        </div>
-        <div class="ps-pane" id="bb-pane-upload" hidden>
-          <p class="ps-up-tip">选一首多轨 .mid（最好含旋律 + 伴奏），让电脑当乐队陪你弹：</p>
-          <input type="file" id="bb-file" accept=".mid,.midi,audio/midi">
         </div>
         <div class="ps-modal-status" id="bb-modal-status"></div>
       </div>
@@ -10738,19 +10788,10 @@ function renderBackingBand() {
   $('#bb-count').onchange = (e) => { countIn = e.target.checked; };
   $('#bb-loop').onchange = (e) => { loopOn = e.target.checked; };
   $('#bb-drums').onchange = (e) => { includeDrums = e.target.checked; if (playing) stop(); rebuildSchedule(); drawParts(); refreshStat(); };
-  $('#bb-file').onchange = async (e) => {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    try { const p = parseMidi(await file.arrayBuffer()); if (!p.notes.length) throw new Error('文件里没有可用的音符'); loadParsed(p, '📄 ' + file.name.replace(/\.(midi?|MIDI?)$/i, '')); closeModal(); }
-    catch (err) { setModalStatus('❌ MIDI 解析失败：' + (err && err.message ? err.message : err), 'err'); }
-    e.target.value = '';
-  };
   root.querySelectorAll('.ps-tab').forEach((tab) => {
     tab.onclick = () => {
       root.querySelectorAll('.ps-tab').forEach((t) => t.classList.toggle('on', t === tab));
       const which = tab.dataset.tab;
-      $('#bb-pane-lib').hidden = which === 'upload';
-      $('#bb-pane-upload').hidden = which !== 'upload';
       setModalStatus('');
       if (which === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog); else loadBuiltin(); }
       else if (which === 'user') { if (userCatalog) renderLib(userCatalog); else loadUser(); }
@@ -17882,7 +17923,7 @@ function renderLoopTrainer() {
   }
 
   function setControlsDisabled(d) {
-    ['#lt-from', '#lt-to', '#lt-all', '#lt-upload-btn'].forEach((s) => { const e = $(s); if (e) e.disabled = d; });
+    ['#lt-from', '#lt-to', '#lt-all', '#lt-pick'].forEach((s) => { const e = $(s); if (e) e.disabled = d; });
     root.querySelectorAll('#lt-songs .ear-chip, #lt-hand .ear-chip, #lt-start .ear-chip').forEach((b) => b.classList.toggle('locked', d));
   }
 
@@ -17902,7 +17943,7 @@ function renderLoopTrainer() {
     $('#lt-hand').querySelectorAll('.ear-chip').forEach((b) => {
       b.onclick = () => { if (running || b.disabled) return; hand = b.dataset.h; refresh(); };
     });
-    $('#lt-hand-note').textContent = hh ? '双手 MIDI：可只练单手，练熟再合手' : '这首是单手旋律——上传双手 .mid 即可分手练';
+    $('#lt-hand-note').textContent = hh ? '双手 MIDI：可只练单手，练熟再合手' : '这首是单手旋律——从曲库选双手 .mid 即可分手练';
   }
 
   function drawStartChips() {
@@ -17924,15 +17965,14 @@ function renderLoopTrainer() {
 
   root.innerHTML = `
     <h2 style="margin-bottom:6px">🔁 AB 循环慢练器</h2>
-    <p style="color:var(--muted);margin-bottom:14px">老师布置的曲子里有<b>难句</b>？把它<b>框出来反复磨</b>——选 <b>A→B 小节</b>只循环这一段，从<b>慢速起步</b>（默认 60%），每<b>弹干净一遍自动提速 +10%</b>，一路爬到 <b>100% 原速</b>。还能<b>左右手分开</b>练（上传双手 MIDI）。这是全 app 唯一直接帮上<b>真钢琴课</b>的「写作业」工具——慢练才是真练。<b>等待式</b>：弹对当前音才走下一个，节奏小磕绊也只提示<b>不卡死</b>。配 🥁 <b>浏览器节拍器</b>稳住拍子（绝不发往 CA99）。没接 MIDI 也能点屏幕琴键。</p>
+    <p style="color:var(--muted);margin-bottom:14px">老师布置的曲子里有<b>难句</b>？把它<b>框出来反复磨</b>——选 <b>A→B 小节</b>只循环这一段，从<b>慢速起步</b>（默认 60%），每<b>弹干净一遍自动提速 +10%</b>，一路爬到 <b>100% 原速</b>。还能<b>左右手分开</b>练（从曲库选双手 MIDI）。这是全 app 唯一直接帮上<b>真钢琴课</b>的「写作业」工具——慢练才是真练。<b>等待式</b>：弹对当前音才走下一个，节奏小磕绊也只提示<b>不卡死</b>。配 🥁 <b>浏览器节拍器</b>稳住拍子（绝不发往 CA99）。没接 MIDI 也能点屏幕琴键。</p>
 
     <div class="card-panel">
       <div class="param-row" style="align-items:flex-start"><label>选曲</label>
         <div class="ear-chips" id="lt-songs"></div></div>
       <div class="param-row"><label></label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="file" id="lt-upload" accept=".mid,.midi" hidden>
-          <button class="grid-btn" id="lt-upload-btn">📄 上传双手 .mid</button>
+          <button class="grid-btn" id="lt-pick">📚 选曲库（CA99 内置 + 我的 MIDI）</button>
           <span class="lt-up-note" id="lt-up-note"></span>
         </div></div>
       <div class="param-row"><label>段落</label>
@@ -17971,7 +18011,7 @@ function renderLoopTrainer() {
         <button class="grid-btn" id="lt-stop" disabled>⏹ 停止</button>
       </div>
       <div class="sight-feedback" id="lt-feedback">选一首曲子、框好难句小节，点「▶ 开始慢练」。</div>
-    </div>`;
+    </div>` + libPickerHTML('lt');
 
   kb = new PianoKeyboard($('#lt-kb'), {
     labels: 'c',
@@ -17987,24 +18027,16 @@ function renderLoopTrainer() {
   $('#lt-go').onclick = () => start();
   $('#lt-stop').onclick = () => { stop(); $('#lt-feedback').textContent = '已停止。换段落或换手别再来。'; $('#lt-feedback').className = 'sight-feedback'; };
 
-  $('#lt-upload-btn').onclick = () => $('#lt-upload').click();
-  $('#lt-upload').onchange = async (e) => {
-    const file = e.target.files && e.target.files[0]; if (!file) return;
-    try {
-      const parsed = parseMidi(await file.arrayBuffer());
-      if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
-      const id = 'lt-' + Date.now();
-      const title = '📄 ' + file.name.replace(/\.(midi?|MIDI?)$/i, '');
-      customSongs.push(scfFromMidi(parsed, { id, title }));
-      songId = id; fromM = 1; toM = measuresOf(curSong());
-      const rc = countHand(parsed.notes, 'r'), lc = countHand(parsed.notes, 'l');
-      $('#lt-up-note').textContent = parsed.hasHands ? `已载入：右手 ${rc} / 左手 ${lc} 个音，可分手练` : `已载入 ${parsed.notes.length} 个音（单手）`;
-      refresh();
-    } catch (err) {
-      $('#lt-up-note').textContent = '读取失败：' + (err.message || err);
-    }
-    e.target.value = '';
-  };
+  const ltPicker = setupLibraryPicker('lt', (parsed, title) => {
+    if (!parsed.notes.length) { $('#lt-up-note').textContent = '这首没有可用的音符'; return; }
+    const id = 'lt-' + Date.now();
+    customSongs.push(scfFromMidi(parsed, { id, title }));
+    songId = id; fromM = 1; toM = measuresOf(curSong());
+    const rc = countHand(parsed, 'r'), lc = countHand(parsed, 'l');
+    $('#lt-up-note').textContent = parsed.hasHands ? `已载入：右手 ${rc} / 左手 ${lc} 个音，可分手练` : `已载入 ${parsed.notes.length} 个音（单手）`;
+    refresh();
+  });
+  $('#lt-pick').onclick = () => ltPicker.openModal();
 
   drawStartChips();
   fromM = 1; toM = measuresOf(curSong());
@@ -19453,14 +19485,13 @@ function renderMidiPlayer() {
   root.innerHTML = `
     <div class="mod-head">
       <h2>🎹 钢琴卷帘播放器</h2>
-      <p class="mod-sub">把一首 MIDI 完整"画"出来：左右手不同颜色的音块从左向右流过判定线，键盘同步亮灯发声 —— 先看整首怎么弹，再去"跟弹判分"练习。可上传 .mid 文件。</p>
+      <p class="mod-sub">把一首 MIDI 完整"画"出来：左右手不同颜色的音块从左向右流过判定线，键盘同步亮灯发声 —— 先看整首怎么弹，再去"跟弹判分"练习。可从曲库选曲。</p>
     </div>
     <div class="mpl-bar">
       <span class="mpl-label">曲目</span>
       <div id="mpl-songs" class="mpl-chips"></div>
-      <label class="mpl-upload">📂 上传 MIDI
-        <input type="file" id="mpl-file" accept=".mid,.midi,audio/midi" style="display:none">
-      </label>
+      <label class="mpl-label" style="cursor:default">曲库</label>
+      <button id="mpl-pick" class="mpl-btn">📚 选曲库</button>
     </div>
     <div class="mpl-bar">
       <button id="mpl-play" class="mpl-btn mpl-primary">▶ 播放</button>
@@ -19495,7 +19526,7 @@ function renderMidiPlayer() {
     </div>
     <input type="range" id="mpl-seek" class="mpl-seek" min="0" max="1000" step="1" value="0">
     <div id="mpl-kb" class="mpl-kb"></div>
-  `;
+  ` + libPickerHTML('mpl');
 
   const svg = $('#mpl-svg'), scroll = $('#mpl-scroll'), wrap = $('#mpl-wrap');
   const gutter = $('#mpl-gutter'), seek = $('#mpl-seek');
@@ -19680,22 +19711,13 @@ function renderMidiPlayer() {
     t = (+e.target.value / 1000) * total; prevT = t;
     highlightActive(t); drawHead(t);
   };
-  $('#mpl-file').onchange = async (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    try {
-      const buf = new Uint8Array(await f.arrayBuffer());
-      const parsed = parseMidi(buf);
-      const id = 'up-' + Date.now();
-      const title = '📂 ' + f.name.replace(/\.midi?$/i, '');
-      customSongs.push({ id, title, bpm: Math.round(parsed.bpm || 0) || null, notes: parsed.notes });
-      songId = id;
-      stop(false); renderChips(); rebuild(true);
-    } catch (err) {
-      alert('MIDI 解析失败：' + (err && err.message ? err.message : err));
-    }
-    e.target.value = '';
-  };
+  const mplPicker = setupLibraryPicker('mpl', (parsed, title) => {
+    const id = 'lib-' + Date.now();
+    customSongs.push({ id, title, bpm: Math.round(parsed.bpm || 0) || null, notes: parsed.notes });
+    songId = id;
+    stop(false); renderChips(); rebuild(true);
+  });
+  $('#mpl-pick').onclick = () => mplPicker.openModal();
 
   renderChips();
   rebuild(true);
@@ -19731,12 +19753,12 @@ function renderStaffView() {
   root.innerHTML = `
     <div class="mod-head">
       <h2>🎼 五线谱播放器</h2>
-      <p class="mod-sub">把一首 MIDI <b>排成真正的五线谱</b>（高音谱号 + 低音谱号大谱表，自动加线/升号），<b>橙色光标</b>横扫时键盘同步亮灯发声、当前音符变亮 —— 边听边对着谱学读谱。<b>🐢 等待练习</b>模式：光标停在当前音符，弹对（屏幕键或 CA99 真琴）才前进、不计时；<b>🥁 节拍器</b>给浏览器拍子帮你稳住节奏。内置示范曲，<b>可上传 .mid 文件</b>。和"钢琴卷帘"互为表里：卷帘看手位，五线谱看读谱。</p>
+      <p class="mod-sub">把一首 MIDI <b>排成真正的五线谱</b>（高音谱号 + 低音谱号大谱表，自动加线/升号），<b>橙色光标</b>横扫时键盘同步亮灯发声、当前音符变亮 —— 边听边对着谱学读谱。<b>🐢 等待练习</b>模式：光标停在当前音符，弹对（屏幕键或 CA99 真琴）才前进、不计时；<b>🥁 节拍器</b>给浏览器拍子帮你稳住节奏。内置示范曲，<b>可从曲库选曲</b>。和"钢琴卷帘"互为表里：卷帘看手位，五线谱看读谱。</p>
     </div>
     <div class="mpl-bar">
       <span class="mpl-label">曲目</span>
       <div id="sv-songs" class="mpl-chips"></div>
-      <label class="mpl-upload">📂 上传 MIDI<input type="file" id="sv-file" accept=".mid,.midi,audio/midi" style="display:none"></label>
+      <button id="sv-pick" class="mpl-btn">📚 选曲库</button>
     </div>
     <div class="mpl-bar">
       <button id="sv-play" class="mpl-btn mpl-primary">▶ 播放</button>
@@ -19780,7 +19802,7 @@ function renderStaffView() {
     </div>
     <input type="range" id="sv-seek" class="mpl-seek" min="0" max="1000" step="1" value="0">
     <div id="sv-kb" class="mpl-kb"></div>
-  `;
+  ` + libPickerHTML('sv');
 
   const svg = $('#sv-svg'), scroll = $('#sv-scroll'), wrap = $('#sv-wrap'), seek = $('#sv-seek');
   let cursor = null;
@@ -20053,17 +20075,12 @@ function renderStaffView() {
   $('#sv-tol').onchange = (e) => { waitTolerant = e.target.checked; };
   $('#sv-labels').onchange = (e) => { labels = e.target.checked; build(); drawCursor(t); };
   $('#sv-seek').oninput = (e) => { if (!total || svMode === 'wait') return; t = (+e.target.value / 1000) * total; prevT = t; setActiveGlyphs(t); drawCursor(t); };
-  $('#sv-file').onchange = async (e) => {
-    const f = e.target.files && e.target.files[0]; if (!f) return;
-    try {
-      const buf = new Uint8Array(await f.arrayBuffer());
-      const parsed = parseMidi(buf);
-      const id = 'up-' + Date.now();
-      customSongs.push({ id, title: '📂 ' + f.name.replace(/\.midi?$/i, ''), bpm: Math.round(parsed.bpm || 0) || 120, notes: parsed.notes });
-      songId = id; stop(false); renderChips(); rebuild();
-    } catch (err) { alert('MIDI 解析失败：' + (err && err.message ? err.message : err)); }
-    e.target.value = '';
-  };
+  const svPicker = setupLibraryPicker('sv', (parsed, title) => {
+    const id = 'lib-' + Date.now();
+    customSongs.push({ id, title, bpm: Math.round(parsed.bpm || 0) || 120, notes: parsed.notes });
+    songId = id; stop(false); renderChips(); rebuild();
+  });
+  $('#sv-pick').onclick = () => svPicker.openModal();
 
   renderChips();
   rebuild();

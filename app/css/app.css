@@ -1884,14 +1884,13 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .mpl-label { color: var(--muted, #9aa3c4); font-size: 13px; }
 .mpl-sep { width: 1px; height: 20px; background: var(--line, #333); margin: 0 4px; }
 .mpl-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.mpl-chip, .mpl-upload {
+.mpl-chip {
   background: var(--panel2, #262a45); color: var(--text, #e7eaf6);
   border: 1px solid var(--line, #333); border-radius: 999px;
   padding: 5px 12px; font-size: 13px; cursor: pointer; transition: all .15s;
 }
-.mpl-chip:hover, .mpl-upload:hover { border-color: #60a5fa; }
+.mpl-chip:hover { border-color: #60a5fa; }
 .mpl-chip.on { background: linear-gradient(135deg, #2563eb, #7c3aed); border-color: transparent; color: #fff; }
-.mpl-upload { display: inline-flex; align-items: center; }
 .mpl-btn {
   background: var(--panel2, #262a45); color: var(--text, #e7eaf6);
   border: 1px solid var(--line, #333); border-radius: 8px;
@@ -2078,8 +2077,6 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .ps-songlist { flex: 1 1 auto; overflow-y: auto; min-height: 180px; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
 .ps-songlist .scf-lib-item { font-size: 15px; padding: 13px 14px; }
 .ps-songlist .scf-lib-sub { position: sticky; top: 0; }
-.ps-up-tip { color: var(--muted); font-size: 14px; }
-.ps-pane-upload input[type=file], #ps-pane-upload input[type=file] { font-size: 15px; padding: 12px; }
 .ps-modal-status { font-size: 13px; color: var(--muted); min-height: 18px; }
 .ps-modal-status.ok { color: #34d399; }
 .ps-modal-status.err { color: #f87171; }
