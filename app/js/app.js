@@ -63,7 +63,7 @@ import { SolfegeGame, DEGREES as SOL_DEGREES, syllable as solSyllable, noteName 
 import { ChordQualityGame, QUALITIES as CQ_QUALITIES, qualityName as cqName } from './chord-quality.js';
 import { ProgressionEarGame, PROGRESSIONS as PE_PROGS, DEGREES as PE_DEGREES, romanOf as peRoman } from './progression-ear.js';
 import { PianoKeyboard, noteName as kbNoteName, HL_PALETTE, buildLayout as kbBuildLayout } from './piano-keyboard.js';
-import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi, beatToMs as scfBeatToMs } from './score-follow.js';
+import { ScoreFollow, SONGS as SCF_SONGS, getSong as scfGetSong, GRADE as SCF_GRADE, songFromMidi as scfFromMidi, beatToMs as scfBeatToMs, rhythmTag as scfRhythmTag } from './score-follow.js';
 import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js';
 import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
 import { dayKey as dsDayKey, pickDailyIndex as dsPickIndex, prettyName as dsPretty, catEmoji as dsCatEmoji } from './daily-song.js';
@@ -9458,6 +9458,7 @@ function renderScoreFollow() {
     const pop = $('#scf-pop');
     const map = {
       perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'],
+      early: ['抢拍了 ⏪', '#f472b6'], late: ['拖拍了 ⏩', '#f472b6'],
       miss: ['节奏没跟上', '#f472b6'], wrong: ['弹错音了', '#f87171'],
     };
     const [txt, color] = map[grade] || ['', '#fff'];
@@ -9554,7 +9555,12 @@ function renderScoreFollow() {
     if (!sf || mode !== 'practice') return;
     const t = performance.now() - t0;
     const r = sf.judge(midi, t);
-    if (r.grade) { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); hitFx(midi, r.grade, vel); }
+    if (r.grade) {
+      // 三色反馈细化：音高对但抢/拖拍（GOOD 落在准点窗外）→ 粉色"节奏错"；准点→绿
+      const rt = r.grade === 'good' ? scfRhythmTag(r.deltaMs, sf.perfectMs) : null;
+      if (rt === 'early' || rt === 'late') { popGrade(rt); scfKb.flash(midi, '#f472b6'); hitFx(midi, r.grade, vel); }
+      else { popGrade(r.grade); scfKb.flash(midi, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); hitFx(midi, r.grade, vel); }
+    }
     else if (r.wrong) {                       // #7 此刻该弹却弹错键 → 红色提示，并把正确的键闪一下当提示
       popGrade('wrong'); scfKb.flash(midi, '#f87171');
       if (r.due) setTimeout(() => scfKb.flash(r.due.midi, '#34d399'), 140);
@@ -10030,6 +10036,7 @@ function renderPlayStage() {
     const pop = $('#ps-pop');
     const map = {
       perfect: ['PERFECT', '#34d399'], good: ['GOOD', '#22d3ee'],
+      early: ['抢拍了 ⏪', '#f472b6'], late: ['拖拍了 ⏩', '#f472b6'],
       miss: ['节奏没跟上', '#f472b6'], wrong: ['弹错音了', '#f87171'],
     };
     const [txt, color] = map[grade] || ['', '#fff'];
@@ -10051,8 +10058,10 @@ function renderPlayStage() {
     const t = performance.now() - t0;
     const r = sf.judge(m, t);
     if (r.grade) {
-      popGrade(r.grade);
-      kb.flash(m, r.grade === 'perfect' ? '#34d399' : '#22d3ee');
+      // 三色反馈细化：音高对但抢/拖拍 → 粉色"节奏错"；准点→绿
+      const rt = r.grade === 'good' ? scfRhythmTag(r.deltaMs, sf.perfectMs) : null;
+      if (rt === 'early' || rt === 'late') { popGrade(rt); kb.flash(m, '#f472b6'); }
+      else { popGrade(r.grade); kb.flash(m, r.grade === 'perfect' ? '#34d399' : '#22d3ee'); }
       // 屏幕点击 → 浏览器发声试听；真琴按键本身已响，不重复发声
       if (fromScreen) voice(m, 360, vel);
     } else if (r.wrong) {                      // #7 该弹却弹错键 → 红色，提示正确键

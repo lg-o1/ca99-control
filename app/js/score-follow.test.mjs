@@ -3,13 +3,33 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ScoreFollow, GRADE, SONGS, getSong, beatToMs, songFromMidi } from './score-follow.js';
+import { ScoreFollow, GRADE, SONGS, getSong, beatToMs, songFromMidi, rhythmTag } from './score-follow.js';
 
 // ---- beatToMs ----
 test('beatToMs：1 拍在 60bpm 为 1000ms', () => {
   assert.equal(beatToMs(1, 60), 1000);
   assert.equal(beatToMs(2, 120), 1000);
   assert.equal(beatToMs(0, 90), 0);
+});
+
+// ---- rhythmTag（三色反馈细化：节奏错=粉）----
+test('rhythmTag：准点窗内返回 ontime', () => {
+  assert.equal(rhythmTag(0, 90), 'ontime');
+  assert.equal(rhythmTag(90, 90), 'ontime');
+  assert.equal(rhythmTag(-90, 90), 'ontime');
+});
+test('rhythmTag：超窗按方向区分抢拍/拖拍', () => {
+  assert.equal(rhythmTag(-120, 90), 'early');
+  assert.equal(rhythmTag(150, 90), 'late');
+});
+test('rhythmTag：无时间差返回 null', () => {
+  assert.equal(rhythmTag(null, 90), null);
+  assert.equal(rhythmTag(undefined, 90), null);
+  assert.equal(rhythmTag(NaN, 90), null);
+});
+test('rhythmTag：默认 perfectMs=90', () => {
+  assert.equal(rhythmTag(80), 'ontime');
+  assert.equal(rhythmTag(100), 'late');
 });
 
 // ---- 乐曲库 ----

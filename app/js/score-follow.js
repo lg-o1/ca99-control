@@ -15,6 +15,20 @@ export const GRADE = { PERFECT: 'perfect', GOOD: 'good', MISS: 'miss' };
 /** 拍 -> 毫秒 */
 export function beatToMs(beat, bpm) { return (beat * 60000) / bpm; }
 
+/**
+ * 节奏标签：弹对了音、但击键时刻相对目标的偏差方向。用于三色反馈细化——
+ * 音高对但抢/拖拍（GOOD 级、落在 perfect 窗之外）标"粉色 = 节奏错"，与
+ * "音高错=红"、"准点=绿"区分开。
+ * @param {number|null} deltaMs 击键相对目标时刻的误差（负=抢拍/早，正=拖拍/晚）
+ * @param {number} perfectMs 准点窗（含）半宽，|delta|≤perfectMs 视为准点
+ * @returns {'ontime'|'early'|'late'|null} null 表示无可判定的时间差
+ */
+export function rhythmTag(deltaMs, perfectMs = 90) {
+  if (deltaMs == null || Number.isNaN(deltaMs)) return null;
+  if (Math.abs(deltaMs) <= perfectMs) return 'ontime';
+  return deltaMs < 0 ? 'early' : 'late';
+}
+
 /** 音级（0..11） */
 function pcOf(m) { return ((m % 12) + 12) % 12; }
 
