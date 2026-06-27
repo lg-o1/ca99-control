@@ -2256,6 +2256,34 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .shc-actions { display:flex; gap:12px; margin-top:14px; justify-content:center; }
 .shc-actions .grid-btn { padding:12px 26px; font-weight:600; }
 
+/* ===== 📊 家长周报（Parent Weekly Report）===== */
+.pw-summary { margin-bottom:16px; }
+.pw-nums { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
+.pw-num {
+  flex:1 1 120px; background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  padding:14px 10px; text-align:center;
+}
+.pw-num b { display:block; font-size:30px; font-weight:800; color:#ffd24a; line-height:1.1; }
+.pw-num span { display:block; margin-top:4px; color:var(--muted); font-size:13px; }
+.pw-trend { color:var(--text); font-weight:600; margin-bottom:14px; }
+.pw-block { margin-bottom:14px; }
+.pw-block-cap { color:var(--muted); font-weight:600; font-size:14px; margin-bottom:8px; }
+.pw-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.pw-chip {
+  background:rgba(124,131,255,.16); border:1px solid rgba(124,131,255,.4);
+  color:var(--text); border-radius:999px; padding:5px 14px; font-size:14px; font-weight:600;
+}
+.pw-chip-empty { background:transparent; border-style:dashed; color:var(--muted); }
+.pw-hl { margin:0; padding-left:20px; color:var(--text); line-height:1.7; }
+.pw-praise { margin-top:6px; font-style:italic; font-weight:600; color:#a8e6cf; }
+.pw-card-wrap {
+  display:flex; justify-content:center; align-items:center;
+  background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px;
+}
+.pw-card-wrap canvas { max-width:100%; height:auto; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.4); }
+.pw-actions { display:flex; gap:12px; margin-top:14px; justify-content:center; }
+.pw-actions .grid-btn { padding:12px 26px; font-weight:600; }
+
 /* ===== 🚀 看谱击落（Staff Wars）===== */
 .sw-hud { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:10px; font-size:15px; color:var(--muted); }
 .sw-hud .sw-stat b { color:var(--text); font-size:17px; }

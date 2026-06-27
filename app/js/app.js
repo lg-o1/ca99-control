@@ -110,6 +110,7 @@ import { ReviveBank } from './revive.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
+import { buildParentReport as pwBuild } from './parent-weekly.js';
 import { StaffWars, makeRng as swMakeRng, noteLetter as swNoteLetter, diatonicIndex as swDiatonic } from './staff-wars.js';
 import { Drops, makeRng as dropsMakeRng, noteLetter as dropsNoteLetter, POOL_C as DROPS_POOL } from './drops.js';
 import { CofPuzzle, PUZZLE_ORDER as COFP_ORDER } from './cof-puzzle.js';
@@ -277,6 +278,7 @@ const heatmap = new Heatmap({
 });
 let heatmapOnUpdate = null; // 热力图刷新回调（🌡️ 模块注册）
 let reviewQueueOnUpdate = null; // 🔄 智能复习队列刷新回调（注册于 renderReviewQueue）
+let parentWeeklyOnUpdate = null; // 📊 家长周报刷新回调（注册于 renderParentWeekly）
 // 给 Lily 看的核心练习技能目录（id = recordPractice 的 moduleId）——让从未练的也显示「待探索」卡
 const HEATMAP_CATALOG = [
   { id: 'staffread',  label: '五线谱识谱卡', icon: '🎼' },
@@ -399,6 +401,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
   if (streakCalOnUpdate) streakCalOnUpdate(); // 🔥 打卡日历同步点亮今天
   if (xpLevelOnUpdate) xpLevelOnUpdate(); // 📊 经验/等级同步累加（升级则庆祝）
   if (petGrowOnUpdate) petGrowOnUpdate(); // 🐣 养成小伙伴同步成长（进化则庆祝）
+  if (parentWeeklyOnUpdate) parentWeeklyOnUpdate(); // 📊 家长周报：本周累计数刷新
   if (weeklyQuestOnPractice) weeklyQuestOnPractice(moduleId); // 🗓️ 限时赛季：给本周任务计数
   syncMicroStars(moduleId, label); // #3 8 星微进度：用最新累计练对数点亮小星
   mysteryRoll(); // 🎁 练完摇盲盒：小概率解锁一个好玩音色
@@ -17829,6 +17832,143 @@ if (typeof window !== 'undefined') {
   window.__sharecard = { recorder, ShareCard };
 }
 
+// ========== 📊 家长周报卡（Parent Weekly Report）==========
+// 聚合 practice-stats（每日练习/各模块/连胜/正确率）+ heatmap（覆盖面/待复习）
+// 成一张「本周亮点」家长卡，可保存/分享。成长向措辞——给家长一扇窗，不是 KPI 考核。
+function renderParentWeekly() {
+  const root = $('#module-parentreport');
+  if (!root) return;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">📊 家长周报</h2>
+    <p style="color:var(--muted);margin-bottom:14px">把这一周的练习自动汇总成一张<b>亮点卡</b>——练了几天、最爱玩什么、哪些技能在进步——一键存图发给家人 💛。<br>这里看的是<b>陪伴与成长</b>，不是考核：少练的一周只是下周的新机会 🌈</p>
+    <div id="pw-summary" class="pw-summary"></div>
+    <div class="pw-card-wrap">
+      <canvas id="pw-canvas" width="640" height="420"></canvas>
+    </div>
+    <div class="pw-actions">
+      <button id="pw-save" class="grid-btn">⬇ 保存图片</button>
+      <button id="pw-share" class="grid-btn">📤 分享给家人</button>
+    </div>`;
+
+  const canvas = root.querySelector('#pw-canvas');
+
+  function gather() {
+    return pwBuild({
+      days14: practiceStats.recentDays(14),
+      moduleStats: practiceStats.moduleStats(),
+      snapshot: practiceStats.snapshot(),
+      heatCounts: heatmap.counts(HEATMAP_CATALOG),
+    });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function drawCard(rep) {
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#10243a'); g.addColorStop(1, '#1d1840');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(124,131,255,.5)'; ctx.lineWidth = 3; ctx.strokeRect(8, 8, W - 16, H - 16);
+
+    ctx.textAlign = 'left'; ctx.fillStyle = '#8b93b8'; ctx.font = '600 16px system-ui,Segoe UI,sans-serif';
+    ctx.fillText('🎹 CA99 · 本周练习周报', 28, 42);
+    ctx.textAlign = 'right'; ctx.fillText(new Date().toLocaleDateString(), W - 28, 42);
+
+    ctx.textAlign = 'left'; ctx.fillStyle = '#eef0f8'; ctx.font = '800 30px system-ui,Segoe UI,sans-serif';
+    ctx.fillText('这一周的小小音乐家 🌟', 28, 84);
+
+    // 三个大数字
+    const stats = [
+      { v: rep.thisWeek.sessions, l: '次练习' },
+      { v: rep.thisWeek.activeDays + '/7', l: '天到琴前' },
+      { v: rep.dayStreak, l: '天连练 🔥' },
+    ];
+    let bx = 28;
+    for (const s of stats) {
+      const bw = 188, bh = 86, by = 102;
+      ctx.fillStyle = 'rgba(255,255,255,.05)'; roundRect(ctx, bx, by, bw, bh, 12); ctx.fill();
+      ctx.fillStyle = '#ffd24a'; ctx.font = '800 38px system-ui,Segoe UI,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(String(s.v), bx + bw / 2, by + 46);
+      ctx.fillStyle = '#b9c0e6'; ctx.font = '600 16px system-ui,Segoe UI,sans-serif';
+      ctx.fillText(s.l, bx + bw / 2, by + 72);
+      bx += bw + 12;
+    }
+
+    // 本周亮点
+    ctx.textAlign = 'left'; ctx.fillStyle = '#a8e6cf'; ctx.font = '700 18px system-ui,Segoe UI,sans-serif';
+    ctx.fillText('✨ 本周亮点', 28, 232);
+    ctx.fillStyle = '#eef0f8'; ctx.font = '500 17px system-ui,Segoe UI,sans-serif';
+    let hy = 262;
+    for (const line of rep.highlights) { ctx.fillText('· ' + line, 36, hy); hy += 28; }
+
+    // 趋势 + 覆盖
+    ctx.fillStyle = '#b9c0e6'; ctx.font = '600 16px system-ui,Segoe UI,sans-serif';
+    ctx.fillText(`📈 ${rep.trend.text}`, 28, hy + 8);
+    ctx.fillText(`🌈 涉猎 ${rep.coverage.practiced}/${rep.coverage.total} 项技能 · 🔁 ${rep.coverage.needReview} 项可复习`, 28, hy + 36);
+
+    // 家长寄语
+    ctx.fillStyle = '#eef0f8'; ctx.font = 'italic 600 19px system-ui,Segoe UI,sans-serif';
+    ctx.fillText(rep.praise, 28, H - 30);
+  }
+
+  function build() {
+    const rep = gather();
+    const t = rep.thisWeek;
+    const sum = root.querySelector('#pw-summary');
+    if (sum) {
+      const topHtml = rep.top.length
+        ? rep.top.map((m) => `<span class="pw-chip">${esc(m.label)} ×${m.sessions}</span>`).join('')
+        : '<span class="pw-chip pw-chip-empty">还没玩过——下周来探索吧 🌱</span>';
+      const hl = rep.highlights.map((l) => `<li>${esc(l)}</li>`).join('');
+      sum.innerHTML = `
+        <div class="pw-nums">
+          <div class="pw-num"><b>${t.sessions}</b><span>次练习</span></div>
+          <div class="pw-num"><b>${t.activeDays}/7</b><span>天到琴前</span></div>
+          <div class="pw-num"><b>${rep.dayStreak}</b><span>天连练 🔥</span></div>
+          <div class="pw-num"><b>${rep.coverage.practiced}/${rep.coverage.total}</b><span>项技能涉猎</span></div>
+        </div>
+        <div class="pw-trend">📈 ${esc(rep.trend.text)}</div>
+        <div class="pw-block"><div class="pw-block-cap">🎵 最常玩的练习</div><div class="pw-chips">${topHtml}</div></div>
+        <div class="pw-block"><div class="pw-block-cap">✨ 本周亮点</div><ul class="pw-hl">${hl}</ul></div>
+        <div class="pw-praise">💛 ${esc(rep.praise)}</div>`;
+    }
+    drawCard(rep);
+  }
+
+  root.querySelector('#pw-save').onclick = () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `ca99-weekly-${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+    cheerToast('周报已保存 💾', root);
+  };
+
+  root.querySelector('#pw-share').onclick = () => {
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'ca99-weekly.png', { type: 'image/png' });
+      try {
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: '本周练习周报 📊' });
+          return;
+        }
+      } catch (e) { return; /* 用户取消 */ }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'ca99-weekly.png'; a.click();
+      cheerToast('已保存图片，可手动分享 📤', root);
+    }, 'image/png');
+  };
+
+  build();
+  parentWeeklyOnUpdate = build;
+}
+
 // ========== 🚀 看谱击落（Staff Wars 式街机）==========
 function renderStaffWars() {
   const root = $('#module-staffwars');
@@ -19223,7 +19363,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
