@@ -253,7 +253,7 @@ input[type=checkbox]:checked::after {
 .toolbar label { color: var(--muted); font-size: 13px; }
 
 /* ---- 音色卡 ---- */
-.sound-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.sound-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; max-height: 54vh; overflow-y: auto; padding: 2px 6px 2px 2px; }
 .sound-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 12px 14px; cursor: pointer; transition: .15s; position: relative; overflow: hidden;
@@ -305,6 +305,24 @@ input[type=checkbox]:checked::after {
   border-radius: 8px; padding: 8px 10px; flex: 1; cursor: pointer;
 }
 .param-row select:focus { outline: none; border-color: var(--hi); }
+
+/* ---- VT 调音台：基础/进阶分组，缩短长参数列 ---- */
+.vt-group-label { font-size: 13px; font-weight: 700; color: var(--hi2); letter-spacing: .04em; margin: 6px 0 2px; }
+.vt-adv { margin-top: 14px; border-top: 1px solid var(--line); }
+.vt-adv > summary {
+  cursor: pointer; list-style: none; padding: 12px 4px; font-size: 14px; font-weight: 700;
+  color: var(--text); user-select: none; display: flex; align-items: center; gap: 6px;
+}
+.vt-adv > summary::-webkit-details-marker { display: none; }
+.vt-adv > summary::before { content: '▸'; color: var(--muted); transition: transform .15s; }
+.vt-adv[open] > summary::before { transform: rotate(90deg); }
+.vt-adv > summary:hover { color: var(--hi2); }
+
+/* ---- VT 渐变器：渐变通道列限高内滚，让「开始」按钮始终可见 ---- */
+#morph-lanes { max-height: 44vh; overflow-y: auto; padding-right: 6px; }
+
+/* ---- 节奏视奏：统一控制条按钮字号（TAP 钮除外，TAP 在 .kb-wrap 内） ---- */
+#module-rsight .rotate-bar button { font-size: 16px; }
 
 /* ---- 按钮网格（节奏） ---- */
 .btn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 8px; }

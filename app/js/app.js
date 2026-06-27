@@ -940,21 +940,38 @@ function renderVT() {
     (byParam[e.parameter] ||= []).push(e);
   }
   let html = '<h2 style="margin-bottom:12px">Virtual Technician 实时调音</h2>';
-  for (const [pname, entries] of Object.entries(byParam)) {
+  // 基础参数（最常用）直接展示，其余收进「进阶」折叠区，缩短页面
+  const BASIC_VT = ['Voicing', 'TouchCurve', 'ResonanceDepth', 'Rendering'];
+  function vtRowHtml(pname, entries) {
     const first = entries[0];
     const v2 = CA99.hex(first.v2);
     if (entries.length > 1) {
-      // 枚举：下拉
-      html += `<div class="param-row"><label>${pname}</label>
+      return `<div class="param-row"><label>${pname}</label>
         <select data-v2="${v2}">${entries.map(e => `<option value="${CA99.hex(e.v4)}">${e.value}${e.valueJa ? ' / ' + e.valueJa : ''}</option>`).join('')}</select></div>`;
-    } else {
-      // 连续：滑块 0-127
-      html += `<div class="param-row"><label>${pname}</label>
-        <input type="range" min="0" max="127" value="64" data-v2="${v2}">
-        <span class="val">64</span></div>`;
+    }
+    return `<div class="param-row"><label>${pname}</label>
+      <input type="range" min="0" max="127" value="64" data-v2="${v2}">
+      <span class="val">64</span></div>`;
+  }
+  const basicRows = [];
+  for (const pname of BASIC_VT) {
+    if (byParam[pname]) basicRows.push(vtRowHtml(pname, byParam[pname]));
+  }
+  const advRows = [];
+  for (const [pname, entries] of Object.entries(byParam)) {
+    if (!BASIC_VT.includes(pname)) advRows.push(vtRowHtml(pname, entries));
+  }
+  if (!basicRows.length && !advRows.length) {
+    html += '<p>无 VT 参数</p>';
+  } else {
+    if (basicRows.length) {
+      html += `<div class="vt-group-label">🎚️ 基础（最常用）</div>${basicRows.join('')}`;
+    }
+    if (advRows.length) {
+      html += `<details class="vt-adv"><summary>⚙️ 进阶参数（${advRows.length} 项，点开展开）</summary>${advRows.join('')}</details>`;
     }
   }
-  root.innerHTML = html || '<p>无 VT 参数</p>';
+  root.innerHTML = html;
   root.querySelectorAll('select[data-v2]').forEach(sel => {
     sel.onchange = () => {
       const v2 = +sel.dataset.v2;
@@ -11285,7 +11302,7 @@ function renderRhythmSight() {
           <button class="ear-chip" data-d="medium">进阶（加附点八分）</button>
           <button class="ear-chip" data-d="hard">挑战（加十六分）</button>
         </div></div>
-      <div class="param-row"><label>速度 <span id="rs-bpm-val" style="color:var(--accent)">80</span> BPM</label>
+      <div class="param-row"><label>速度 <span id="rs-bpm-val" style="color:var(--hi2);font-weight:700">80</span> BPM</label>
         <input type="range" id="rs-bpm" min="50" max="132" step="2" value="80" style="flex:1"></div>
     </div>
 
