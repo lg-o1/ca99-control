@@ -5,12 +5,15 @@
   --text: #eef0f8; --muted: #8b93b8; --line: #2e3354;
   --grad: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --grad-hi: linear-gradient(135deg, #e94560 0%, #ff6b81 100%);
+  --bg-radial: radial-gradient(ellipse at top, #1d2040 0%, #14151f 60%);  /* body 背景，随主题切换 */
   --radius: 12px; --shadow: 0 4px 20px rgba(0,0,0,.35);
   /* ---- 88 键统一配色（dark theme 优化，全练习共用） ---- */
   --kb-w-rest: linear-gradient(180deg, #e6e8f2 0%, #d4d7e6 72%, #bfc2d6 100%); /* 白键静止：柔和浅灰，不刺眼 */
   --kb-b-rest: linear-gradient(180deg, #4a4a58 0%, #232330 55%, #0e0e16 100%); /* 黑键静止 */
   --kb-press-glow: rgba(45,224,255,.85);  /* 按下信号色：霓虹青，dark theme 下最醒目 */
   --kb-hl: #667eea;                        /* 答案高亮默认色（模块可用 --hl 覆盖） */
+  /* 键盘 flash 手别色（JS 读取，与下方音符色配套；cue=提示该弹哪键） */
+  --kb-hand-r: #22d3ee; --kb-hand-l: #a78bfa; --kb-cue: #fbbf24;
   /* ---- 落音符方块 / 五线谱音符头 统一手别配色（与曲谱跟弹 Synthesia 对齐，全 tab 共用） ---- */
   --note-r: #667eea;          /* 右手 音符头/卷帘音符 主色（indigo） */
   --note-l: #a78bfa;          /* 左手（purple） */
@@ -19,10 +22,59 @@
   --note-block-r: linear-gradient(#7d8cf0, #5566d6);  /* 落音符方块 右手 */
   --note-block-l: linear-gradient(#c4b5fd, #8b5cf6);  /* 落音符方块 左手 */
 }
+
+/* ================= 全局主题（切 data-theme 一次换全部配色） =================
+   只覆盖「外观/品牌色」token：背景、面板、强调渐变、键盘/音符手别色。
+   语义反馈色（--hi 红=错、--ok 绿=对、--warn 黄=提示）跨主题保持不变，
+   这样「红=错/绿=对」的含义在任何主题下都一致，孩子不会混淆。 */
+[data-theme="ocean"] {
+  --bg: #0e1a24; --bg2: #122433; --panel: #14283a; --panel2: #1b3550;
+  --accent: #1c3a52; --accent-hi: #2a5575; --line: #234863;
+  --grad: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+  --grad-hi: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 100%);
+  --bg-radial: radial-gradient(ellipse at top, #11304a 0%, #0e1a24 60%);
+  --kb-press-glow: rgba(56,189,248,.85); --kb-hl: #38bdf8;
+  --kb-hand-r: #38bdf8; --kb-hand-l: #2dd4bf; --kb-cue: #fbbf24;
+  --note-r: #38bdf8; --note-l: #2dd4bf; --note-r-stroke: #7dd3fc; --note-l-stroke: #99f6e4;
+  --note-block-r: linear-gradient(#5cc8f5, #2b8fd6); --note-block-l: linear-gradient(#5eead4, #14b8a6);
+}
+[data-theme="candy"] {
+  --bg: #1c0f1e; --bg2: #271229; --panel: #2b1430; --panel2: #3a1c40;
+  --accent: #4a2350; --accent-hi: #5e2d66; --line: #45204b;
+  --grad: linear-gradient(135deg, #f472b6 0%, #a855f7 100%);
+  --grad-hi: linear-gradient(135deg, #ec4899 0%, #d946ef 100%);
+  --bg-radial: radial-gradient(ellipse at top, #3a1340 0%, #1c0f1e 60%);
+  --kb-press-glow: rgba(232,121,249,.85); --kb-hl: #e879f9;
+  --kb-hand-r: #e879f9; --kb-hand-l: #f472b6; --kb-cue: #fde047;
+  --note-r: #c084fc; --note-l: #f472b6; --note-r-stroke: #d8b4fe; --note-l-stroke: #f9a8d4;
+  --note-block-r: linear-gradient(#cd9bfd, #a855f7); --note-block-l: linear-gradient(#f9a8d4, #ec4899);
+}
+[data-theme="forest"] {
+  --bg: #0f1a12; --bg2: #13241a; --panel: #16291d; --panel2: #1d3a28;
+  --accent: #1f4030; --accent-hi: #2c5942; --line: #244a34;
+  --grad: linear-gradient(135deg, #34d399 0%, #22c55e 100%);
+  --grad-hi: linear-gradient(135deg, #10b981 0%, #16a34a 100%);
+  --bg-radial: radial-gradient(ellipse at top, #16331f 0%, #0f1a12 60%);
+  --kb-press-glow: rgba(52,211,153,.85); --kb-hl: #34d399;
+  --kb-hand-r: #34d399; --kb-hand-l: #a3e635; --kb-cue: #fbbf24;
+  --note-r: #34d399; --note-l: #a3e635; --note-r-stroke: #6ee7b7; --note-l-stroke: #d9f99d;
+  --note-block-r: linear-gradient(#5ce0ad, #1faf74); --note-block-l: linear-gradient(#bef264, #84cc16);
+}
+[data-theme="twilight"] {
+  --bg: #1d1216; --bg2: #281519; --panel: #2c181c; --panel2: #3c2026;
+  --accent: #4a2329; --accent-hi: #5e2d34; --line: #4a2329;
+  --grad: linear-gradient(135deg, #fb923c 0%, #f43f5e 100%);
+  --grad-hi: linear-gradient(135deg, #f97316 0%, #e11d48 100%);
+  --bg-radial: radial-gradient(ellipse at top, #3a1a20 0%, #1d1216 60%);
+  --kb-press-glow: rgba(251,146,60,.85); --kb-hl: #fb923c;
+  --kb-hand-r: #fb923c; --kb-hand-l: #fb7185; --kb-cue: #fde047;
+  --note-r: #fb923c; --note-l: #fb7185; --note-r-stroke: #fdba74; --note-l-stroke: #fda4af;
+  --note-block-r: linear-gradient(#fcab63, #f97316); --note-block-l: linear-gradient(#fda4af, #f43f5e);
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: radial-gradient(ellipse at top, #1d2040 0%, var(--bg) 60%);
+  background: var(--bg-radial);
   color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden;
 }
 

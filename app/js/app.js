@@ -25,6 +25,7 @@ import { PracticeStats } from './practice-stats.js';
 import { Medals, MEDAL_TIERS, tierOf as medalTier, medalForResult } from './medals.js';
 import { Heatmap, HEAT_BUCKETS, NEVER_BUCKET } from './heatmap.js';
 import { buildReviewQueue as rqBuild } from './review-queue.js';
+import { THEMES as APP_THEMES, getTheme as getAppTheme, setTheme as setAppTheme, applyTheme as applyAppTheme, initTheme as initAppTheme, themeById as appThemeById } from './theme.js';
 import { MicroStars, MAX_STARS as MICRO_MAX } from './microstars.js';
 import { RHYTHM_PATTERNS, RhythmTrainer, barDurationMs } from './rhythm-trainer.js';
 import { KEYS as MEL_KEYS, MelodyDictation } from './melody-dictation.js';
@@ -235,9 +236,24 @@ const GOAL_NAV_MAP = { scorefollow: 'scf', playstage: 'play' };
 // 🎹 Synthesia 键盘配色基准（与「曲谱跟弹」对齐，全 app 统一）：
 //   · 正在发声的音（demo / 回放 / 落音符播放）按手别上色：左手紫 / 右手青
 //   · 提示该弹哪个键（cue）：琥珀（不分手别），与 score-follow 的 cue 一致
-const KB_HAND_COLORS = { l: '#a78bfa', r: '#22d3ee' };
-const KB_CUE_COLOR = '#fbbf24';
-const kbHandColor = (hand) => (hand === 'l' ? KB_HAND_COLORS.l : KB_HAND_COLORS.r);
+//   值从 CSS 变量读取（--kb-hand-l/-r、--kb-cue），随全局主题切换自动更新，
+//   故缓存一份、在启动与切主题时由 refreshThemeColors() 刷新（避免热路径反复 getComputedStyle）。
+function cssVar(name, fallback) {
+  try {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  } catch (e) { return fallback; }
+}
+let KB_COL = { l: '#a78bfa', r: '#22d3ee', cue: '#fbbf24' };
+function refreshThemeColors() {
+  KB_COL = {
+    l: cssVar('--kb-hand-l', '#a78bfa'),
+    r: cssVar('--kb-hand-r', '#22d3ee'),
+    cue: cssVar('--kb-cue', '#fbbf24'),
+  };
+}
+const kbHandColor = (hand) => (hand === 'l' ? KB_COL.l : KB_COL.r);
+const kbCueColor = () => KB_COL.cue;
 // #2 练习热力图：每个技能按「多久没练」着色（绿=热乎/红=该复习/灰=待探索），不是按正确率
 const heatmap = new Heatmap({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -9967,7 +9983,7 @@ function renderPlayStage() {
     // 键盘高亮：判定窗内的音 → 提示该弹的键
     const cue = sf.active(t);
     if (cue.length) {
-      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: KB_CUE_COLOR, text: '▶' })), { scroll: false });
+      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: kbCueColor(), text: '▶' })), { scroll: false });
     } else kb.clear();
   }
 
@@ -18306,8 +18322,31 @@ const mpTriggered = mplTriggered;
 const mpActiveAt = mplActiveAt;
 const mpRollStats = mplRollStats;
 
+// ---------- 全局界面主题 ----------
+// 切换 <html data-theme>，全 app 的背景/面板/渐变/键盘/落音符/五线谱音符色一次性跟随。
+// 语义反馈色（红=错/绿=对/黄=提示）不在主题范围内，跨主题保持稳定。
+function initThemeUi() {
+  // 先按已存主题着色（尽早，减少闪烁），再刷新键盘缓存色
+  initAppTheme(localStorage, document.documentElement);
+  refreshThemeColors();
+  const sel = document.getElementById('theme-select');
+  if (!sel) return;
+  sel.innerHTML = APP_THEMES
+    .map((t) => `<option value="${t.id}">${t.emoji} ${t.name}</option>`)
+    .join('');
+  sel.value = getAppTheme(localStorage);
+  sel.onchange = () => {
+    setAppTheme(localStorage, sel.value);
+    applyAppTheme(sel.value, document.documentElement);
+    refreshThemeColors();
+    // 通知模块按需重绘（键盘高亮色等已由 refreshThemeColors 更新）
+    window.dispatchEvent(new CustomEvent('ca99:theme-change', { detail: { theme: sel.value } }));
+  };
+}
+
 // ---------- 初始化 ----------
 async function main() {
+  initThemeUi();
   await loadData();
 
   renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();

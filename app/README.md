@@ -35,6 +35,7 @@ app/
     medals.js          ← 🏅 奖牌墙引擎（每首曲一枚 🥉🥈🥇💎，奖牌只升不降，配合收集面板，纯逻辑，13 单元测试）
 heatmap.js         ← 🌡️ 练习热力图引擎（每个技能按「多久没练」着色 🟢🟡🔴⚪，按时间非正确率，纯逻辑，13 单元测试）
 review-queue.js    ← 🔄 智能复习队列引擎（间隔重复：叠在 heatmap 的 per-skill 上次练习+次数上，用 Leitner/SM-2-lite 渐长间隔算「今天该复习哪几项」，练得越多间隔越长；从未练的归「待探索」邀请不施压，纯逻辑，14 单元测试）
+theme.js           ← 🌈 全局界面主题引擎（5 套深色主题，切 <html data-theme> 一次换全 app 配色；只覆盖外观/品牌色 token，语义反馈色红=错/绿=对/黄=提示跨主题不变；持久化到 localStorage ca99_theme，纯逻辑，16 单元测试）
 microstars.js      ← 🌟 成长之星引擎（每个技能拆 8 颗小星，按累计练对数点亮，只升不降，纯逻辑，12 单元测试）
     streak-calendar.js ← 🔥 打卡火焰日历引擎（把连胜引擎可视化为火焰日历网格，按当日练习次数定火焰强度，含豁免券补救，纯逻辑，14 单元测试）
     mystery-box.js     ← 🎁 惊喜盲盒引擎（每次练习按概率开盒解锁好玩音色，攒「音色图鉴」，可注入 storage+rng，纯逻辑，11 单元测试）
@@ -249,8 +250,9 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 
 - 每个模块是 `app.js` 里一个 `renderXxx()` 函数，渲染到对应 `#module-xxx` 容器
 - 共享 `midi-core.js`（连接）+ `ca99.js`（协议）+ 数据表
-- 🎹 <b>键盘配色统一（与「曲谱跟弹」Synthesia 对齐）</b>：全 app 用单一常量做基准——`KB_HAND_COLORS={l:'#a78bfa',r:'#22d3ee'}`（正在发声的音按手别上色：左手紫/右手青）、`KB_CUE_COLOR='#fbbf24'`（cue 提示该弹哪键，不分手别，琥珀）、helper `kbHandColor(hand)`。曲谱跟弹/演奏台/MIDI 钢琴卷帘播放器/五线谱播放器五处键盘高亮全部走这套常量，新增带键盘的模块复用即自动对齐，<b>勿再写内联手别色</b>（历史上演奏台 cue 用过灰/琥珀、卷帘与五线谱用过 `#d59bff`/`#60a5fa`，已统一）
+- 🎹 <b>键盘配色统一（与「曲谱跟弹」Synthesia 对齐，且随主题切换）</b>：键盘高亮色不再写死常量，而是从 CSS 变量读取——`--kb-hand-l`（左手紫）/`--kb-hand-r`（右手青）/`--kb-cue`（cue 提示该弹哪键，琥珀）。app.js 用 `refreshThemeColors()` 把这三个 CSS 变量缓存进 `KB_COL`（避免热路径反复 `getComputedStyle`），helper `kbHandColor(hand)`/`kbCueColor()` 读缓存；启动与<b>切换主题</b>时刷新缓存，键盘 flash 色自动跟随当前主题。曲谱跟弹/演奏台/MIDI 钢琴卷帘播放器/五线谱播放器五处键盘高亮全部走这套 helper，新增带键盘的模块复用即自动对齐，<b>勿再写内联手别色</b>（历史上演奏台 cue 用过灰/琥珀、卷帘与五线谱用过 `#d59bff`/`#60a5fa`，已统一）
 - 🎨 <b>落音符方块 / 五线谱音符头配色统一（同样对齐曲谱跟弹）</b>：在 `app.css` 的 `:root` 定义单一数据源 CSS 变量——`--note-r:#667eea`（右手 indigo）/`--note-l:#a78bfa`（左手 purple）+ 对应描边 `--note-r-stroke`/`--note-l-stroke`，落音符方块另有 `--note-block-r`/`--note-block-l`（带渐变）。覆盖：落音符方块 `.scf-note`（曲谱跟弹/演奏台）、`.mpl-n-r/.mpl-n-l`（MIDI 钢琴卷帘，原 `#3b82f6`/`#a855f7`）、`.sv-n-r/.sv-n-l`（五线谱播放器，原 `#60a5fa`/`#c084fc`）；五线谱音符头 `.scf-staff-svg .note-head`(.nh-left)、`.sight-svg .note-head`、`.sp-head`、`.rs-head` 全部走 `var(--note-r/-l)`。判定态色（`.n-due` 琥珀/`.n-perfect` 绿/`.n-good` 青/`.n-miss` 粉、`.nh-*`/`.rs-*`/`.sp-*` 同款）本已一致，未动。<b>勿再写内联音符填充色</b>，新增带落音符/五线谱的模块复用这套变量即自动对齐
+- 🌈 <b>全局界面主题（一键切换全 app 配色）</b>：顶栏 `#theme-select` 提供 5 套主题——🌙 午夜（默认 indigo/紫）/🌊 海洋（青蓝）/🍭 糖果（粉紫）/🌲 森林（绿）/🔥 暮光（橙红）。切主题＝改 `<html data-theme>` 一个属性，全 app 的<b>背景/面板/强调渐变/键盘 flash 手别色/落音符方块/五线谱音符头色</b>一次性跟随（都已 token 化）。`app.css` 里 `:root` 为默认主题、各 `[data-theme="X"]` 块覆盖同名「外观/品牌」token；<b>语义反馈色（`--hi` 红=错 / `--ok` 绿=对 / `--warn` 黄=提示）刻意不进主题覆盖范围——跨所有主题保持不变，确保「红=错/绿=对」的含义在任何主题下都一致，孩子不会混淆</b>。5 套均为深色家族（与众多假设深背景的模块硬编码色安全共存，浅色主题因风险过高已弃）。纯逻辑 `theme.js`（`THEMES`/`getTheme`/`setTheme`/`applyTheme`/`initTheme`，16 单元测试）；选择持久化到 localStorage `ca99_theme`，启动即应用（`initThemeUi()` 在 `main()` 最前、render-all 之前）；切主题派发 `ca99:theme-change` 事件并 `refreshThemeColors()` 刷新键盘缓存色
 - 自动换音色用独立引擎 `auto-rotate.js`（纯逻辑，21 单元测试），UI 在 app.js
 - **节拍模式**：监听 MIDI 输入的 note-on 驱动 `engine.tick()`，弹够 N 个音符就换
 - VT 渐变用独立引擎 `vt-morph.js`（纯逻辑，32 单元测试），定时器逐帧线性/缓动插值
