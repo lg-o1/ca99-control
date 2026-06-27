@@ -141,3 +141,15 @@ test('matchExact requires precise pitch', () => {
   assert.equal(g.hit(72).hit, false); // C5 != C4 in exact mode
   assert.equal(g.hit(60).hit, true);
 });
+
+test('revive 恢复满命并复活', () => {
+  const g = new StaffWars({ rng: makeRng(7), lives: 1 });
+  g._loseLife();
+  assert.equal(g.alive, false);
+  assert.equal(g.lives, 0);
+  const scoreBefore = g.score;
+  g.revive();
+  assert.equal(g.alive, true);
+  assert.equal(g.lives, g.maxLives);
+  assert.equal(g.score, scoreBefore); // 得分保留
+});

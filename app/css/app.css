@@ -2270,6 +2270,8 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sw-over-score { color:var(--muted); margin-bottom:4px; }
 .sw-over-score b { color:#ffd24a; font-size:20px; }
 .sw-over-best { color:#7cffd2; font-weight:700; margin-bottom:16px; }
+.sw-giveup-btn { display:inline-block; margin-top:10px; margin-left:8px; padding:8px 16px; border-radius:10px; border:1px solid var(--line); background:transparent; color:var(--muted); font-size:.92em; cursor:pointer; }
+.sw-giveup-btn:hover { color:#fff; border-color:#9aa3c7; }
 .sw-kb { margin-top:14px; }
 
 /* 🫧 接音水滴（Drops） */

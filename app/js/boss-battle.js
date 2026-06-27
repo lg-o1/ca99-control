@@ -62,6 +62,16 @@ export class BossBattle {
     return this;
   }
 
+  /** 💛 复活：恢复满心、清除失败状态，保留已削的血量从当前进度继续 */
+  revive() {
+    this.hearts = this.maxHearts;
+    this.failed = false;
+    this.idx = 0;
+    this.passHadError = false;
+    this.combo = 0;
+    return this;
+  }
+
   /** 当前该弹的目标音（MIDI），已通关/失败则 null */
   current() {
     if (this.defeated || this.failed) return null;

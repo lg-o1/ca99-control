@@ -106,6 +106,7 @@ import { SHAPES as VC_SHAPES, makeTrack as vcMakeTrack, velocityToHeight as vcVe
 import { pickChord as ttPick, describeChord as ttDescribe, chordsUpToLevel as ttChords, ToneTreeGame } from './tone-trees.js';
 import { POOLS as PT_POOLS, poolById as ptPoolById, PaddleTones } from './paddle-tones.js';
 import { cardById as rpzCardById, generatePuzzle as rpzGenerate, onsetCells as rpzOnsets, RhythmPuzzle } from './rhythm-puzzles.js';
+import { ReviveBank } from './revive.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
@@ -240,6 +241,13 @@ const dailyGoal = new DailyGoal({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
 });
 let dailyGoalOnUpdate = null; // 🎯 今日目标刷新回调（模块注册）
+// 💛 复活币：每日温和补充的「二次机会」安全网（降挫败、对抗挑战回避，非表现奖励）
+const reviveBank = new ReviveBank({
+  perDay: 5,
+  store: (typeof localStorage !== 'undefined')
+    ? { get: () => localStorage.getItem('ca99.revive'), set: (v) => localStorage.setItem('ca99.revive', v) }
+    : null,
+});
 // 目标模块 id（=recordPractice moduleId）→ 侧栏 data-module（多数同名，仅两个不同）
 const GOAL_NAV_MAP = { scorefollow: 'scf', playstage: 'play' };
 // 🎹 Synthesia 键盘配色基准（与「曲谱跟弹」对齐，全 app 统一）：
@@ -13820,7 +13828,7 @@ function renderBossBattle() {
 
   root.innerHTML = `
     <h2 style="margin-bottom:6px">🐉 Boss 战</h2>
-    <p style="color:var(--muted);margin-bottom:14px">把一小段乐句变成<b>打怪游戏</b>：按顺序在琴上弹对它就给 Boss <b>削血</b>，弹够几遍就<b>击败</b>它！<b>没有时间压力</b>——慢慢弹、弹对才前进。弹错只掉一颗 ❤（有容错），掉光了再来一次。<b>无伤通关得 ⭐⭐⭐</b>。可接 CA99 真琴，也可点屏幕键盘。</p>
+    <p style="color:var(--muted);margin-bottom:14px">把一小段乐句变成<b>打怪游戏</b>：按顺序在琴上弹对它就给 Boss <b>削血</b>，弹够几遍就<b>击败</b>它！<b>没有时间压力</b>——慢慢弹、弹对才前进。弹错只掉一颗 ❤（有容错），掉光了还能用 <b>💛 复活币</b>满血原地继续（每天免费补几颗）。<b>无伤通关得 ⭐⭐⭐</b>。可接 CA99 真琴，也可点屏幕键盘。</p>
 
     <div class="bb-pick" id="bb-pick"></div>
 
@@ -13929,6 +13937,36 @@ function renderBossBattle() {
   }
 
   function defeat() {
+    bbKb.clear();
+    // 💛 暂停真琴输入，等孩子决定要不要复活
+    bossOnNote = null; bossOnNoteOff = null;
+    if (reviveBank.canRevive()) {
+      const left = reviveBank.coinsLeft();
+      const fb = $('#bb-feedback');
+      fb.innerHTML = `💛 别灰心！用一颗复活币就能<b>满血继续</b>，削过的血都还在哦（今天还剩 ${left} 颗）<br>
+        <button id="bb-revive" class="big-btn" style="margin-top:8px">💛 复活继续（剩 ${left}）</button>
+        <button id="bb-giveup" class="sw-giveup-btn" style="margin-top:8px">这次先到这儿</button>`;
+      fb.querySelector('#bb-revive').onclick = reviveBoss;
+      fb.querySelector('#bb-giveup').onclick = realDefeat;
+      $('#bb-status').textContent = '💛 可以复活';
+      return;
+    }
+    realDefeat();
+  }
+
+  function reviveBoss() {
+    if (!bb || !reviveBank.useRevive()) return realDefeat();
+    bb.revive();
+    refresh();
+    bossOnNote = (m) => handlePress(m);
+    bossOnNoteOff = (m) => { try { bbKb.release(m); } catch (_) {} };
+    $('#bb-feedback').textContent = '💛 满血复活！从乐句开头继续，加油！';
+    $('#bb-status').textContent = '战斗中…';
+    cheerToast('💛 满血复活！', arena);
+    showTarget();
+  }
+
+  function realDefeat() {
     bbKb.clear();
     $('#bb-feedback').textContent = '💪 这次没成功，没关系——再来一次，你会更熟练！';
     finish();
@@ -17960,7 +17998,7 @@ function renderStaffWars() {
     }
     draw();
     if (game && game.alive) raf = requestAnimationFrame(frame);
-    else { draw(); }
+    else if (game) { draw(); endGame(); }
   }
 
   function startGame() {
@@ -17978,6 +18016,11 @@ function renderStaffWars() {
 
   function endGame(quit) {
     if (raf) cancelAnimationFrame(raf), raf = null;
+    // 💛 真实阵亡且还有复活币 → 先给一次「二次机会」，不结算（降挫败）
+    if (!quit && game && !game.alive && reviveBank.canRevive()) {
+      showReviveOffer();
+      return;
+    }
     root.querySelector('#sw-start').textContent = '▶ 开始游戏';
     root.querySelector('#sw-start').classList.remove('running');
     if (game) {
@@ -17999,11 +18042,40 @@ function renderStaffWars() {
     draw();
   }
 
+  // 💛 阵亡复活提示（仅在还有复活币时出现）
+  function showReviveOffer() {
+    root.querySelector('#sw-start').textContent = '▶ 开始游戏';
+    root.querySelector('#sw-start').classList.remove('running');
+    const left = reviveBank.coinsLeft();
+    const over = root.querySelector('#sw-over');
+    over.style.display = 'flex';
+    over.innerHTML = `<div class="sw-over-card">
+      <div class="sw-over-title">💛 要不要再来一次？</div>
+      <div class="sw-over-score">得分 <b>${game.score}</b> · 击落 ${hitCount} · 关卡 ${game.level}</div>
+      <div class="sw-over-best">用一颗复活币就能<b>满血原地继续</b>，分数都还在哦（今天还剩 ${left} 颗 💛）</div>
+      <button id="sw-revive" class="big-btn">💛 复活继续（剩 ${left}）</button>
+      <button id="sw-giveup" class="sw-giveup-btn">这次先到这儿</button></div>`;
+    over.querySelector('#sw-revive').onclick = reviveGame;
+    over.querySelector('#sw-giveup').onclick = () => endGame(true);
+  }
+
+  function reviveGame() {
+    if (!game || !reviveBank.useRevive()) { endGame(true); return; }
+    game.revive();
+    root.querySelector('#sw-over').style.display = 'none';
+    root.querySelector('#sw-start').textContent = '⏹ 结束游戏';
+    root.querySelector('#sw-start').classList.add('running');
+    lasers.length = 0; booms.length = 0; lastT = 0;
+    updateHud();
+    cheerToast('💛 满血复活！继续加油！', root);
+    raf = requestAnimationFrame(frame);
+  }
+
   root.querySelector('#sw-start').onclick = () => { if (game && game.alive) endGame(true); else startGame(); };
   root.querySelector('#sw-clef').onchange = () => { if (!(game && game.alive)) draw(); };
   root.querySelector('#sw-help').onchange = () => draw();
 
-  if (typeof window !== 'undefined') window.__staffwars = { play: m => shoot(m), game: () => game, start: startGame, end: () => endGame(true) };
+  if (typeof window !== 'undefined') window.__staffwars = { play: m => shoot(m), game: () => game, start: startGame, end: () => endGame(true), death: () => endGame() };
   updateHud(); draw();
 }
 
@@ -19195,3 +19267,5 @@ async function main() {
   window.__feedNoteOff = (note = 60) => onMidiIn([0x80, note & 0x7f, 0]);
 }
 main();
+
+

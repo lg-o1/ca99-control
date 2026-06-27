@@ -98,6 +98,15 @@ export class StaffWars {
     if (this.lives === 0) this.alive = false;
   }
 
+  /** 💛 复活：恢复满命、复活，保留当前得分/关卡继续 */
+  revive() {
+    this.lives = this.maxLives;
+    this.alive = true;
+    this.invaders = [];
+    this._spawnT = 0;
+    return this;
+  }
+
   /** 弹键判定：命中最靠左（最危险）的同音高入侵者；返回 {hit, note?}
    *  默认按音名字母匹配（任意八度都算对，对初学者更友好）；matchExact 则要求精确音高。 */
   hit(midi) {

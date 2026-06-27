@@ -95,3 +95,21 @@ test('progress 血条比例', () => {
   g.press(60); g.press(62); g.press(64);
   assert.ok(Math.abs(g.progress() - 33 / 50) < 1e-9);
 });
+
+test('revive 恢复满心并保留削血进度', () => {
+  const g = new BossBattle({ boss: 'slime', hearts: 2 });
+  // 完成一遍乐句削血
+  g.press(60); g.press(62); g.press(64);
+  const hpAfterPass = g.hp;
+  // 弹错耗尽两颗心 → failed
+  g.press(61); g.press(61);
+  assert.equal(g.failed, true);
+  assert.equal(g.hearts, 0);
+  // 复活
+  g.revive();
+  assert.equal(g.failed, false);
+  assert.equal(g.hearts, g.maxHearts);
+  assert.equal(g.hp, hpAfterPass); // 削过的血保留
+  assert.equal(g.current(), 60);   // 从乐句开头继续
+});
+
