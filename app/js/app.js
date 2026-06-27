@@ -232,6 +232,12 @@ const dailyGoal = new DailyGoal({
 let dailyGoalOnUpdate = null; // 🎯 今日目标刷新回调（模块注册）
 // 目标模块 id（=recordPractice moduleId）→ 侧栏 data-module（多数同名，仅两个不同）
 const GOAL_NAV_MAP = { scorefollow: 'scf', playstage: 'play' };
+// 🎹 Synthesia 键盘配色基准（与「曲谱跟弹」对齐，全 app 统一）：
+//   · 正在发声的音（demo / 回放 / 落音符播放）按手别上色：左手紫 / 右手青
+//   · 提示该弹哪个键（cue）：琥珀（不分手别），与 score-follow 的 cue 一致
+const KB_HAND_COLORS = { l: '#a78bfa', r: '#22d3ee' };
+const KB_CUE_COLOR = '#fbbf24';
+const kbHandColor = (hand) => (hand === 'l' ? KB_HAND_COLORS.l : KB_HAND_COLORS.r);
 // #2 练习热力图：每个技能按「多久没练」着色（绿=热乎/红=该复习/灰=待探索），不是按正确率
 const heatmap = new Heatmap({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
@@ -9475,7 +9481,7 @@ function renderScoreFollow() {
       for (const n of sf.notes) {
         if (!demoPlayed.has(n.i) && !(loopOn && n.judged && n.grade == null) && t >= n.ms) {
           demoPlayed.add(n.i);
-          scfKb.flash(n.midi, n.hand === 'l' ? '#a78bfa' : '#22d3ee');
+          scfKb.flash(n.midi, kbHandColor(n.hand));
           if (realPiano && midiOutReady()) {
             realNoteOn(n.midi, n.velocity, n.durMs);   // 真琴就绪 → 仅真琴发声（音色更真）
           } else {
@@ -9961,7 +9967,7 @@ function renderPlayStage() {
     // 键盘高亮：判定窗内的音 → 提示该弹的键
     const cue = sf.active(t);
     if (cue.length) {
-      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: n.hand === 'l' ? '#cbd5e1' : '#fbbf24', text: '▶' })), { scroll: false });
+      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: KB_CUE_COLOR, text: '▶' })), { scroll: false });
     } else kb.clear();
   }
 
@@ -10023,7 +10029,7 @@ function renderPlayStage() {
         if (!demoPlayed.has(n.i) && t >= n.ms) {
           demoPlayed.add(n.i);
           voice(n.midi, n.durMs, n.velocity);
-          kb.flash(n.midi, n.hand === 'l' ? '#a78bfa' : '#22d3ee');
+          kb.flash(n.midi, kbHandColor(n.hand));
         }
       }
     } else if (mode === 'follow') {
@@ -17818,7 +17824,7 @@ function renderMidiPlayer() {
     const act = mpActiveAt(view, time);
     kb.clear();
     for (const n of act) {
-      kb.highlight(n.midi, { color: (n.hand === 'l') ? '#d59bff' : '#60a5fa' });
+      kb.highlight(n.midi, { color: kbHandColor(n.hand) });
     }
   }
 
@@ -18088,7 +18094,7 @@ function renderStaffView() {
       el.classList.toggle('on', g && act.has(g.midi + ':' + g.ms));
     });
     kb.clear();
-    for (const n of svActiveAt(view, time)) kb.highlight(n.midi, { color: (n.hand === 'l') ? '#d59bff' : '#60a5fa' });
+    for (const n of svActiveAt(view, time)) kb.highlight(n.midi, { color: kbHandColor(n.hand) });
   }
 
   function frame(now) {

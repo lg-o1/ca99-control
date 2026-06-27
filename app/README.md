@@ -249,6 +249,7 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 
 - 每个模块是 `app.js` 里一个 `renderXxx()` 函数，渲染到对应 `#module-xxx` 容器
 - 共享 `midi-core.js`（连接）+ `ca99.js`（协议）+ 数据表
+- 🎹 <b>键盘配色统一（与「曲谱跟弹」Synthesia 对齐）</b>：全 app 用单一常量做基准——`KB_HAND_COLORS={l:'#a78bfa',r:'#22d3ee'}`（正在发声的音按手别上色：左手紫/右手青）、`KB_CUE_COLOR='#fbbf24'`（cue 提示该弹哪键，不分手别，琥珀）、helper `kbHandColor(hand)`。曲谱跟弹/演奏台/MIDI 钢琴卷帘播放器/五线谱播放器五处键盘高亮全部走这套常量，新增带键盘的模块复用即自动对齐，<b>勿再写内联手别色</b>（历史上演奏台 cue 用过灰/琥珀、卷帘与五线谱用过 `#d59bff`/`#60a5fa`，已统一）
 - 自动换音色用独立引擎 `auto-rotate.js`（纯逻辑，21 单元测试），UI 在 app.js
 - **节拍模式**：监听 MIDI 输入的 note-on 驱动 `engine.tick()`，弹够 N 个音符就换
 - VT 渐变用独立引擎 `vt-morph.js`（纯逻辑，32 单元测试），定时器逐帧线性/缓动插值
