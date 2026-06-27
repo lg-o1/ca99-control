@@ -514,6 +514,22 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .bb-dmg { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); font-size: 34px; font-weight: 900; color: #fca5a5; text-shadow: 0 2px 8px rgba(0,0,0,.6); pointer-events: none; animation: bbDmg .9s ease-out forwards; }
 @keyframes bbDmg { 0% { opacity: 0; transform: translate(-50%, 0) scale(.6) } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2) } 100% { opacity: 0; transform: translate(-50%, -70px) scale(1) } }
 
+/* 🧩 节奏拼图 */
+.rpz-cap { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+.rpz-slot-wrap { background: linear-gradient(180deg, rgba(99,102,241,.08), transparent); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 6px 0 4px; }
+.rpz-slots { display: flex; flex-wrap: wrap; gap: 8px; min-height: 56px; align-items: center; }
+.rpz-empty { color: var(--muted); font-size: 13px; font-style: italic; }
+.rpz-bar { height: 8px; border-radius: 6px; background: rgba(148,163,184,.18); overflow: hidden; margin: 10px 0 4px; }
+.rpz-bar-fill { height: 100%; width: 0; background: linear-gradient(90deg, #6366f1, #f472b6); transition: width .25s; }
+.rpz-room { color: var(--muted); font-size: 12px; text-align: right; }
+.rpz-bank { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.rpz-card { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 14px; border-radius: 12px; background: var(--panel, #1a1f33); border: 1px solid var(--border); cursor: pointer; transition: transform .12s, box-shadow .12s, border-color .12s; user-select: none; min-width: 56px; }
+.rpz-card:hover { transform: translateY(-2px); border-color: #818cf8; box-shadow: 0 4px 12px rgba(99,102,241,.3); }
+.rpz-card b { font-size: 26px; line-height: 1; color: var(--text); }
+.rpz-card small { font-size: 11px; color: var(--muted); }
+.rpz-card.rpz-placed { background: rgba(99,102,241,.18); border-color: #818cf8; }
+.rpz-card.rpz-placed b { color: #c7d2fe; }
+
 /* 🚀 极速挑战 */
 .sr2-dash { display: flex; gap: 12px; justify-content: center; margin-bottom: 10px; }
 .sr2-gauge { flex: 1; max-width: 160px; text-align: center; padding: 12px 8px; border-radius: 14px; background: var(--panel, #1a1f33); border: 1px solid var(--border, #2a2f45); }

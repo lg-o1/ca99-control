@@ -105,6 +105,7 @@ import { resolveInstruments as tgResolve, TimbreGuess } from './timbre-guess.js'
 import { SHAPES as VC_SHAPES, makeTrack as vcMakeTrack, velocityToHeight as vcVelToHeight, VelocityCoaster } from './velocity-coaster.js';
 import { pickChord as ttPick, describeChord as ttDescribe, chordsUpToLevel as ttChords, ToneTreeGame } from './tone-trees.js';
 import { POOLS as PT_POOLS, poolById as ptPoolById, PaddleTones } from './paddle-tones.js';
+import { cardById as rpzCardById, generatePuzzle as rpzGenerate, onsetCells as rpzOnsets, RhythmPuzzle } from './rhythm-puzzles.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
@@ -15384,6 +15385,171 @@ function renderGuessSong() {
   drawStaff();
 }
 
+// 🧩 节奏拼图（Rhythm Puzzles）：听一条节奏，用节奏音节卡把它拼出来
+function renderRhythmPuzzles() {
+  const root = $('#module-rhythmpuzzle');
+  if (!root) return;
+  let level = 1;
+  let barBeats = 4;
+  let bpm = 90;
+  let puz = null;
+  let playTimer = [];
+  let playing = false;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🧩 节奏拼图</h2>
+    <p style="color:var(--muted);margin-bottom:12px">先点 <b>▶ 听一听</b> 听电脑拍出一条节奏，再从下面的<b>节奏卡</b>里挑出来<b>拼成一样的</b> 🧩！拼满一小节就能<b>检查</b>。<b>只听节奏、不看音高</b>——这是用嘴念的 <b>ta / ti-ti</b> 节奏游戏（柯达伊音节）。拼错<b>不扣分</b>，多听几遍就好啦。</p>
+
+    <div class="bb-pick" id="rpz-level"></div>
+
+    <div class="rotate-bar" style="margin:6px 0 10px">
+      <label class="scaffold-toggle">拍号
+        <select id="rpz-bar"><option value="4" selected>4/4</option><option value="3">3/4</option></select>
+      </label>
+      <label class="scaffold-toggle">速度
+        <select id="rpz-bpm"><option value="70">🐢 70</option><option value="90" selected>🎵 90</option><option value="110">🏃 110</option></select>
+      </label>
+      <button id="rpz-listen" class="big-btn" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">▶ 听一听</button>
+      <button id="rpz-new" class="mini-btn">🎲 换一题</button>
+    </div>
+
+    <div class="rpz-slot-wrap">
+      <div class="rpz-cap">你拼的节奏（点卡片放进来）：</div>
+      <div class="rpz-slots" id="rpz-slots"></div>
+      <div class="rpz-bar"><div class="rpz-bar-fill" id="rpz-fill"></div></div>
+      <div class="rpz-room" id="rpz-room"></div>
+    </div>
+
+    <div class="rotate-bar" style="margin:8px 0">
+      <button id="rpz-undo" class="mini-btn">↩ 撤销</button>
+      <button id="rpz-clear" class="mini-btn">🗑️ 清空</button>
+      <button id="rpz-check" class="big-btn">✓ 检查</button>
+    </div>
+
+    <div class="bb-feedback" id="rpz-feedback">点 ▶ 听一听，记住节奏，再用下面的卡片拼出来～</div>
+
+    <div class="rpz-cap" style="margin-top:10px">节奏卡（点一下放进上面）：</div>
+    <div class="rpz-bank" id="rpz-bank"></div>`;
+
+  function drawLevels() {
+    const defs = [
+      { lv: 1, label: '🌱 简单', desc: 'ta · ti-ti' },
+      { lv: 2, label: '🌿 中等', desc: '+ ta-a · 休止' },
+      { lv: 3, label: '🔥 挑战', desc: '+ tika-tika' },
+    ];
+    $('#rpz-level').innerHTML = defs.map((d) =>
+      `<button class="bb-chip${d.lv === level ? ' on' : ''}" data-lv="${d.lv}">${d.label}<small>${d.desc}</small></button>`).join('');
+    $('#rpz-level').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { level = +el.dataset.lv; drawLevels(); newPuzzle(); };
+    });
+  }
+
+  function cardChipHTML(id, extra = '') {
+    const c = rpzCardById(id);
+    if (!c) return '';
+    return `<span class="rpz-card${extra}" data-id="${id}"><b>${c.sym}</b><small>${c.label}</small></span>`;
+  }
+
+  function drawBank() {
+    const bank = puz ? puz.bank : [];
+    $('#rpz-bank').innerHTML = bank.map((id) => cardChipHTML(id)).join('');
+    $('#rpz-bank').querySelectorAll('.rpz-card').forEach((el) => {
+      el.onclick = () => {
+        if (!puz) return;
+        if (puz.game.place(el.dataset.id)) { try { tapCardSound(el.dataset.id); } catch (_) {} drawSlots(); }
+        else cheerToast('这一小节放不下啦，先检查或撤销～', root);
+      };
+    });
+  }
+
+  function drawSlots() {
+    if (!puz) return;
+    const game = puz.game;
+    $('#rpz-slots').innerHTML = game.placed.length
+      ? game.placed.map((id, i) => cardChipHTML(id, ' rpz-placed').replace('data-id', `data-i="${i}" data-id`)).join('')
+      : '<span class="rpz-empty">这里还空着——点下面的卡片放进来</span>';
+    $('#rpz-slots').querySelectorAll('.rpz-card').forEach((el) => {
+      el.onclick = () => { game.removeAt(+el.dataset.i); drawSlots(); };
+    });
+    const frac = game.progress();
+    $('#rpz-fill').style.width = `${Math.round(frac * 100)}%`;
+    const rem = game.remainingBeats();
+    $('#rpz-room').textContent = rem > 0 ? `还差 ${rem} 拍` : (game.isFull() ? '已填满！点 ✓ 检查' : '');
+  }
+
+  function newPuzzle() {
+    barBeats = +$('#rpz-bar').value;
+    bpm = +$('#rpz-bpm').value;
+    const p = rpzGenerate({ level, barBeats });
+    puz = { bank: p.bank, target: p.target, game: new RhythmPuzzle({ target: p.target, barBeats }) };
+    $('#rpz-feedback').textContent = '点 ▶ 听一听，记住节奏，再用下面的卡片拼出来～';
+    drawBank(); drawSlots();
+  }
+
+  // 用 clickSound 拍出一条节奏（accent 在每拍的整拍上）
+  function playRhythm(ids) {
+    stopRhythm();
+    const cells = rpzOnsets(ids);
+    const beatMs = 60000 / bpm;
+    playing = true;
+    $('#rpz-listen').textContent = '⏹ 停止';
+    // 先 1 小节预备拍
+    const lead = barBeats;
+    for (let b = 0; b < lead; b++) {
+      playTimer.push(setTimeout(() => { try { clickSound(b === 0); } catch (_) {} }, b * beatMs));
+    }
+    const offset = lead * beatMs;
+    for (const c of cells) {
+      if (c.rest) continue;
+      const onIntBeat = Math.abs(c.beat - Math.round(c.beat)) < 1e-9;
+      playTimer.push(setTimeout(() => { try { clickSound(onIntBeat && Math.round(c.beat) % barBeats === 0); } catch (_) {} }, offset + c.beat * beatMs));
+    }
+    const totalMs = offset + barBeats * beatMs + 200;
+    playTimer.push(setTimeout(() => { stopRhythm(); }, totalMs));
+  }
+
+  function tapCardSound(id) {
+    const cells = rpzOnsets([id]);
+    const beatMs = 60000 / bpm;
+    cells.forEach((c) => { if (!c.rest) setTimeout(() => { try { clickSound(false); } catch (_) {} }, c.beat * beatMs); });
+  }
+
+  function stopRhythm() {
+    playTimer.forEach((t) => clearTimeout(t));
+    playTimer = [];
+    playing = false;
+    if ($('#rpz-listen')) $('#rpz-listen').textContent = '▶ 听一听';
+  }
+
+  function check() {
+    if (!puz) return;
+    const r = puz.game.check();
+    if (!r.full) { $('#rpz-feedback').innerHTML = `先把这一小节<b>拼满</b>（还差 ${r.barBeats - r.filledBeats} 拍）再检查哦～`; return; }
+    if (r.correct) {
+      $('#rpz-feedback').innerHTML = `🎉 完全正确！你把节奏<b>听出来又拼出来</b>了，耳朵和脑子都很棒！`;
+      recordPractice('rhythmpuzzle', '节奏拼图', 1, 1, 0);
+      cheerBurst(root, 60);
+      try { playRhythm(puz.target); } catch (_) {}
+    } else {
+      $('#rpz-feedback').innerHTML = `节奏对得上拍数，但<b>结构还不一样</b>～再点 ▶ 听一听 仔细听，注意哪里是一长音（ta-a）、哪里是两短音（ti-ti）。`;
+      cheerToast('差一点点，再听一遍试试 🎧', root);
+    }
+  }
+
+  drawLevels();
+  $('#rpz-bar').onchange = () => newPuzzle();
+  $('#rpz-bpm').onchange = () => { bpm = +$('#rpz-bpm').value; };
+  $('#rpz-listen').onclick = () => { if (playing) stopRhythm(); else if (puz) playRhythm(puz.target); };
+  $('#rpz-new').onclick = () => newPuzzle();
+  $('#rpz-undo').onclick = () => { if (puz) { puz.game.pop(); drawSlots(); } };
+  $('#rpz-clear').onclick = () => { if (puz) { puz.game.clear(); drawSlots(); } };
+  $('#rpz-check').onclick = () => check();
+
+  document.addEventListener('ca99:module-change', (e) => { if (e.detail !== 'rhythmpuzzle' && playing) stopRhythm(); });
+
+  newPuzzle();
+}
+
 // 🏓 弹球接音（Paddle Tones）：音球从顶落下，弹对应音把它"弹回去"接住
 function renderPaddleTones() {
   const root = $('#module-paddle');
@@ -18985,7 +19151,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderPaddleTones(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
