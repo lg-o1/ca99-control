@@ -324,6 +324,15 @@ input[type=checkbox]:checked::after {
 /* ---- 节奏视奏：统一控制条按钮字号（TAP 钮除外，TAP 在 .kb-wrap 内） ---- */
 #module-rsight .rotate-bar button { font-size: 16px; }
 
+/* ---- 迷你反馈条：街机游戏键盘上方的「连击/分数 + 判定」镜像，免去回滚看顶部 HUD ---- */
+.mfb { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 30px; margin: 2px 0 6px; flex-wrap: wrap; }
+.mfb-stat { font-weight: 800; font-size: 16px; color: var(--hi2); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.mfb-judge { font-weight: 700; font-size: 14px; padding: 2px 12px; border-radius: 999px; opacity: 0; white-space: nowrap; }
+.mfb-judge.ok { color: #06281d; background: linear-gradient(135deg, #34d399, #10b981); }
+.mfb-judge.bad { color: #fff; background: linear-gradient(135deg, #fb7185, #ec4899); }
+.mfb-pop { animation: mfbPop .55s ease; opacity: 1; }
+@keyframes mfbPop { 0% { transform: scale(.55); opacity: 0; } 32% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); opacity: .95; } }
+
 /* ---- 按钮网格（节奏） ---- */
 .btn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 8px; }
 button.grid-btn {

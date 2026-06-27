@@ -870,6 +870,20 @@ function kbMidiOn(midi, channel = 0, vel = 82) { send([0x90 | (channel & 0x0f), 
 function kbMidiOff(midi, channel = 0) { send([0x80 | (channel & 0x0f), midi & 0x7f, 0]); }
 
 // ========== 模块 1: 音色浏览器 ==========
+// ===== 迷你反馈条：贴在街机游戏键盘上方，镜像「关键数值 + 最近判定」，让结果跟着手走，免去回滚看顶部 HUD =====
+function makeMiniFb(root, sel) {
+  const el = root.querySelector(sel);
+  return {
+    el,
+    stat(html) { const c = el && el.querySelector('.mfb-stat'); if (c) c.innerHTML = html; },
+    flash(txt, kind) {
+      const j = el && el.querySelector('.mfb-judge'); if (!j) return;
+      j.textContent = txt; j.className = 'mfb-judge' + (kind ? ' ' + kind : '');
+      j.classList.remove('mfb-pop'); void j.offsetWidth; j.classList.add('mfb-pop');
+    },
+  };
+}
+
 function renderSounds() {
   const root = $('#module-sounds');
   const cats = [...new Set(SOUNDS.map(s => s.category))];
@@ -15677,9 +15691,11 @@ function renderPaddleTones() {
 
     <div class="kb-wrap" style="margin-top:10px">
       <div class="kb-cap">🎹 弹出球上的音把它弹回去（任意八度都行）</div>
+      <div class="mfb" id="pdl-mfb"><span class="mfb-stat">🔥 0</span><span class="mfb-judge"></span></div>
       <div id="pdl-kb"></div>
     </div>`;
 
+  const mfb = makeMiniFb(root, '#pdl-mfb');
   const cv = $('#pdl-canvas');
   const cx = cv.getContext('2d');
   const W = cv.width, H = cv.height;
@@ -15700,6 +15716,7 @@ function renderPaddleTones() {
     $('#pdl-miss').textContent = game ? game.missedCount : 0;
     $('#pdl-combo').textContent = game ? game.combo : 0;
     $('#pdl-best').textContent = Math.max(bestOf(poolId), game ? game.bestCombo : 0);
+    mfb.stat('🔥 ' + (game ? game.combo : 0));
   }
 
   const BALL_COLORS = ['#f472b6', '#38bdf8', '#34d399', '#fbbf24', '#a78bfa', '#fb923c', '#f87171', '#22d3ee', '#a3e635', '#e879f9', '#facc15', '#4ade80'];
@@ -15772,10 +15789,12 @@ function renderPaddleTones() {
     const r = game.play(midi, now);
     if (r.hit) {
       lineFlash = 1; lineFlashCol = r.perfect ? '#34d399' : '#60a5fa';
+      mfb.flash(r.perfect ? '接住! ✓' : '好球 ✓', 'ok');
       floats.push({ x: ballX(r.ball.i), y: yPix(Math.min(1.1, r.y)) - 16, life: 1, txt: r.perfect ? '接住!' : '好球', color: r.perfect ? '#34d399' : '#60a5fa' });
       if (game.bestCombo > bestOf(poolId)) { const map = loadBest(); map[poolId] = game.bestCombo; saveBest(map); }
       if (game.combo > 0 && game.combo % 6 === 0) cheerToast(`🔥 连击 ${game.combo}！`, root);
     } else {
+      mfb.flash('✗', 'bad');
       floats.push({ x: W / 2, y: FLOOR - 30, life: 0.6, txt: '✗', color: 'rgba(255,255,255,.45)' });
     }
     updateHud();
@@ -18148,8 +18167,10 @@ function renderStaffWars() {
       <canvas id="sw-canvas" width="760" height="320"></canvas>
       <div id="sw-over" class="sw-over" style="display:none"></div>
     </div>
+    <div class="mfb" id="sw-mfb"><span class="mfb-stat">💛💛💛</span><span class="mfb-judge"></span></div>
     <div id="sw-kb" class="sw-kb"></div>`;
 
+  const mfb = makeMiniFb(root, '#sw-mfb');
   const canvas = root.querySelector('#sw-canvas');
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
@@ -18194,6 +18215,7 @@ function renderStaffWars() {
     root.querySelector('#sw-level').textContent = game ? game.level : 1;
     const lv = game ? game.lives : 3;
     root.querySelector('#sw-lives').textContent = '💛'.repeat(lv) + '🖤'.repeat(Math.max(0, 3 - lv));
+    mfb.stat('💛'.repeat(lv) + '🖤'.repeat(Math.max(0, 3 - lv)) + ' &nbsp; 🎯 ' + (game ? game.score : 0));
   }
 
   function shoot(m) {
@@ -18201,11 +18223,13 @@ function renderStaffWars() {
     const r = game.hit(m);
     if (r.hit) {
       hitCount++;
+      mfb.flash('击落 ✓', 'ok');
       const x = invScreenX(r.note.x), y = noteY(r.note.midi, game.clef);
       lasers.push({ x0: LX, y0: H * 0.5, x1: x, y1: y, life: 1 });
       booms.push({ x, y, life: 1, r: 6 });
     } else {
       missCount++;
+      mfb.flash('✗', 'bad');
       shake = Math.min(shake + 0.4, 1); // 轻微反馈，不扣分
     }
     updateHud();
@@ -18399,8 +18423,10 @@ function renderDrops() {
     <div class="dr-stage">
       <canvas id="dr-canvas" width="760" height="320"></canvas>
     </div>
+    <div class="mfb" id="dr-mfb"><span class="mfb-stat">🔥 0</span><span class="mfb-judge"></span></div>
     <div id="dr-kb" class="dr-kb"></div>`;
 
+  const mfb = makeMiniFb(root, '#dr-mfb');
   const canvas = root.querySelector('#dr-canvas');
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
@@ -18426,6 +18452,7 @@ function renderDrops() {
     root.querySelector('#dr-missed').textContent = game ? game.missed : 0;
     root.querySelector('#dr-combo').textContent = game ? game.combo : 0;
     root.querySelector('#dr-best').textContent = best;
+    mfb.stat('🔥 ' + (game ? game.combo : 0));
   }
 
   function tryCatch(m) {
@@ -18433,6 +18460,7 @@ function renderDrops() {
     const r = game.catch(m);
     if (r.caught) {
       pops.push({ x: dropX(r.drop.x), y: dropY(r.drop.y), life: 1, letter: dropsNoteLetter(r.drop.midi) });
+      mfb.flash('接住 ✓', 'ok');
       if (game.bestCombo > best) { best = game.bestCombo; localStorage.setItem(BEST_KEY, best); }
       if (game.combo > 0 && game.combo % 5 === 0) cheerToast(`🔥 连击 ${game.combo}！`, root);
     }
