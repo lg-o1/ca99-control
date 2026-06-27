@@ -2615,3 +2615,97 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-sheet-m.low-conf { background: #fffbeb; box-shadow: inset 0 -3px 0 #fbbf24; }
 .scf-sheet-cursor { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; box-shadow: 0 0 6px 1px rgba(239,68,68,.7); pointer-events: none; z-index: 3; }
 .scf-lib-sheet { display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 11px; border-radius: 6px; background: #312e81; color: #c7d2fe; border: 1px solid #4338ca; vertical-align: middle; }
+
+/* ===== 共享：大号下拉选择 ===== */
+.big-select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 15px; min-width: 180px; }
+
+/* ===== 🗓️ 一周成曲 (wk-) ===== */
+.wk-bar { height: 12px; border-radius: 8px; background: var(--panel2); overflow: hidden; margin-bottom: 14px; }
+.wk-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--ok), var(--warn)); transition: width .35s ease; }
+.wk-days { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.wk-day { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; cursor: pointer; transition: transform .12s, border-color .2s; }
+.wk-day:hover { transform: translateY(-2px); border-color: var(--hi2); }
+.wk-day.done { background: rgba(74, 222, 128, .12); border-color: var(--ok); }
+.wk-day.current { border-color: var(--hi2); box-shadow: 0 0 0 2px rgba(255, 107, 129, .35); }
+.wk-day-top { display: flex; justify-content: space-between; align-items: center; }
+.wk-day-n { font-weight: 800; color: var(--hi2); font-size: 15px; }
+.wk-day-ic { font-size: 20px; }
+.wk-day-title { font-weight: 700; margin: 6px 0 3px; color: var(--text); }
+.wk-day-hint { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.wk-day-badge { margin-top: 7px; font-size: 12px; color: var(--warn); font-weight: 700; }
+
+/* ===== 🌊 心流演奏 (flow-) ===== */
+.flow-live { text-align: center; background: var(--panel2); border: 1px solid var(--line); border-radius: 16px; padding: 22px; margin-bottom: 14px; }
+.flow-big { font-size: 56px; line-height: 1; }
+.flow-counter { margin-top: 10px; font-size: 18px; color: var(--text); }
+.flow-counter span { font-weight: 800; color: var(--hi2); }
+.flow-hint { margin-top: 8px; color: var(--muted); }
+.flow-pulse { animation: flowPulse .35s ease; }
+@keyframes flowPulse { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.flow-report { background: var(--panel2); border: 1px solid var(--ok); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.flow-grade { font-size: 20px; margin-bottom: 10px; }
+.flow-stats-row { display: flex; flex-wrap: wrap; gap: 14px; color: var(--text); margin-bottom: 8px; }
+.flow-msg { color: var(--muted); line-height: 1.5; }
+
+/* ===== 🎤 迷你音乐会 (con-) ===== */
+.con-stage { text-align: center; background: linear-gradient(180deg, #2a1a45, var(--panel2)); border: 1px solid var(--line); border-radius: 16px; padding: 20px; margin-bottom: 14px; }
+.con-section { font-size: 16px; font-weight: 700; color: var(--warn); }
+.con-audience { font-size: 60px; line-height: 1.1; margin: 8px 0; }
+.con-react { color: var(--text); min-height: 22px; margin-bottom: 12px; }
+.con-bar { height: 10px; border-radius: 8px; background: rgba(0, 0, 0, .3); overflow: hidden; }
+.con-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--hi2), var(--warn)); transition: width .25s ease; }
+.con-pop { animation: conPop .3s ease; }
+@keyframes conPop { 0% { transform: scale(1); } 45% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.con-finale { text-align: center; background: var(--panel2); border: 1px solid var(--warn); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+.con-stars { font-size: 30px; letter-spacing: 3px; }
+.con-fin-react { font-size: 17px; color: var(--text); margin: 6px 0; }
+.con-fin-msg { color: var(--muted); }
+
+/* ===== 🎯 谱面错误图 (se-) ===== */
+.se-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; color: var(--muted); font-size: 13px; }
+.se-legend i { display: inline-block; width: 13px; height: 13px; border-radius: 3px; margin-right: 5px; vertical-align: middle; }
+.se-map { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.se-bar { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.se-bar-label { font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+.se-cells { display: flex; flex-wrap: wrap; gap: 5px; }
+.se-cell { width: 22px; height: 22px; border-radius: 5px; }
+.se-summary { color: var(--text); }
+.se-sum-acc { font-size: 16px; margin-bottom: 4px; }
+.se-sum-worst { color: var(--warn); }
+
+/* ===== ⏱️ 节奏直方图 (th-) ===== */
+.th-tap { background: var(--hi2); color: #fff; border: none; border-radius: 10px; padding: 9px 18px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.th-tap:disabled { opacity: .45; cursor: default; }
+.th-hit { animation: thHit .12s ease; }
+@keyframes thHit { 0% { transform: scale(1); } 50% { transform: scale(.9); } 100% { transform: scale(1); } }
+.th-chart { margin: 12px 0; }
+.th-meta { color: var(--muted); margin-bottom: 10px; font-size: 14px; }
+.th-bars { display: flex; align-items: flex-end; gap: 10px; height: 180px; }
+.th-bin { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.th-bar-col { flex: 1; width: 100%; display: flex; align-items: flex-end; background: var(--panel2); border-radius: 6px 6px 0 0; overflow: hidden; }
+.th-bar-fill { width: 100%; border-radius: 6px 6px 0 0; transition: height .3s ease; min-height: 2px; }
+.th-bar-pct { font-size: 12px; color: var(--text); margin-top: 4px; }
+.th-bar-lab { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.3; }
+.th-comment { color: var(--text); }
+
+/* ===== 🪜 脚手架淡出 (sff-) ===== */
+.sff-demo { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.sff-demo-head { color: var(--muted); margin-bottom: 8px; }
+.sff-slider { width: 100%; }
+.sff-preview { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.sff-note { width: 54px; text-align: center; }
+.sff-head { width: 30px; height: 30px; border-radius: 50%; margin: 0 auto 4px; border: 2px solid rgba(255, 255, 255, .35); }
+.sff-lab { font-weight: 700; color: var(--text); font-size: 13px; }
+.sff-drop { color: var(--hi2); font-size: 14px; }
+.sff-stagebar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.sff-stage { font-size: 12px; color: var(--muted); padding: 2px 8px; border-radius: 6px; background: var(--panel); }
+.sff-stage.on { background: var(--hi2); color: #fff; font-weight: 700; }
+.sff-arrow { color: var(--muted); font-style: normal; }
+.sff-practice { background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.sff-pr-head { color: var(--text); margin-bottom: 10px; }
+.sff-target { display: flex; justify-content: center; margin: 8px 0; }
+.sff-pr-stats { text-align: center; color: var(--muted); margin-top: 8px; }
+.sff-note-big { width: 90px; }
+.sff-note-big .sff-head { width: 54px; height: 54px; }
+.sff-note-big .sff-lab { font-size: 18px; }
+.sff-note-big .sff-drop { font-size: 20px; }

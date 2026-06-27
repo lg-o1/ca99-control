@@ -126,6 +126,12 @@ import { PATTERNS as RJ_PATTERNS, patternById as rjPatternById, RhythmJump } fro
 import { FamilyDuel, DEFAULT_PLAYERS as FD_PLAYERS } from './family-duel.js';
 import { SoundPainting } from './sound-paint.js';
 import * as PetGrow from './pet-grow.js';
+import { WEEK_PLAN, WeekMaster } from './week-master.js';
+import { FlowSession, gradeFor as flowGrade } from './flow-mode.js';
+import { CELL_KINDS as SE_KINDS, analyzeNotes as seAnalyze, aggregateByMeasure as seAggregate, summarize as seSummarize } from './score-error.js';
+import { BINS as TH_BINS, histogram as thHistogram, comment as thComment } from './timing-histogram.js';
+import { SECTIONS as CON_SECTIONS, ConcertSim } from './concert-sim.js';
+import { STAGES as SCF_STAGES, scaffoldOpacity as scfOpacity, noteScaffold as scfNoteScaffold } from './scaffold-fade.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -198,6 +204,11 @@ let coasterOnNote = null;   // 🎢 力度过山车的 note-on 回调（按 velo
 let toneTreeOnNote = null;  // 🌲 和弦寻宝的 note-on 回调（弹组成音点亮树）
 let multiAnchorOnNote = null; // 🌈 多重锚点的 note-on 回调（弹键显示四重锚点）
 let paddleOnNote = null;    // 🏓 弹球接音的 note-on 回调（弹对应音弹回音球）
+let flowOnNote = null;      // 🌊 心流演奏的 note-on 回调（采集时间戳，不打断）
+let concertOnNote = null;   // 🎤 迷你音乐会的 note-on 回调（带力度，驱动观众反应）
+let scoreErrOnNote = null;  // 🎯 谱面错误图的 note-on 回调（记录实弹音 + 时间）
+let timingOnNote = null;    // ⏱️ 节奏直方图的 note-on 回调（采集敲击时间戳）
+let scaffoldOnNote = null;  // 🪜 脚手架淡出的 note-on 回调（识谱作答）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -710,6 +721,16 @@ function onMidiIn(bytes) {
     if (multiAnchorOnNote) multiAnchorOnNote(m.note, m.velocity);
     // 驱动弹球接音（弹对应音弹回音球）
     if (paddleOnNote) paddleOnNote(m.note);
+    // 驱动心流演奏（只采集时间戳、不打断）
+    if (flowOnNote) flowOnNote(m.note, m.velocity);
+    // 驱动迷你音乐会（力度→观众反应）
+    if (concertOnNote) concertOnNote(m.note, m.velocity);
+    // 驱动谱面错误图（记录实弹音 + 时间）
+    if (scoreErrOnNote) scoreErrOnNote(m.note, m.velocity);
+    // 驱动节奏直方图（采集敲击时间戳）
+    if (timingOnNote) timingOnNote(m.note, m.velocity);
+    // 驱动脚手架淡出（识谱作答）
+    if (scaffoldOnNote) scaffoldOnNote(m.note, m.velocity);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -15318,6 +15339,446 @@ function renderBingoCard() {
   refreshStats();
 }
 
+// ========== 模块: 🗓️ 一周成曲（把一首曲子拆成 7 天的当日小任务，逐天点亮）==========
+function renderWeekMaster() {
+  const root = $('#module-week');
+  let wm = null;
+  const opts = SCF_SONGS.map((s) => `<option value="${s.id}">${s.title}</option>`).join('');
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🗓️ 一周成曲</h2>
+    <p style="color:var(--muted);margin-bottom:14px">练一首新曲子不知道每天该练啥？把它拆成 <b>7 天</b>，每天只盯一个超小的目标（D1 只摸旋律 → D7 开音乐会录音）。点亮当天的卡片，循序渐进、不焦虑——<b>每天只走一小步</b>。</p>
+    <div class="rotate-bar" style="margin-bottom:12px">
+      <label style="color:var(--muted)">选一首曲子：</label>
+      <select id="wk-song" class="big-select">${opts}</select>
+      <span id="wk-pct" style="color:var(--hi2);font-weight:700"></span>
+    </div>
+    <div class="wk-bar"><div id="wk-fill" class="wk-fill"></div></div>
+    <div id="wk-days" class="wk-days"></div>
+    <div class="rotate-bar" style="margin-top:10px">
+      <button id="wk-reset" class="ghost-btn">🔄 重置这首的进度</button>
+    </div>`;
+
+  function draw() {
+    const view = wm.view();
+    $('#wk-fill').style.width = wm.percent() + '%';
+    $('#wk-pct').textContent = `${wm.doneCount()}/7 天 · ${wm.percent()}%`;
+    $('#wk-days').innerHTML = view.map((d) => `
+      <div class="wk-day${d.done ? ' done' : ''}${d.current ? ' current' : ''}" data-day="${d.day}">
+        <div class="wk-day-top"><span class="wk-day-n">D${d.day}</span><span class="wk-day-ic">${d.done ? '✅' : d.icon}</span></div>
+        <div class="wk-day-title">${d.title}</div>
+        <div class="wk-day-hint">${d.hint}</div>
+        ${d.current ? '<div class="wk-day-badge">👈 今天练这个</div>' : ''}
+      </div>`).join('');
+    $('#wk-days').querySelectorAll('.wk-day').forEach((card) => {
+      card.onclick = () => {
+        const day = parseInt(card.dataset.day, 10);
+        const nowDone = wm.toggle(day);
+        draw();
+        if (nowDone && wm.isComplete()) {
+          victoryLightShow(root, { text: '🎉 七天成曲！这首你练成啦！' });
+          recordPractice('week', '一周成曲', 7, 7, 7);
+        } else if (nowDone) {
+          cheerToast(`✅ D${day} 完成！${wm.currentDay() ? '下一站 D' + wm.currentDay() : ''}`, root);
+        }
+      };
+    });
+  }
+
+  function load(songId) {
+    const song = SCF_SONGS.find((s) => s.id === songId) || SCF_SONGS[0];
+    wm = new WeekMaster({ songId: song.id, title: song.title, storage: (typeof localStorage !== 'undefined') ? localStorage : undefined });
+    draw();
+  }
+
+  $('#wk-song').onchange = (e) => load(e.target.value);
+  $('#wk-reset').onclick = () => { wm.reset(); draw(); cheerToast('已重置这首曲子的一周进度', root); };
+  load(SCF_SONGS[0].id);
+}
+
+// ========== 模块: 🌊 心流演奏（演奏中不打断、不报错，弹完才给温和报告，练"弹错别停"）==========
+function renderFlowMode() {
+  const root = $('#module-flow');
+  let sess = null, active = false;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🌊 心流演奏</h2>
+    <p style="color:var(--muted);margin-bottom:14px">练琴最怕弹错一个音就停下来纠结。<b>心流模式</b>把所有实时报错都关掉——你只管<b>一口气弹完</b>（错了也别停！），弹完我再给你一份温和的报告：弹了多久、多少音、有多连贯。重过程，不挑错。可接 CA99 真琴或点屏幕键盘。</p>
+    <div class="flow-live" id="flow-live">
+      <div class="flow-big" id="flow-big">🌊</div>
+      <div class="flow-counter"><span id="flow-notes">0</span> 个音 · <span id="flow-time">0.0</span> 秒</div>
+      <div class="flow-hint" id="flow-hint">点「开始演奏」，然后自由地弹——弹错也不要停。</div>
+    </div>
+    <div id="flow-report" class="flow-report" style="display:none"></div>
+    <div class="kb-wrap"><div class="kb-cap">🎹 自由演奏（不会有红叉打断你）</div><div id="flow-kb"></div></div>
+    <div class="rotate-bar">
+      <button id="flow-start" class="big-btn">▶️ 开始演奏</button>
+      <button id="flow-stop" class="ghost-btn" disabled>⏹️ 结束并看报告</button>
+    </div>`;
+
+  let liveTimer = null;
+  function onPlay() {
+    if (!active || !sess) return;
+    sess.note(performance.now());
+    $('#flow-notes').textContent = sess.notes;
+    const big = $('#flow-big');
+    big.classList.remove('flow-pulse'); void big.offsetWidth; big.classList.add('flow-pulse');
+  }
+  const kb = new PianoKeyboard($('#flow-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); onPlay(); },
+  });
+  kb.scrollToShow(48, 84);
+
+  function start() {
+    sess = new FlowSession().start(performance.now());
+    active = true;
+    $('#flow-start').disabled = true; $('#flow-stop').disabled = false;
+    $('#flow-report').style.display = 'none';
+    $('#flow-notes').textContent = '0';
+    $('#flow-hint').textContent = '🌊 心流中…… 弹错别停，走完整首！';
+    flowOnNote = () => onPlay();
+    const t0 = performance.now();
+    liveTimer = setInterval(() => { $('#flow-time').textContent = ((performance.now() - t0) / 1000).toFixed(1); }, 100);
+  }
+  function stop() {
+    if (!active) return;
+    active = false; flowOnNote = null;
+    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
+    $('#flow-start').disabled = false; $('#flow-stop').disabled = true;
+    const rep = sess.end(performance.now());
+    const g = rep.grade;
+    $('#flow-hint').textContent = '演奏结束，看看你的心流报告 👇';
+    $('#flow-report').style.display = '';
+    $('#flow-report').innerHTML = `
+      <div class="flow-grade">${g.emoji} <b>${g.label}</b> · 流畅度 ${rep.flowScore}</div>
+      <div class="flow-stats-row">
+        <span>🎵 ${rep.notes} 个音</span>
+        <span>⏱️ ${(rep.durationMs / 1000).toFixed(1)} 秒</span>
+        <span>🔗 最长连贯 ${rep.bestStreak}</span>
+        <span>🤔 停顿 ${rep.hesitations} 次</span>
+      </div>
+      <div class="flow-msg">${rep.message}</div>`;
+    if (rep.notes >= 4) {
+      recordPractice('flow', '心流演奏', rep.notes, Math.max(1, rep.bestStreak), rep.bestStreak);
+      if (rep.flowScore >= 85) cheerBurst(root, 60);
+    }
+  }
+  $('#flow-start').onclick = start;
+  $('#flow-stop').onclick = stop;
+}
+
+// ========== 模块: 🎤 迷你音乐会（观众掌声/欢呼随曲段+力度动态反应，把练习变演出）==========
+function renderConcertSim() {
+  const root = $('#module-concert');
+  const TARGET = 40; // 一场演出的目标音数（用于估算播放进度）
+  let sim = null, active = false, count = 0;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎤 迷你音乐会</h2>
+    <p style="color:var(--muted);margin-bottom:14px">把孤独的练习变成一场<b>小型音乐会</b>！观众会随你的演奏热烈起来——弹到<b>副歌</b>、弹得<b>有力</b>，全场就欢呼鼓掌 🎉。一直弹到尾声，谢幕时看你赢得几颗星。接 CA99 真琴能感应真实力度，屏幕键盘也能玩。</p>
+    <div class="con-stage" id="con-stage">
+      <div class="con-section" id="con-section">🎼 前奏</div>
+      <div class="con-audience" id="con-aud">🤫</div>
+      <div class="con-react" id="con-react">观众就位，开始你的演出吧！</div>
+      <div class="con-bar"><div id="con-fill" class="con-fill"></div></div>
+    </div>
+    <div id="con-finale" class="con-finale" style="display:none"></div>
+    <div class="kb-wrap"><div class="kb-cap">🎹 开始演奏，越投入观众越热情</div><div id="con-kb"></div></div>
+    <div class="rotate-bar">
+      <button id="con-start" class="big-btn">🎬 开始演出</button>
+      <button id="con-end" class="ghost-btn" disabled>🙇 谢幕</button>
+    </div>`;
+
+  function onPlay(velocity) {
+    if (!active || !sim) return;
+    count++;
+    const frac = Math.min(1, count / TARGET);
+    const r = sim.note(velocity, frac);
+    $('#con-section').textContent = `${r.section.emoji} ${r.section.label}`;
+    $('#con-aud').textContent = r.reaction.emoji;
+    $('#con-react').textContent = r.reaction.label;
+    $('#con-fill').style.width = (frac * 100) + '%';
+    const aud = $('#con-aud');
+    aud.classList.remove('con-pop'); void aud.offsetWidth; aud.classList.add('con-pop');
+    if (frac >= 1 && active) end();
+  }
+  const kb = new PianoKeyboard($('#con-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); onPlay(90); },
+  });
+  kb.scrollToShow(48, 84);
+
+  function start() {
+    sim = new ConcertSim(); active = true; count = 0;
+    $('#con-start').disabled = true; $('#con-end').disabled = false;
+    $('#con-finale').style.display = 'none';
+    $('#con-fill').style.width = '0%';
+    $('#con-react').textContent = '🎵 演出开始！尽情弹吧～';
+    concertOnNote = (m, v) => onPlay(v || 80);
+  }
+  function end() {
+    if (!active) return;
+    active = false; concertOnNote = null;
+    $('#con-start').disabled = false; $('#con-end').disabled = true;
+    const f = sim.finale();
+    const stars = '⭐'.repeat(f.stars) + '☆'.repeat(5 - f.stars);
+    $('#con-aud').textContent = f.reaction.emoji;
+    $('#con-finale').style.display = '';
+    $('#con-finale').innerHTML = `
+      <div class="con-stars">${stars}</div>
+      <div class="con-fin-react">${f.reaction.emoji} ${f.reaction.label}</div>
+      <div class="con-fin-msg">${f.message}</div>`;
+    if (count >= 6) {
+      recordPractice('concert', '迷你音乐会', count, count, f.stars);
+      if (f.stars >= 4) victoryLightShow(root, { text: f.message, toast: false });
+    }
+  }
+  $('#con-start').onclick = start;
+  $('#con-end').onclick = end;
+}
+
+// ========== 模块: 🎯 谱面错误图（弹完按曲段/小节逐拍标红蓝黄，定位最该回去练的小节）==========
+function renderScoreError() {
+  const root = $('#module-scoreerr');
+  // 只取有旋律的短曲（音符不太多），构建"期望事件"时间线
+  const songs = SCF_SONGS.filter((s) => s.seq && s.seq.length >= 6 && s.seq.length <= 24);
+  const opts = songs.map((s) => `<option value="${s.id}">${s.title}</option>`).join('');
+  let expected = [], totalMs = 0, actual = [], t0 = 0, running = false, cueTimers = [];
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎯 谱面错误图</h2>
+    <p style="color:var(--muted);margin-bottom:14px">弹完一遍，把谱子<b>逐拍画成热力图</b>：🔴音高错 / 🔵节奏错 / 🟡犹豫 / 🟢弹对。一眼看出<b>哪一小节最该回去练</b>——不再是抽象的"你错了几个"。跟着高亮的键在拍子上弹（接 CA99 或点屏幕键盘）。</p>
+    <div class="rotate-bar" style="margin-bottom:10px">
+      <label style="color:var(--muted)">曲子：</label>
+      <select id="se-song" class="big-select">${opts}</select>
+      <button id="se-start" class="big-btn">🔴 开始录制</button>
+      <span id="se-status" style="color:var(--muted)">未开始</span>
+    </div>
+    <div class="se-legend">
+      <span><i style="background:${SE_KINDS.clean.color}"></i>弹对</span>
+      <span><i style="background:${SE_KINDS.pitch.color}"></i>音高错</span>
+      <span><i style="background:${SE_KINDS.rhythm.color}"></i>节奏错</span>
+      <span><i style="background:${SE_KINDS.hesitate.color}"></i>犹豫</span>
+      <span><i style="background:${SE_KINDS.missed.color}"></i>漏弹</span>
+    </div>
+    <div id="se-map" class="se-map"></div>
+    <div id="se-summary" class="se-summary"></div>
+    <div class="kb-wrap"><div class="kb-cap">🎹 跟着高亮键在拍子上弹</div><div id="se-kb"></div></div>`;
+
+  function buildExpected(song) {
+    let beat = 0; const exp = [];
+    song.seq.forEach(([midi, beats]) => {
+      exp.push({ t: scfBeatToMs(beat, song.bpm || 80), midi, measure: Math.floor(beat / 4) + 1 });
+      beat += beats;
+    });
+    return { exp, totalMs: scfBeatToMs(beat, song.bpm || 80) };
+  }
+  function curSong() { return songs.find((s) => s.id === $('#se-song').value) || songs[0]; }
+
+  const kb = new PianoKeyboard($('#se-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); onPlay(m); },
+  });
+  kb.scrollToShow(55, 84);
+
+  function onPlay(m) {
+    if (!running) return;
+    actual.push({ t: performance.now() - t0, midi: m });
+    kb.flash(m, '#34d399');
+  }
+
+  function start() {
+    const song = curSong();
+    const built = buildExpected(song);
+    expected = built.exp; totalMs = built.totalMs;
+    actual = []; running = true; t0 = performance.now();
+    $('#se-start').disabled = true; $('#se-status').textContent = '🔴 录制中…跟着高亮键弹';
+    $('#se-map').innerHTML = ''; $('#se-summary').innerHTML = '';
+    scoreErrOnNote = (note) => onPlay(note);
+    cueTimers.forEach((id) => clearTimeout(id)); cueTimers = [];
+    // 逐拍高亮提示该弹的键
+    expected.forEach((e) => {
+      cueTimers.push(setTimeout(() => {
+        if (!running) return;
+        kb.highlightMany([{ midi: e.midi, color: kbCueColor(), text: '▶' }]);
+      }, e.t));
+    });
+    cueTimers.push(setTimeout(finish, totalMs + 1200));
+  }
+
+  function finish() {
+    if (!running) return;
+    running = false; scoreErrOnNote = null; kb.clear();
+    $('#se-start').disabled = false;
+    const results = seAnalyze(expected, actual, { rhythmTol: 220, hesitateGap: 800, octaveAgnostic: true });
+    const bars = seAggregate(results, { notesPerBar: 4 });
+    const sum = seSummarize(bars, 3);
+    $('#se-status').textContent = `完成 · 准确率 ${sum.accuracy}%`;
+    $('#se-map').innerHTML = bars.map((b) => `
+      <div class="se-bar">
+        <div class="se-bar-label">第 ${b.measure} 小节 · ${b.accuracy}%</div>
+        <div class="se-cells">${b.cells.map((c) => `<span class="se-cell" style="background:${SE_KINDS[c.kind].color}" title="${SE_KINDS[c.kind].label} · ${kbNoteName(c.exp.midi)}"></span>`).join('')}</div>
+      </div>`).join('');
+    const worst = sum.worstMeasures.length
+      ? `最该回去练：${sum.worstMeasures.map((m) => '第' + m + '小节').join('、')}`
+      : '太棒了，没有明显薄弱的小节！';
+    $('#se-summary').innerHTML = `<div class="se-sum-acc">🎯 整体准确率 <b>${sum.accuracy}%</b>（${sum.cleanNotes}/${sum.totalNotes} 弹对）</div><div class="se-sum-worst">${worst}</div>`;
+    if (sum.accuracy >= 90) cheerBurst(root, 50);
+    if (sum.totalNotes >= 4) recordPractice('scoreerr', '谱面错误图', sum.totalNotes, sum.cleanNotes, 0);
+  }
+  $('#se-start').onclick = start;
+}
+
+// ========== 模块: ⏱️ 节奏直方图（敲拍子→看你是稳/抢/拖，5 档方向直方图）==========
+function renderTimingHist() {
+  const root = $('#module-timinghist');
+  let times = [], running = false;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">⏱️ 节奏直方图</h2>
+    <p style="color:var(--muted);margin-bottom:14px">你是<b>稳</b>、是<b>抢拍</b>还是<b>拖拍</b>？开始后<b>匀速</b>地敲（点 TAP、按任意琴键、或敲空格都行），多敲几下，停下来看一张<b>方向直方图</b>——把每一拍相对你自己平均速度的早晚分成 5 档画出来。</p>
+    <div class="rotate-bar" style="margin-bottom:10px">
+      <button id="th-start" class="big-btn">▶️ 开始</button>
+      <button id="th-tap" class="th-tap" disabled>👆 TAP</button>
+      <button id="th-stop" class="ghost-btn" disabled>📊 看直方图</button>
+      <span id="th-count" style="color:var(--muted)">已敲 0 下</span>
+    </div>
+    <div id="th-chart" class="th-chart"></div>
+    <div id="th-comment" class="th-comment"></div>
+    <div class="kb-wrap"><div class="kb-cap">🎹 任意键也能当一拍</div><div id="th-kb"></div></div>`;
+
+  const kb = new PianoKeyboard($('#th-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.4); tap(); },
+  });
+  kb.scrollToShow(55, 79);
+
+  function tap() {
+    if (!running) return;
+    times.push(performance.now());
+    $('#th-count').textContent = `已敲 ${times.length} 下`;
+    const b = $('#th-tap'); b.classList.remove('th-hit'); void b.offsetWidth; b.classList.add('th-hit');
+  }
+  function start() {
+    times = []; running = true;
+    $('#th-start').disabled = true; $('#th-tap').disabled = false; $('#th-stop').disabled = false;
+    $('#th-chart').innerHTML = ''; $('#th-comment').textContent = '';
+    $('#th-count').textContent = '已敲 0 下';
+    timingOnNote = () => tap();
+  }
+  function stop() {
+    if (!running) return;
+    running = false; timingOnNote = null;
+    $('#th-start').disabled = false; $('#th-tap').disabled = true; $('#th-stop').disabled = true;
+    const h = thHistogram(times);
+    const maxPct = Math.max(1, ...h.bins.map((b) => b.pct));
+    $('#th-chart').innerHTML = `
+      <div class="th-meta">≈ ${h.baseBpm || '?'} BPM · 总体${h.bias} · ${h.onbeatPct}% 在点上</div>
+      <div class="th-bars">${h.bins.map((b) => `
+        <div class="th-bin">
+          <div class="th-bar-col"><div class="th-bar-fill" style="height:${Math.round((b.pct / maxPct) * 100)}%;background:${b.color}"></div></div>
+          <div class="th-bar-pct">${b.pct}%</div>
+          <div class="th-bar-lab">${b.emoji}<br>${b.label}</div>
+        </div>`).join('')}</div>`;
+    $('#th-comment').textContent = thComment(h);
+    if (times.length >= 4) recordPractice('timinghist', '节奏直方图', times.length, h.bins.find((b) => b.id === 'onbeat').count, 0);
+  }
+  $('#th-start').onclick = start;
+  $('#th-tap').onclick = tap;
+  $('#th-stop').onclick = stop;
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && running && $('#module-timinghist').classList.contains('active')) { e.preventDefault(); tap(); }
+  });
+}
+
+// ========== 模块: 🪜 脚手架淡出（识谱辅助分三层，随掌握度逐层撤掉，最终纯读谱）==========
+function renderScaffoldFade() {
+  const root = $('#module-scaffold');
+  const POOL = [60, 62, 64, 65, 67, 69, 71, 72]; // C 大调一个八度
+  let correct = 0, attempts = 0, target = null, answered = false;
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🪜 脚手架淡出</h2>
+    <p style="color:var(--muted);margin-bottom:14px">认谱的"辅助轮"分<b>三层</b>：音名标签 → 彩色音符 → 落键提示。练得越熟，辅助就<b>一层层悄悄撤掉</b>，最后你能<b>凭真本事读谱</b>。下面会随你答对率自动淡出——也可以拖滑块预览不同熟练度的样子。</p>
+
+    <div class="sff-demo">
+      <div class="sff-demo-head">👁️ 预览：掌握度 <b id="sff-slider-val">0%</b> 时的辅助显示</div>
+      <input id="sff-slider" type="range" min="0" max="100" value="0" class="sff-slider">
+      <div id="sff-preview" class="sff-preview"></div>
+      <div id="sff-stagebar" class="sff-stagebar"></div>
+    </div>
+
+    <div class="sff-practice">
+      <div class="sff-pr-head">🎯 练一练：弹出下面这个音（它的辅助会随你的正确率淡出）</div>
+      <div id="sff-target" class="sff-target"></div>
+      <div id="sff-pr-stats" class="sff-pr-stats">答对 0 / 0 · 当前阶段：全脚手架</div>
+    </div>
+
+    <div class="kb-wrap"><div class="kb-cap">🎹 弹出目标音</div><div id="sff-kb"></div></div>
+    <div class="rotate-bar"><button id="sff-reset" class="ghost-btn">🔄 重置练习进度</button></div>`;
+
+  function previewRow(mastery) {
+    return POOL.map((m) => {
+      const ns = scfNoteScaffold(m, kbNoteName(m), mastery);
+      return `<div class="sff-note">
+        <div class="sff-head" style="background:${ns.color.value};opacity:${(0.25 + 0.75 * ns.color.opacity).toFixed(2)}"></div>
+        <div class="sff-lab" style="opacity:${ns.label.opacity.toFixed(2)}">${ns.label.text}</div>
+        <div class="sff-drop" style="opacity:${ns.drop.opacity.toFixed(2)}">⬇</div>
+      </div>`;
+    }).join('');
+  }
+  function stageBar(stageIdx) {
+    return SCF_STAGES.map((s) => `<span class="sff-stage${s.idx === stageIdx ? ' on' : ''}">${s.idx}·${s.label}</span>`).join('<i class="sff-arrow">→</i>');
+  }
+  function drawPreview() {
+    const pct = parseInt($('#sff-slider').value, 10);
+    $('#sff-slider-val').textContent = pct + '%';
+    // 把滑块百分比当成"正确率"，给足样本量看完整淡出
+    const mastery = { correct: Math.round(pct), attempts: 100 };
+    const op = scfOpacity(mastery);
+    $('#sff-preview').innerHTML = previewRow(mastery);
+    $('#sff-stagebar').innerHTML = stageBar(op.stage);
+  }
+  function drawTarget() {
+    const ns = scfNoteScaffold(target, kbNoteName(target), { correct, attempts });
+    const op = scfOpacity({ correct, attempts });
+    $('#sff-target').innerHTML = `
+      <div class="sff-note sff-note-big">
+        <div class="sff-head" style="background:${ns.color.value};opacity:${(0.25 + 0.75 * ns.color.opacity).toFixed(2)}"></div>
+        <div class="sff-lab" style="opacity:${ns.label.opacity.toFixed(2)}">${ns.label.text}</div>
+        <div class="sff-drop" style="opacity:${ns.drop.opacity.toFixed(2)}">⬇</div>
+      </div>`;
+    $('#sff-pr-stats').textContent = `答对 ${correct} / ${attempts} · 当前阶段：${op.label}`;
+    if (op.drop > 0) kb.highlightMany([{ midi: target, color: kbCueColor(), text: '▶' }]);
+    else kb.clear();
+  }
+  function nextTarget() { target = POOL[Math.floor(Math.random() * POOL.length)]; answered = false; drawTarget(); }
+
+  function onPlay(m) {
+    if (answered || target == null) return;
+    answered = true; attempts++;
+    if (m === target) {
+      correct++;
+      kb.flash(m, '#34d399');
+      cheerToast('✓ 对了！', root);
+    } else {
+      kb.flash(m, '#f87171');
+      $('#sff-pr-stats').textContent = `应弹 ${kbNoteName(target)} · 答对 ${correct} / ${attempts}`;
+    }
+    drawTarget();
+    setTimeout(nextTarget, 650);
+  }
+
+  const kb = new PianoKeyboard($('#sff-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); onPlay(m); },
+  });
+  kb.scrollToShow(55, 79);
+
+  $('#sff-slider').oninput = drawPreview;
+  $('#sff-reset').onclick = () => { correct = 0; attempts = 0; nextTarget(); cheerToast('练习进度已重置', root); };
+  // 常驻注册，但仅在本模块可见时消费 CA99 输入，避免在别的页面悄悄记练习
+  scaffoldOnNote = (note) => { if ($('#module-scaffold').classList.contains('active')) onPlay(note); };
+  drawPreview();
+  nextTarget();
+}
+
 // ========== 模块: 🕵️ 猜歌视奏（藏住曲名→照谱弹→回放→猜是哪首歌）==========
 function renderGuessSong() {
   const root = $('#module-guess');
@@ -19546,7 +20007,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderMultiAnchor(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderWeekMaster(); renderFlowMode(); renderConcertSim(); renderScoreError(); renderTimingHist(); renderScaffoldFade(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderMultiAnchor(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
