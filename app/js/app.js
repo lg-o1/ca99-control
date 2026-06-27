@@ -132,6 +132,7 @@ import { CELL_KINDS as SE_KINDS, analyzeNotes as seAnalyze, aggregateByMeasure a
 import { BINS as TH_BINS, histogram as thHistogram, comment as thComment } from './timing-histogram.js';
 import { SECTIONS as CON_SECTIONS, ConcertSim } from './concert-sim.js';
 import { STAGES as SCF_STAGES, scaffoldOpacity as scfOpacity, noteScaffold as scfNoteScaffold } from './scaffold-fade.js';
+import { pickHook as clPickHook, hookBadge as clHookBadge } from './chorus-lite.js';
 
 const midi = new MidiCore();
 if (typeof window !== 'undefined') window.__midi = midi;  // 调试钩子：便于排查传输/端口
@@ -15779,6 +15780,107 @@ function renderScaffoldFade() {
   nextTarget();
 }
 
+// ========== 模块: 🍬 副歌速通 Lite（只弹最抓耳的 ~30 秒副歌，即时多巴胺、低门槛快速成就感）==========
+function renderChorusLite() {
+  const root = $('#module-chorus');
+  let timers = [];
+  let playing = false;
+  let curSong = null;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🍬 副歌速通 Lite</h2>
+    <p style="color:var(--muted);margin-bottom:14px">不用从头练一整首！每首曲子只挑<b>最抓耳的 ~30 秒副歌</b>，几十秒就能「弹完一首」——<b>立刻有成就感</b>。先点「▶ 速通」听一遍高潮片段（屏幕键盘会跟着亮），再自己跟着弹。把"练琴"变成"先尝口甜的"。可接 CA99 真琴或点屏幕键盘跟弹。</p>
+
+    <div class="cl-stage">
+      <div class="cl-now" id="cl-now">点下面任意一首的「▶ 速通」🍬</div>
+      <div class="cl-badge" id="cl-badge"></div>
+      <div class="cl-bar"><div id="cl-fill" class="cl-fill"></div></div>
+    </div>
+
+    <div class="kb-wrap"><div class="kb-cap">🎹 副歌跟弹（高亮键 = 正在响的音）</div><div id="cl-kb"></div></div>
+
+    <div class="rotate-bar" style="margin:10px 0">
+      <button id="cl-stop" class="ghost-btn" disabled>⏹️ 停止</button>
+    </div>
+
+    <div class="cl-grid" id="cl-grid"></div>`;
+
+  const kb = new PianoKeyboard($('#cl-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); kb.flash(m, kbCueColor()); },
+  });
+  kb.scrollToShow(55, 79);
+
+  function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+
+  function stop() {
+    clearTimers();
+    playing = false;
+    kb.clear();
+    $('#cl-stop').disabled = true;
+    $('#cl-fill').style.width = '0%';
+    $('#cl-now').textContent = '点任意一首的「▶ 速通」🍬';
+    $('#cl-badge').textContent = '';
+  }
+
+  function play(song) {
+    stop();
+    const hook = clPickHook(song);
+    if (!hook.noteCount) { cheerToast('这首暂时取不到副歌片段', root); return; }
+    curSong = song;
+    playing = true;
+    $('#cl-stop').disabled = false;
+    $('#cl-now').innerHTML = `🍬 正在速通：<b>${song.title}</b>`;
+    $('#cl-badge').textContent = clHookBadge(hook);
+
+    const lo = Math.min(...hook.notes.map((n) => n.midi));
+    const hi = Math.max(...hook.notes.map((n) => n.midi));
+    kb.scrollToShow(Math.max(21, lo - 2), Math.min(108, hi + 2));
+
+    const totalMs = hook.durationSec * 1000;
+    // 进度条
+    const t0 = performance.now();
+    const tick = () => {
+      if (!playing) return;
+      const f = Math.min(1, (performance.now() - t0) / totalMs);
+      $('#cl-fill').style.width = (f * 100).toFixed(1) + '%';
+      if (f < 1) timers.push(setTimeout(tick, 60));
+    };
+    tick();
+
+    // 逐音播放：点亮屏幕键 + 出声
+    hook.notes.forEach((n) => {
+      timers.push(setTimeout(() => {
+        if (!playing) return;
+        const durSec = Math.min(1.2, Math.max(0.18, n.durMs / 1000));
+        playTone(midiToFreq(n.midi), 0, durSec);
+        kb.flash(n.midi, kbCueColor());
+      }, n.ms));
+    });
+
+    // 结束庆祝
+    timers.push(setTimeout(() => {
+      if (!playing) return;
+      playing = false;
+      $('#cl-stop').disabled = true;
+      $('#cl-fill').style.width = '100%';
+      victoryLightShow(root, { text: `🍬 速通完成！《${song.title}》的副歌你听完啦，换你弹～` });
+      recordPractice('chorus', '副歌速通: ' + song.title, 1, 1, 1);
+    }, totalMs + 200));
+  }
+
+  // 曲库卡片
+  $('#cl-grid').innerHTML = SCF_SONGS.map((s, i) => `
+    <div class="cl-card">
+      <div class="cl-card-title">${s.title}</div>
+      <button class="cl-go" data-i="${i}">▶ 速通</button>
+    </div>`).join('');
+  $('#cl-grid').querySelectorAll('.cl-go').forEach((b) => {
+    b.onclick = () => play(SCF_SONGS[parseInt(b.dataset.i, 10)]);
+  });
+  $('#cl-stop').onclick = stop;
+}
+
 // ========== 模块: 🕵️ 猜歌视奏（藏住曲名→照谱弹→回放→猜是哪首歌）==========
 function renderGuessSong() {
   const root = $('#module-guess');
@@ -20007,7 +20109,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderWeekMaster(); renderFlowMode(); renderConcertSim(); renderScoreError(); renderTimingHist(); renderScaffoldFade(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderMultiAnchor(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderWeekMaster(); renderFlowMode(); renderConcertSim(); renderScoreError(); renderTimingHist(); renderScaffoldFade(); renderChorusLite(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderMultiAnchor(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();

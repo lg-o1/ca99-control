@@ -126,6 +126,7 @@ pitch-direction.js ← 高低音方向感（零基础音高启蒙：弹一个参
     score-error.js     ← 🎯 谱面错误图引擎（弹完逐拍分类：classifyNote→clean/pitch/rhythm/hesitate/missed、analyzeNotes 按最近时刻贪心对齐期望↔实际、aggregateByMeasure 聚成小节热力格、summarize 找最该回去练的小节，纯逻辑，16 单元测试）
     timing-histogram.js ← ⏱️ 节奏直方图引擎（匀速敲拍→5 档方向直方图 抢很多/抢一点/准/拖一点/拖很多：复用 beat-stability 的 median/mean 算每拍相对自身平均速度的早晚、histogram/biasLabel/comment，纯逻辑，13 单元测试）
     scaffold-fade.js   ← 🪜 脚手架淡出引擎（识谱辅助分三层 音名标签→彩色音符→落键提示，随掌握度逐层撤掉最终纯读谱：STAGES 四阶段、scaffoldOpacity 按正确率算各层透明度、noteScaffold 复用 note-color 给每层不透明度，纯逻辑，14 单元测试）
+    chorus-lite.js     ← 🍬 副歌速通 Lite 引擎（每首只弹最抓耳的 ~30 秒副歌当「即时多巴胺」入门漏斗：buildTimeline 把 seq 展开成带时间音符表、pickHook 选副歌窗口（显式 song.hook 标注 / 短曲全弹 / 否则滑窗取最密集片段）、hookBadge 文案，纯逻辑，14 单元测试）
     app.js            ← 主入口 + 各玩法模块
   data/               ← 从逆向数据生成的 CA99 专属精简表
     sounds.json       ← 346 CA99 音色（name/category/pc/msb/lsb）
@@ -217,6 +218,7 @@ pitch-direction.js ← 高低音方向感（零基础音高启蒙：弹一个参
 | 📊 经验等级 | ✅ | <b>统一经验 / 等级系统</b>（XP & Level）——把所有练习串成<b>一条成长主线</b>。你做的<b>每一次练习</b>（答对题 ×2 / 练习次数 ×10 / 玩过的新玩法 ×30 / 连练天数 ×15 / 解锁成就 ×50）都换算成<b>经验值</b>，攒够就<b>升级</b>、解锁 10 个递进<b>称号</b>（🌱 小芽琴手 → 🎵 音符新手 → … → 👑 传奇演奏家）。升级瞬间触发<b>全屏庆祝</b>（复用 `victoryLightShow`：CA99 真琴亲奏华彩 + 撒花）。页面含<b>大经验进度条</b>（距下一级还差多少）、<b>经验来源明细</b>（每项来源各贡献多少）、<b>称号阶梯</b>（已达/当前/未解锁一目了然）。元进度是最强的长期留存胶水，给孩子「我正在越来越棒」的身份认同。经验<b>纯由已有累计统计派生</b>（`practice-stats` 快照 + 成就数），无需新埋点；纯逻辑 `xp-level.js`（经验加权/升级曲线/称号映射/来源拆解，12 单元测试），任何模块完成都自动喂经验 |
 | 🪜 脚手架淡出 | ✅ | <b>识谱辅助分三层、随掌握度逐层撤掉</b>——音名标签 → 彩色音符 → 落键提示，练得越熟辅助就<b>一层层悄悄淡出</b>，最后凭真本事读谱（PianoVision 式多级脚手架，比只淡出颜色更彻底）。可拖滑块预览不同熟练度的样子，也会随你练习的正确率自动撤层。纯逻辑 `scaffold-fade.js`（STAGES 四阶段/scaffoldOpacity 按正确率算各层透明度/noteScaffold 复用 note-color，14 单元测试） |
 | 🗓️ 一周成曲 | ✅ | <b>把一首新曲拆成 7 天当日小任务</b>（D1 只摸旋律 → D2 加左手 → … → D7 开音乐会录音），每天只盯一个超小目标、点亮当天卡片，循序渐进不焦虑——直击 Lily「不知道练什么」。每首进度按 songId 存 localStorage。纯逻辑 `week-master.js`（WEEK_PLAN 七天脚本/WeekMaster 逐天点亮状态机，13 单元测试） |
+| 🍬 副歌速通 Lite | ✅ | <b>每首只弹最抓耳的 ~30 秒副歌</b>——不用从头练一整首，几十秒就「弹完一首」，<b>立刻有成就感</b>（即时多巴胺 + 入门漏斗，灵感 日本 ピアノメロディ）。直击易放弃孩子（Lily 挑战维度 2.3/6）：先点「▶ 速通」听一遍高潮片段（屏幕键盘跟着亮），再自己跟弹。副歌窗口三策略：曲子带 `song.hook=[startBeat,endBeat]` 标注则直接用 / 短曲（≤38s）整首就是钩子全弹 / 否则滑窗取<b>音符最密集</b>的一段。可接 CA99 真琴或点屏幕键盘跟弹。纯逻辑 `chorus-lite.js`（buildTimeline 展开 seq/pickHook 选窗口/hookBadge 文案，14 单元测试） |
 | 🌊 心流演奏 | ✅ | <b>演奏中不打断、不报错</b>——关掉所有实时红叉，<b>一口气弹完</b>（错了也别停！），弹完才给一份温和报告：弹了多久、多少音、最长连贯、有多流畅。训练「弹错别停」的演奏心态，重过程不挑错。纯逻辑 `flow-mode.js`（FlowSession 收集时刻 + end() 算 flowScore/grade/bestStreak + 鼓励向 message，14 单元测试） |
 | 🎤 迷你音乐会 | ✅ | <b>把孤独练习变小型演出</b>——观众随你的演奏热烈起来：弹到<b>副歌</b>、弹得<b>有力</b>，全场欢呼鼓掌 🎉（Casio Music Space 式动态观众），一直弹到尾声谢幕看赢几颗星。CA99 真琴能感应真实力度，正合 Lily 音乐 MI 85%。纯逻辑 `concert-sim.js`（SECTIONS 按进度切曲段/note(velocity,frac)→观众反应/finale 1–5 星，14 单元测试） |
 | 🎯 谱面错误图 | ✅ | <b>弹完把谱子逐拍画成热力图</b>：🔴音高错 / 🔵节奏错 / 🟡犹豫 / 🟢弹对，一眼看出<b>哪一小节最该回去练</b>——把抽象的"错几个"变成可定位的空间反馈（小叶子/音熊 AI 式逐音错误图，区别于「热力图」的多久没练日历）。纯逻辑 `score-error.js`（classifyNote 五分类/analyzeNotes 最近时刻贪心对齐/aggregateByMeasure/summarize 找最弱小节，16 单元测试） |
