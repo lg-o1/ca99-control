@@ -250,6 +250,7 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 - 每个模块是 `app.js` 里一个 `renderXxx()` 函数，渲染到对应 `#module-xxx` 容器
 - 共享 `midi-core.js`（连接）+ `ca99.js`（协议）+ 数据表
 - 🎹 <b>键盘配色统一（与「曲谱跟弹」Synthesia 对齐）</b>：全 app 用单一常量做基准——`KB_HAND_COLORS={l:'#a78bfa',r:'#22d3ee'}`（正在发声的音按手别上色：左手紫/右手青）、`KB_CUE_COLOR='#fbbf24'`（cue 提示该弹哪键，不分手别，琥珀）、helper `kbHandColor(hand)`。曲谱跟弹/演奏台/MIDI 钢琴卷帘播放器/五线谱播放器五处键盘高亮全部走这套常量，新增带键盘的模块复用即自动对齐，<b>勿再写内联手别色</b>（历史上演奏台 cue 用过灰/琥珀、卷帘与五线谱用过 `#d59bff`/`#60a5fa`，已统一）
+- 🎨 <b>落音符方块 / 五线谱音符头配色统一（同样对齐曲谱跟弹）</b>：在 `app.css` 的 `:root` 定义单一数据源 CSS 变量——`--note-r:#667eea`（右手 indigo）/`--note-l:#a78bfa`（左手 purple）+ 对应描边 `--note-r-stroke`/`--note-l-stroke`，落音符方块另有 `--note-block-r`/`--note-block-l`（带渐变）。覆盖：落音符方块 `.scf-note`（曲谱跟弹/演奏台）、`.mpl-n-r/.mpl-n-l`（MIDI 钢琴卷帘，原 `#3b82f6`/`#a855f7`）、`.sv-n-r/.sv-n-l`（五线谱播放器，原 `#60a5fa`/`#c084fc`）；五线谱音符头 `.scf-staff-svg .note-head`(.nh-left)、`.sight-svg .note-head`、`.sp-head`、`.rs-head` 全部走 `var(--note-r/-l)`。判定态色（`.n-due` 琥珀/`.n-perfect` 绿/`.n-good` 青/`.n-miss` 粉、`.nh-*`/`.rs-*`/`.sp-*` 同款）本已一致，未动。<b>勿再写内联音符填充色</b>，新增带落音符/五线谱的模块复用这套变量即自动对齐
 - 自动换音色用独立引擎 `auto-rotate.js`（纯逻辑，21 单元测试），UI 在 app.js
 - **节拍模式**：监听 MIDI 输入的 note-on 驱动 `engine.tick()`，弹够 N 个音符就换
 - VT 渐变用独立引擎 `vt-morph.js`（纯逻辑，32 单元测试），定时器逐帧线性/缓动插值

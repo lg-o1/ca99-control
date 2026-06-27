@@ -11,6 +11,13 @@
   --kb-b-rest: linear-gradient(180deg, #4a4a58 0%, #232330 55%, #0e0e16 100%); /* 黑键静止 */
   --kb-press-glow: rgba(45,224,255,.85);  /* 按下信号色：霓虹青，dark theme 下最醒目 */
   --kb-hl: #667eea;                        /* 答案高亮默认色（模块可用 --hl 覆盖） */
+  /* ---- 落音符方块 / 五线谱音符头 统一手别配色（与曲谱跟弹 Synthesia 对齐，全 tab 共用） ---- */
+  --note-r: #667eea;          /* 右手 音符头/卷帘音符 主色（indigo） */
+  --note-l: #a78bfa;          /* 左手（purple） */
+  --note-r-stroke: #a5b4fc;   /* 右手描边 */
+  --note-l-stroke: #c4b5fd;   /* 左手描边 */
+  --note-block-r: linear-gradient(#7d8cf0, #5566d6);  /* 落音符方块 右手 */
+  --note-block-l: linear-gradient(#c4b5fd, #8b5cf6);  /* 落音符方块 左手 */
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -390,7 +397,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sight-svg .staff-line { stroke: var(--muted); stroke-width: 1.4; }
 .sight-svg .ledger-line { stroke: var(--text); stroke-width: 1.6; }
 .sight-svg .clef-glyph { font-size: 56px; fill: var(--text); font-family: serif; }
-.sight-svg .note-head { fill: url(#none); fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.sight-svg .note-head { fill: url(#none); fill: var(--note-r); stroke: #4a5fc8; stroke-width: 1; }
 .sight-svg .note-sharp { font-size: 26px; fill: var(--text); font-family: serif; }
 .scaffold-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
 .scaffold-toggle input { cursor: pointer; }
@@ -627,7 +634,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-staff-svg .staff-line { stroke: var(--muted); stroke-width: 1.4; }
 .scf-staff-svg .ledger-line { stroke: var(--text); stroke-width: 1.6; }
 .scf-staff-svg .clef-glyph { font-size: 50px; fill: var(--text); font-family: serif; }
-.scf-staff-svg .note-head { fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.scf-staff-svg .note-head { fill: var(--note-r); stroke: #4a5fc8; stroke-width: 1; }
 .scf-staff-svg .note-head.nh-perfect { fill: #34d399; stroke: #1f9d6f; }
 .scf-staff-svg .note-head.nh-good { fill: #22d3ee; stroke: #0e9cb5; }
 .scf-staff-svg .note-head.nh-miss { fill: #f472b6; stroke: #be3e85; opacity: .65; }
@@ -642,7 +649,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sp-staff-svg .sp-timesig { font-size: 19px; font-weight: 700; fill: var(--text); font-family: serif; text-anchor: middle; }
 .sp-staff-svg .sp-barline { stroke: var(--muted); stroke-width: 1.4; }
 .sp-staff-svg .sp-barline-final { stroke: var(--text); stroke-width: 3; }
-.sp-staff-svg .sp-head { fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.sp-staff-svg .sp-head { fill: var(--note-r); stroke: #4a5fc8; stroke-width: 1; }
 .sp-staff-svg .sp-head.sp-current { fill: #fbbf24; stroke: #d99a16; }
 .sp-staff-svg .sp-head.sp-done { fill: #34d399; stroke: #1f9d6f; }
 .sp-staff-svg .sp-stem { stroke: #4a5fc8; stroke-width: 1.6; }
@@ -651,7 +658,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sp-staff-svg .sp-cur-box { fill: rgba(251,191,36,.12); stroke: rgba(251,191,36,.5); stroke-width: 1; }
 /* 节奏视奏 rs */
 .rs-staff-svg .sp-timesig { text-anchor: middle; }
-.rs-staff-svg .rs-head { fill: #667eea; stroke: #4a5fc8; stroke-width: 1; }
+.rs-staff-svg .rs-head { fill: var(--note-r); stroke: #4a5fc8; stroke-width: 1; }
 .rs-staff-svg .rs-head.rs-perfect { fill: #34d399; stroke: #1f9d6f; }
 .rs-staff-svg .rs-head.rs-good { fill: #22d3ee; stroke: #0e9cb5; }
 .rs-staff-svg .rs-head.rs-miss { fill: #f87171; stroke: #c84a4a; opacity: .7; }
@@ -692,18 +699,18 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-highway { position: absolute; left: 50%; transform: translateX(-50%); top: 0; height: 100%; }
 .scf-note {
   position: absolute; border-radius: 5px;
-  background: linear-gradient(#7d8cf0, #5566d6);
+  background: var(--note-block-r);
   box-shadow: 0 0 6px rgba(102,126,234,.5); transition: none;
 }
 .scf-note.n-due { background: linear-gradient(#fcd34d, #f59e0b); box-shadow: 0 0 12px rgba(251,191,36,.8); }
 .scf-note.n-perfect { background: linear-gradient(#4ade80, #22a463); box-shadow: 0 0 10px rgba(52,211,153,.8); }
 .scf-note.n-good { background: linear-gradient(#67e8f9, #1ba8c4); box-shadow: 0 0 10px rgba(34,211,238,.8); }
 .scf-note.n-miss { background: linear-gradient(#f472b6, #be3e85); opacity: .5; }
-.scf-note.n-left { background: linear-gradient(#c4b5fd, #8b5cf6); box-shadow: 0 0 6px rgba(139,92,246,.5); }
+.scf-note.n-left { background: var(--note-block-l); box-shadow: 0 0 6px rgba(139,92,246,.5); }
 /* 左手音符落到判定线 → 亮银色（右手是 .n-due 的亮黄；此规则优先级更高，盖过 .n-left 才不会被紫色覆盖） */
 .scf-note.n-left.n-due { background: linear-gradient(#ffffff, #d3dbe8); box-shadow: 0 0 17px 2px rgba(230,236,246,.95); }
 .scf-note.n-dim { opacity: .22; filter: grayscale(.5); }
-.scf-staff-svg .note-head.nh-left { fill: #a78bfa; stroke: #7c4ddb; }
+.scf-staff-svg .note-head.nh-left { fill: var(--note-l); stroke: #7c4ddb; }
 /* 下落音符上的音名标签 */
 .scf-note-lbl {
   position: absolute; left: 0; right: 0; bottom: 1px; text-align: center;
@@ -1786,9 +1793,9 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 }
 .mpl-rollscroll { flex: 1; overflow: auto; }
 .mpl-svg { display: block; }
-.mpl-n-r { fill: url(#mplGradR); }
-.mpl-svg .mpl-n-r { fill: #3b82f6; stroke: #93c5fd; stroke-width: .5; }
-.mpl-svg .mpl-n-l { fill: #a855f7; stroke: #d8b4fe; stroke-width: .5; }
+.mpl-n-r { fill: var(--note-r); }
+.mpl-svg .mpl-n-r { fill: var(--note-r); stroke: var(--note-r-stroke); stroke-width: .5; }
+.mpl-svg .mpl-n-l { fill: var(--note-l); stroke: var(--note-l-stroke); stroke-width: .5; }
 .mpl-head { stroke: #f59e0b; stroke-width: 2; filter: drop-shadow(0 0 4px rgba(245,158,11,.8)); }
 .mpl-seek { width: 100%; margin: 4px 0; accent-color: #7c3aed; }
 .mpl-kb { margin-top: 6px; }
@@ -1862,8 +1869,8 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .sv-clef { font-size: 52px; fill: rgba(226,232,240,.82); dominant-baseline: middle; }
 .sv-clef-b { font-size: 40px; }
 .sv-note { stroke: rgba(0,0,0,.25); stroke-width: .6; transition: fill .12s, filter .12s; }
-.sv-n-r { fill: #60a5fa; }
-.sv-n-l { fill: #c084fc; }
+.sv-n-r { fill: var(--note-r); }
+.sv-n-l { fill: var(--note-l); }
 .sv-note.on { fill: #fbbf24; filter: drop-shadow(0 0 6px rgba(251,191,36,.9)); }
 .sv-stem { stroke: rgba(203,213,225,.7); stroke-width: 1.4; }
 .sv-acc { font-size: 16px; fill: #fcd34d; dominant-baseline: middle; }
