@@ -975,7 +975,7 @@ function renderVT() {
   for (const e of vtEntries) {
     (byParam[e.parameter] ||= []).push(e);
   }
-  let html = '<h2 style="margin-bottom:12px">Virtual Technician 实时调音</h2>';
+  let html = '<h2 style="margin-bottom:12px">CA99-Virtual Technician 实时调音</h2>';
   // 基础参数（最常用）直接展示，其余收进「进阶」折叠区，缩短页面
   const BASIC_VT = ['Voicing', 'TouchCurve', 'ResonanceDepth', 'Rendering'];
   function vtRowHtml(pname, entries) {
@@ -1029,7 +1029,7 @@ function renderVT() {
 function renderSystem() {
   const root = $('#module-system');
   root.innerHTML = `
-    <h2 style="margin-bottom:12px">系统设置</h2>
+    <h2 style="margin-bottom:12px">CA99-系统设置</h2>
     <div class="param-row"><label>音量 Volume</label>
       <input type="range" min="0" max="127" value="100" id="sys-vol"><span class="val">100</span></div>
     <div class="param-row"><label>混响类型 Reverb</label>
@@ -1056,7 +1056,7 @@ function renderSystem() {
 function renderRhythm() {
   const root = $('#module-rhythm');
   const items = Array.isArray(RHYTHM) ? RHYTHM : Object.values(RHYTHM);
-  root.innerHTML = `<h2 style="margin-bottom:12px">鼓点节奏 (${items.length})</h2>
+  root.innerHTML = `<h2 style="margin-bottom:12px">CA99-鼓点节奏 (${items.length})</h2>
     <p style="color:var(--muted);font-size:0.85em;margin-bottom:10px;line-height:1.6">
       点击节奏型会自动执行：<b>停止 → 切换节奏 → 重新启动</b>（如果当前在播放中）。<br>
       也可用下方按钮手动控制启停。CA99 需先进入节奏模式（▶ 启动后生效）。
@@ -1153,7 +1153,7 @@ function renderAutoRotate() {
   const defaultPool = diversePool(SOUNDS, defaultCats);
 
   root.innerHTML = `
-    <h2 style="margin-bottom:6px">🔄 自动换音色</h2>
+    <h2 style="margin-bottom:6px">🔄 CA99-自动换音色</h2>
     <p style="color:var(--muted);margin-bottom:14px">定时或按节拍自动循环切换音色，演奏更有趣。你最初的想法 ✨</p>
 
     <div class="card-panel">
@@ -1258,7 +1258,7 @@ function renderMorph() {
   if (defaults.size === 0) continuous.slice(0, 2).forEach(c => defaults.add(c.v2));
 
   root.innerHTML = `
-    <h2 style="margin-bottom:6px">🌗 VT 参数渐变器</h2>
+    <h2 style="margin-bottom:6px">🌗 CA99-VT 参数渐变器</h2>
     <p style="color:var(--muted);margin-bottom:14px">边弹边把 Virtual Technician 参数从起点平滑变化到终点，营造"音色慢慢呼吸"的效果。<b>CA99 独有玩法</b> ✨</p>
 
     <div class="card-panel">
@@ -1371,7 +1371,7 @@ function renderVelocity() {
   function render() {
     const zones = splitZones(layerIds);
     root.innerHTML = `
-      <h2 style="margin-bottom:6px">🎚️ 力度感应换音色</h2>
+      <h2 style="margin-bottom:6px">🎚️ CA99-力度感应换音色</h2>
       <p style="color:var(--muted);margin-bottom:14px">按弹奏力度自动切换音色：轻弹一个音色，重弹换另一个，演奏更有层次。需先在顶栏选好 <b>MIDI 输入</b>端口。</p>
 
       <div class="card-panel">
@@ -1458,7 +1458,7 @@ function renderVelVt() {
   if (defaults.size === 0) continuous.slice(0, 2).forEach(c => defaults.add(c.name));
 
   root.innerHTML = `
-    <h2 style="margin-bottom:6px">💫 力度 → VT 联动</h2>
+    <h2 style="margin-bottom:6px">💫 CA99-力度 → VT 联动</h2>
     <p style="color:var(--muted);margin-bottom:14px">弹奏力度<b>实时驱动</b> VT 参数：弹得越重，击弦共鸣/噪声越强，音色随手而动。需先选好 <b>MIDI 输入</b>端口。<b>CA99 独有表现力玩法</b> ✨</p>
 
     <div class="card-panel">
@@ -1550,7 +1550,7 @@ function renderPedal() {
   const defaultParam = continuous.find(c => c.name === 'StringResonance') || continuous[0];
 
   root.innerHTML = `
-    <h2 style="margin-bottom:6px">🦶 踏板控制扩展</h2>
+    <h2 style="margin-bottom:6px">🦶 CA99-踏板控制扩展</h2>
     <p style="color:var(--muted);margin-bottom:14px">实时显示三个踏板的状态，并可把<b>踏板深度</b>映射到一个 VT 参数（例：延音踏板踩得越深，击弦共鸣越强）。需先选好 <b>MIDI 输入</b>端口。</p>
 
     <h3 style="margin:0 0 8px">踏板状态</h3>
@@ -1669,7 +1669,7 @@ function renderPresets() {
   }
 
   root.innerHTML = `
-    <h2 style="margin-bottom:6px">⭐ 演出预设</h2>
+    <h2 style="margin-bottom:6px">⭐ CA99-演出预设</h2>
     <p style="color:var(--muted);margin-bottom:14px">把当前的<b>音色 + VT 调音</b>组合命名保存，演出时一键调用。数据存于浏览器本地（localStorage），可导出备份。</p>
 
     <div class="card-panel">
@@ -2754,7 +2754,7 @@ function renderTransposer() {
   const transposer = new Transposer();
 
   root.innerHTML = `
-    <h2 style="margin-bottom:6px">🎹 移调器</h2>
+    <h2 style="margin-bottom:6px">🎹 CA99-移调器</h2>
     <p style="color:var(--muted);margin-bottom:14px">一键把整个键盘升/降调（-12 ~ +12 半音）。用熟悉的指法弹任意调的曲子——发 CA99 移调 SysEx，钢琴自身发声也跟着移调。需先连接钢琴。</p>
 
     <div class="card-panel" style="text-align:center">
@@ -16860,7 +16860,7 @@ function renderTimbreGuess() {
   let tg = null;
 
   root.innerHTML = `
-    <h2 style="margin-bottom:6px">🎨 音色猜猜乐</h2>
+    <h2 style="margin-bottom:6px">🎨 CA99-音色猜猜乐</h2>
     <p style="color:var(--muted);margin-bottom:6px">CA99 有 <b>346 种音色</b>——别的 app 永远做不了这个游戏 🎹。每题我<b>随机换一个乐器</b>，你<b>随便弹几下听一听</b>，再从下面 4 个里<b>猜这是什么乐器</b>，猜对撒花 🎉！猜错不扣分，再听听就好。</p>
     <p style="color:var(--muted);font-size:12px;margin-bottom:14px">💡 <b>连上 CA99 真琴</b>（并开启顶部「🎹 预听走真琴」）才能听到真实音色；没连真琴时电脑只能用一种声音，猜不准是正常的。</p>
 
