@@ -334,6 +334,51 @@ CA99 的节拍器内部有两个子模式，**必须按顺序发三条 SysEx**�
 - **🎲 骰子热身游戏壳（`dice-warmup.js`）**：把"今天练什么"的<b>选择压力</b>（决策疲劳对易放弃孩子尤其劝退）交给骰子——`rollMission(rng)` 从 `KEYS`(6 调) × `PATTERNS`(音阶↑/↓/↑↓/琶音) × `HANDS`(左/右/双) × `FLAVORS`(连奏/断奏/弱→强/慢慢来/数拍子) 各随机一面，可弹音型 `pattern.gen(rootMidi(key.pc))` 生成音符序列。`DiceWarmup` 状态机：`roll()` 掷新卡、`press(midi)` 逐音校验（`octaveAgnostic` 默认开），弹对走完整段 → `done++`、本张无错则 `streak++`（弹过错则清零），弹错 `idx=0` 从头来（不惩罚）。注入式 `rng` 保证测试确定性。UI（`renderDiceWarmup`）：掷骰动画 + 四色任务卡（调/音型/手/风味分面）+ ✅完成数 / 🔥连续无错 + 乐句进度 chips（当前音黄色高亮）+ 88 键<b>等待模式高亮该弹的键</b>；命中闪绿、错音闪红 + 温和提示、完成撒花 + `cheerToast` + `recordPractice`。CA99 物理输入经新增 `diceOnNote`/`diceOnNoteOff` 钩子（与屏幕点击同一条 `handlePress`）。12 条单元测试，成绩入仪表盘。默认归为 🌱 初级（侧栏 `data-level="1"`）。
 - **UI 紧凑化细节优化（browserctl 截屏审计后的四处定点改动）**：用 browserctl 量化审计（用真实滚动容器 `#content`、clientHeight≈904 竖屏/669 横屏）发现 10 个"页面过长"模块（音色浏览器 10285px 居首）+ 1 处字号不一致。做了<b>4 处定点小改</b>，不动整体布局：① <b>🎵 音色浏览器</b>：346 张卡的 `.sound-grid` 加 `max-height:54vh; overflow-y:auto`，整页 10285→891px，键盘不再被推到屏外。② <b>🔧 VT 调音台</b>：42 个参数从平铺改成「🎚️ 基础（最常用）4 项直接显示 + `<details class="vt-adv">` 折叠进阶参数」，整页 2293→349px；事件绑定用 `root.querySelectorAll('select[data-v2]')`（递归选择器，`<details>` 内元素照样绑定，验证 42 个全绑上）。③ <b>🌈 渐变器</b>：`#morph-lanes` 加 `max-height:44vh; overflow-y:auto`，2519→867px，「开始渐变」按钮不再被挤出屏。④ <b>🥁 节奏视奏</b>：BPM 数值原用 `var(--accent)`（#2d3561 海军蓝≈面板底色，<b>肉眼不可见</b>）改 `var(--hi2)` 粉色加粗；旋转控制条按钮统一 16px 字号。<b>🥇 迷你反馈条（mini feedback bar）</b>：街机游戏（🫧接音水滴 / 🏓弹球接音 / 🚀看谱击落）的分数/连击/生命 HUD 在页顶，但键盘在页底（横屏尤甚），快速游戏时眼睛要在两端来回跳、命中后还得回滚看顶部计分。新增共享工厂 `makeMiniFb(root, sel)`（返回 `{el, stat(html), flash(txt,kind)}`）在<b>键盘正上方</b>贴一条迷你条镜像关键状态：drops/paddle 显「🔥 连击」、staffwars 显「💛💛💛 🎯 分数」，命中飘绿色「接住✓/击落✓」、未中飘粉色「✗」（`.mfb-judge.ok/.bad` + `mfbPop` 弹跳动画）。结果跟着手走，消灭上下滚。<b>坑点</b>：`const mfb` 必须在任何 `updateHud()` 调用<b>之前</b>声明（紧跟 `root.innerHTML` 赋值，模板里已含 `.mfb` div），否则 const 的 TDZ 会在首次渲染 `updateHud` 时抛错。新 id（`dr-mfb`/`pdl-mfb`/`sw-mfb`）全局唯一、`querySelectorAll('[id]')` 重复扫描为空。纯 DOM 助手无需新测试，991/991 仍全绿。
 
+### UI 审计与一致性 Playbook（怎么找问题 / 怎么修 / 怎么不反复）
+
+这套流程专治三类反复出现的 UI 病：**① 页面过长**（关键控件被挤出屏、要上下滚才看到结果）、**② 前后不一致**（同类元素字号/配色/间距各写各的）、**③ 过大过小**（按钮/文字尺寸失衡、颜色与底色撞色到不可见）。沉淀于此，下次直接套用、不要重新踩。
+
+**A. 怎么找问题（量化，别靠肉眼猜）**
+
+1. **用真实滚动容器量，不是 `window`**。本 app 真正滚动的是 `#content`（不是 `document.body`）。量「页面是否过长」要用：
+   ```js
+   const c = document.querySelector('#content');
+   ({ scroll: c.scrollHeight, client: c.clientHeight, over: c.scrollHeight - c.clientHeight })
+   ```
+   `over > 0` 即「需要滚动」；`scrollHeight` 远大于 `clientHeight`（如 10285 vs 904）就是「页面过长」重灾区。
+2. **两个朝向都量**。平板 browser 可能横/竖放：竖屏 `clientHeight≈904`、横屏≈669。横屏更易暴露「键盘被推到屏外」——务必两个 viewport 都截（`page viewport -w 820 -h 1100` 竖 / `-w 1180 -h 820` 横）。
+3. **逐模块批量扫**，别一个个手点。切到每个模块后统一量 `#content.scrollHeight`，排序找最长的几个（本轮 top10，音色浏览器 10285px 居首）。
+4. **一致性用选择器聚合查，不是翻代码**。查同类元素是否字号/配色发散：
+   ```js
+   [...document.querySelectorAll('button')].map(b => getComputedStyle(b).fontSize)
+   // 出现 11px/13px/16px 混杂 = 不一致；某元素 color≈背景色 = 撞色不可见
+   ```
+   本轮就是这样抓到 BPM 数值用 `--accent`(#2d3561 海军蓝)≈面板底色、肉眼不可见。
+5. **截图存 FILE 用 vision 复核**，不要只信数字。`page ss -o "D:/tmp/x.png"`（不要 `--json`、用正斜杠路径）。数字说「过长」，截图确认「到底是哪个控件掉到屏外」。
+
+**B. 怎么修（最小改动、不动整体布局）**
+
+- **过长** → 给「卡片网格 / 参数列」加 `max-height: NNvh; overflow-y:auto` 做**内滚**，而不是删内容或重排页面。用 `vh` 而非固定 px，自动适配横竖屏（本轮 54vh/44vh）。
+- **参数过多** → 「**基础直显 + `<details>` 折叠进阶**」。注意事件绑定要用 `root.querySelectorAll(...)` 递归选择器，`<details>` 折叠内的元素照样能绑上（绑完 `console.log` 数量核对，本轮 42 个全绑）。
+- **撞色/不可见** → 改用主题变量里的高亮色（`--hi2` 粉 / `--hi` 红 / `--ok` 绿），**不要硬编码新颜色**，保证换主题时仍可见。
+- **不一致** → 统一到一个值（本轮按钮统一 16px）。同类元素抽**共享工厂**（如 `makeMiniFb`）而不是各模块各写一份，从源头杜绝发散。
+- **结果离手太远**（要回滚看分）→ 把关键反馈**镜像**贴到操作焦点旁（键盘正上方），而不是把整页重排。
+
+**C. 怎么验证（防回归）**
+
+1. **改完两个朝向各截一张**，vision 确认控件回到屏内、迷你条贴在键盘上方。
+2. **dupId 扫描**：新加 id 后 `[...document.querySelectorAll('[id]')]` 找重复，必须为空。
+3. **JS 错误闸**：`page errors start`（**先**开）→ 操作 → `page errors get --json`，`count` 必须为 0。
+4. **动态态也要截**：flash/动画类（如 `mfb-judge bad mfb-pop`）在命中后才出现，要触发一次再查 className。
+5. **ESM + 测试**：`Get-Content app/js/app.js -Raw | node --input-type=module --check`（纯 `node --check` 会漏 ESM 错）+ `node --test "app/js/**/*.test.mjs"`。纯 DOM 助手无单测，靠 991 回归 + 截图兜底。
+
+**D. 缓存坑（最容易"改了没生效"误判）**
+
+`index.html` 里 `js/app.js` 是静态 `<script>` 加载，改完浏览器**会吃旧缓存**。验证前给 `href="css/app.css"` 和 `src="js/app.js"` 都加 `?v=N` 强制刷新，**验证完务必改回干净**（别把 `?v=` 留进 commit）。另外本 app dev 根路径是 `http://127.0.0.1:8782/`（根即 app），`/app/` 会 404，别开错 URL 以为白屏。
+
+**E. 本轮代码坑点（已修，记此防再犯）**
+
+- **`const mfb` 的 TDZ**：`const mfb = makeMiniFb(...)` 必须在任何 `updateHud()` 调用**之前**声明（紧跟 `root.innerHTML` 赋值）。否则首次渲染就调 `updateHud` 引用到尚未初始化的 `const`，TDZ 直接抛错、整个模块白屏。这类「helper 在 render 早期就被用到」的，一律把声明提到 innerHTML 之后、首次 update 之前。
 
 ## 连接方式（默认双支持）
 
