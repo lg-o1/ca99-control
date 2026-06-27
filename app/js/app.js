@@ -104,6 +104,7 @@ import { SONGS as GS_SONGS, getSong as gsGetSong, GuessSong } from './guess-song
 import { resolveInstruments as tgResolve, TimbreGuess } from './timbre-guess.js';
 import { SHAPES as VC_SHAPES, makeTrack as vcMakeTrack, velocityToHeight as vcVelToHeight, VelocityCoaster } from './velocity-coaster.js';
 import { pickChord as ttPick, describeChord as ttDescribe, chordsUpToLevel as ttChords, ToneTreeGame } from './tone-trees.js';
+import { POOLS as PT_POOLS, poolById as ptPoolById, PaddleTones } from './paddle-tones.js';
 import { MysteryBox as MysteryBoxEngine } from './mystery-box.js';
 import { DailyGoal, pickDailyOptions as dgPickOptions } from './daily-goal.js';
 import * as ShareCard from './share-card.js';
@@ -191,6 +192,7 @@ let guessOnNoteOff = null;  // 🕵️ 猜歌视奏的 note-off 回调
 let timbreOnNote = null;    // 🎨 音色猜猜乐的 note-on 回调（弹任意键听音色）
 let coasterOnNote = null;   // 🎢 力度过山车的 note-on 回调（按 velocity 驾驶）
 let toneTreeOnNote = null;  // 🌲 和弦寻宝的 note-on 回调（弹组成音点亮树）
+let paddleOnNote = null;    // 🏓 弹球接音的 note-on 回调（弹对应音弹回音球）
 let spOnNote = null;        // 乐句视奏的 note-on 回调（模块48注册）
 let chordSightOnNotesChanged = null; // 和弦视奏的"按下集合变化"回调（模块49注册）
 let rhythmSightTap = null;  // 节奏视奏的击打回调（模块50注册，任意键当一次击打）
@@ -690,6 +692,8 @@ function onMidiIn(bytes) {
     if (coasterOnNote) coasterOnNote(m.note, m.velocity);
     // 驱动和弦寻宝（弹组成音点亮树）
     if (toneTreeOnNote) toneTreeOnNote(m.note);
+    // 驱动弹球接音（弹对应音弹回音球）
+    if (paddleOnNote) paddleOnNote(m.note);
     // 驱动力度练习
     if (dynOnNote) dynOnNote(m.note, m.velocity);
     // 驱动节奏跟拍（任意键当作一次敲击）
@@ -15380,6 +15384,245 @@ function renderGuessSong() {
   drawStaff();
 }
 
+// 🏓 弹球接音（Paddle Tones）：音球从顶落下，弹对应音把它"弹回去"接住
+function renderPaddleTones() {
+  const root = $('#module-paddle');
+  if (!root) return;
+  let poolId = 'penta';
+  let byEar = false;       // 听音接：球空白、落下时发声
+  let running = false;
+  let game = null, rafId = 0, t0 = 0;
+  const floats = [];       // {x,y,life,txt,color}
+  const voiced = new Set();
+  let lineFlash = 0, lineFlashCol = '#34d399';
+  const BEST = 'ca99_paddle_best'; // {poolId: bestCombo}
+
+  function loadBest() { try { return JSON.parse(localStorage.getItem(BEST) || '{}') || {}; } catch (_) { return {}; } }
+  function saveBest(map) { try { localStorage.setItem(BEST, JSON.stringify(map)); } catch (_) {} }
+  function bestOf(id) { const v = loadBest()[id]; return v && v > 0 ? v : 0; }
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🏓 弹球接音</h2>
+    <p style="color:var(--muted);margin-bottom:12px">一颗颗<b>音球</b>从上面掉下来，每颗球带一个音（写着音名）。趁它落到底之前，在钢琴上<b>弹出对应的音</b>，就能把球"弹回去"接住 🏓！接住攒连击，弹错<b>不扣分</b>，漏接也<b>不会输</b>。开<b>🔊 听音接</b>球会变空白、落下时发声，靠<b>耳朵</b>找音（视唱练耳）。可接 CA99 真琴或点屏幕键盘。</p>
+
+    <div class="bb-pick" id="pdl-pick"></div>
+
+    <div class="rotate-bar" style="margin:6px 0 10px">
+      <label class="scaffold-toggle">球数
+        <select id="pdl-count"><option value="8">8</option><option value="12" selected>12</option><option value="16">16</option></select>
+      </label>
+      <label class="scaffold-toggle">速度
+        <select id="pdl-speed">
+          <option value="3400">🐢 慢</option>
+          <option value="2600" selected>🎵 中</option>
+          <option value="1900">🏃 快</option>
+        </select>
+      </label>
+      <label class="scaffold-toggle"><input type="checkbox" id="pdl-ear"> 🔊 听音接（球空白·靠耳朵）</label>
+    </div>
+
+    <div class="dr-hud">
+      <span class="dr-stat">🏓 接住 <b id="pdl-caught">0</b></span>
+      <span class="dr-stat">💨 漏接 <b id="pdl-miss">0</b></span>
+      <span class="dr-stat">🔥 连击 <b id="pdl-combo">0</b></span>
+      <span class="dr-stat">🏆 最佳连击 <b id="pdl-best">0</b></span>
+    </div>
+
+    <div class="rj-track-wrap">
+      <canvas id="pdl-canvas" class="rj-canvas" width="660" height="300"></canvas>
+    </div>
+
+    <div class="bb-feedback" id="pdl-feedback">选好音池，按"开始"——音球要掉下来啦！</div>
+
+    <div class="rotate-bar">
+      <button id="pdl-start" class="big-btn">▶ 开始</button>
+    </div>
+
+    <div class="kb-wrap" style="margin-top:10px">
+      <div class="kb-cap">🎹 弹出球上的音把它弹回去（任意八度都行）</div>
+      <div id="pdl-kb"></div>
+    </div>`;
+
+  const cv = $('#pdl-canvas');
+  const cx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const TOP = 18, FLOOR = H - 64;            // 地面线（y=1 对应这里）
+  const yPix = (y) => TOP + y * (FLOOR - TOP);
+  const PADDLE_Y = TOP + 0.45 * (FLOOR - TOP); // 可接区上界视觉参考
+
+  function drawPicker() {
+    $('#pdl-pick').innerHTML = PT_POOLS.map((p) =>
+      `<button class="bb-chip${p.id === poolId ? ' on' : ''}" data-id="${p.id}">${p.emoji} ${p.name}<small>${p.pcs.length} 个音</small></button>`).join('');
+    $('#pdl-pick').querySelectorAll('.bb-chip').forEach((el) => {
+      el.onclick = () => { if (running) return; poolId = el.dataset.id; drawPicker(); updateHud(); draw(); };
+    });
+  }
+
+  function updateHud() {
+    $('#pdl-caught').textContent = game ? game.caughtCount : 0;
+    $('#pdl-miss').textContent = game ? game.missedCount : 0;
+    $('#pdl-combo').textContent = game ? game.combo : 0;
+    $('#pdl-best').textContent = Math.max(bestOf(poolId), game ? game.bestCombo : 0);
+  }
+
+  const BALL_COLORS = ['#f472b6', '#38bdf8', '#34d399', '#fbbf24', '#a78bfa', '#fb923c', '#f87171', '#22d3ee', '#a3e635', '#e879f9', '#facc15', '#4ade80'];
+
+  function draw() {
+    cx.clearRect(0, 0, W, H);
+    const g = cx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(56,189,248,.10)'); g.addColorStop(1, 'rgba(244,114,182,.08)');
+    cx.fillStyle = g; cx.fillRect(0, 0, W, H);
+    // 球拍区参考线
+    cx.strokeStyle = 'rgba(255,255,255,.18)'; cx.setLineDash([6, 6]); cx.lineWidth = 1.5;
+    cx.beginPath(); cx.moveTo(0, PADDLE_Y); cx.lineTo(W, PADDLE_Y); cx.stroke(); cx.setLineDash([]);
+    cx.fillStyle = 'rgba(255,255,255,.4)'; cx.font = '11px system-ui,sans-serif';
+    cx.textAlign = 'left'; cx.textBaseline = 'middle'; cx.fillText('🏓 在这条线以下接球', 6, PADDLE_Y - 10);
+    // 地面线
+    cx.save();
+    if (lineFlash > 0) { cx.shadowColor = lineFlashCol; cx.shadowBlur = 22 * lineFlash; }
+    cx.strokeStyle = lineFlash > 0 ? lineFlashCol : 'rgba(255,255,255,.5)';
+    cx.lineWidth = 4; cx.beginPath(); cx.moveTo(0, FLOOR); cx.lineTo(W, FLOOR); cx.stroke();
+    cx.restore();
+    if (lineFlash > 0) lineFlash = Math.max(0, lineFlash - 0.08);
+
+    if (game) {
+      const now = performance.now() - t0;
+      const balls = game.activeBalls(now);
+      const n = balls.length;
+      balls.forEach((b) => {
+        const x = W / 2 + Math.sin((b.i + 1) * 1.7) * (W * 0.30); // 分散到不同 x 列
+        const y = yPix(Math.min(1.18, b.y));
+        const col = BALL_COLORS[b.pc % BALL_COLORS.length];
+        const catchable = b.y >= 0.45 && b.y <= 1.12;
+        cx.save();
+        cx.shadowColor = col; cx.shadowBlur = catchable ? 18 : 8;
+        cx.fillStyle = col; cx.globalAlpha = 0.95;
+        cx.beginPath(); cx.arc(x, y, 22, 0, Math.PI * 2); cx.fill();
+        cx.restore();
+        cx.globalAlpha = 1;
+        if (!byEar) {
+          cx.fillStyle = '#0b1020'; cx.font = 'bold 16px system-ui,sans-serif';
+          cx.textAlign = 'center'; cx.textBaseline = 'middle';
+          cx.fillText(b.name, x, y + 1);
+        } else {
+          cx.fillStyle = 'rgba(11,16,32,.6)'; cx.font = 'bold 18px system-ui,sans-serif';
+          cx.textAlign = 'center'; cx.textBaseline = 'middle';
+          cx.fillText('?', x, y + 1);
+        }
+      });
+    } else {
+      cx.fillStyle = 'rgba(220,228,255,.55)'; cx.font = '16px system-ui,sans-serif';
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText('按「开始」让音球掉下来 🏓', W / 2, (TOP + FLOOR) / 2);
+    }
+    // 漂浮判定字
+    for (const f of floats) {
+      cx.globalAlpha = Math.max(0, f.life);
+      cx.fillStyle = f.color; cx.font = 'bold 20px system-ui,sans-serif';
+      cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText(f.txt, f.x, f.y);
+      f.y -= 1.1; f.life -= 0.03;
+    }
+    cx.globalAlpha = 1;
+    for (let i = floats.length - 1; i >= 0; i--) if (floats[i].life <= 0) floats.splice(i, 1);
+  }
+
+  function ballX(i) { return W / 2 + Math.sin((i + 1) * 1.7) * (W * 0.30); }
+
+  function handlePlay(midi) {
+    if (!game || !running) return;
+    const now = performance.now() - t0;
+    const r = game.play(midi, now);
+    if (r.hit) {
+      lineFlash = 1; lineFlashCol = r.perfect ? '#34d399' : '#60a5fa';
+      floats.push({ x: ballX(r.ball.i), y: yPix(Math.min(1.1, r.y)) - 16, life: 1, txt: r.perfect ? '接住!' : '好球', color: r.perfect ? '#34d399' : '#60a5fa' });
+      if (game.bestCombo > bestOf(poolId)) { const map = loadBest(); map[poolId] = game.bestCombo; saveBest(map); }
+      if (game.combo > 0 && game.combo % 6 === 0) cheerToast(`🔥 连击 ${game.combo}！`, root);
+    } else {
+      floats.push({ x: W / 2, y: FLOOR - 30, life: 0.6, txt: '✗', color: 'rgba(255,255,255,.45)' });
+    }
+    updateHud();
+  }
+
+  function loop() {
+    if (!running || !game) return;
+    const now = performance.now() - t0;
+    // 听音接：球出生瞬间发声
+    if (byEar) {
+      for (const b of game.balls) {
+        if (!voiced.has(b.i) && now >= b.spawnMs && !b.caught && !b.missed) {
+          voiced.add(b.i);
+          try { playTone(midiToFreq(60 + b.pc), 0, 0.7); } catch (_) {}
+        }
+      }
+    }
+    const missed = game.expire(now);
+    if (missed.length) { lineFlash = 0.6; lineFlashCol = '#fbbf24'; updateHud(); }
+    draw();
+    if (game.isDone() || now > game.durationMs() + 200) { finish(); return; }
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function finish() {
+    cancelAnimationFrame(rafId);
+    running = false; paddleOnNote = null;
+    $('#pdl-start').textContent = '▶ 开始'; $('#pdl-start').classList.remove('running');
+    const stars = game.stars();
+    const starStr = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+    recordPractice('paddle', '弹球接音', game.total, game.caughtCount, game.bestCombo);
+    const rate = game.catchRate();
+    if (stars >= 3) {
+      $('#pdl-feedback').innerHTML = `${starStr} 神接球！接住率 <b>${rate}%</b> —— 你的耳朵和手都好准！`;
+      cheerBurst(root, 80);
+      try { victoryLightShow(root, { confetti: 90, text: `🏓 接球大师！${rate}%` }); } catch (_) {}
+    } else if (stars >= 1) {
+      $('#pdl-feedback').innerHTML = `${starStr} 接住率 <b>${rate}%</b>，最佳连击 <b>${game.bestCombo}</b>。盯住快落地的球更容易接，再来一次！`;
+      cheerToast(`${starStr} 不错哦！`, root);
+    } else {
+      $('#pdl-feedback').innerHTML = `这次没接住几个，没关系～先用 🌱 五声 + 🐢 慢速，球上有音名，照着找键就行，很快有手感！`;
+    }
+    updateHud(); draw(); drawPicker();
+  }
+
+  function start() {
+    const count = +$('#pdl-count').value;
+    const fallMs = +$('#pdl-speed').value;
+    game = new PaddleTones({ pool: poolId, count, fallMs, gapMs: Math.round(fallMs * 0.52) });
+    voiced.clear(); floats.length = 0; lineFlash = 0;
+    t0 = performance.now();
+    running = true;
+    $('#pdl-start').textContent = '⏹ 停止'; $('#pdl-start').classList.add('running');
+    $('#pdl-feedback').innerHTML = byEar ? `🔊 听音接：球落下时会发声，靠耳朵找出是哪个音弹出来接住！` : `开始！音球掉下来，弹出球上写的音把它接住 🏓`;
+    paddleOnNote = (note) => handlePlay(note);
+    updateHud();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function stop() {
+    cancelAnimationFrame(rafId);
+    running = false; paddleOnNote = null;
+    $('#pdl-start').textContent = '▶ 开始'; $('#pdl-start').classList.remove('running');
+    if (game && game.settled > 0) finish(); else { $('#pdl-feedback').textContent = '已停止'; draw(); }
+  }
+
+  const kb = new PianoKeyboard($('#pdl-kb'), {
+    labels: 'c',
+    onNoteOn: (m) => { playTone(midiToFreq(m), 0, 0.5); handlePlay(m); },
+  });
+  kb.scrollToShow(55, 79);
+
+  $('#pdl-start').onclick = () => { if (running) stop(); else start(); };
+  $('#pdl-ear').onchange = () => { byEar = $('#pdl-ear').checked; };
+
+  document.addEventListener('ca99:module-change', (e) => {
+    if (e.detail !== 'paddle' && running) {
+      running = false; paddleOnNote = null; cancelAnimationFrame(rafId);
+    }
+  });
+
+  drawPicker(); updateHud(); draw();
+}
+
 // 🌲 和弦寻宝（Tone Trees）：给一个和弦名，在琴上把每个组成音都找出来点亮整棵树
 function renderToneTrees() {
   const root = $('#module-tonetrees');
@@ -18742,7 +18985,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderPaddleTones(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
