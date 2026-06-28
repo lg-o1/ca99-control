@@ -1654,10 +1654,10 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   background: linear-gradient(180deg, #5fe4ff 0%, #1ab4e4 55%, #0a6f9e 100%);
   box-shadow: 0 0 20px 4px var(--kb-press-glow), inset 0 -3px 6px rgba(255,255,255,.28);
 }
-/* 🎬 演奏台键盘：按下 / 点亮的发光色跟随手别（左手紫、右手蓝），与上方落键、谱面同色。
-   每个键的 --ps-press 在载入时按「主手」写入（见 app.js loadSong）；未写入的键回退默认霓虹青。
-   仅作用于 #ps-kb——绝不影响其它 60+ 模块共用的键盘默认配色。 */
-#ps-kb .kb-white.kb-press, #ps-kb .kb-white.kb-demo {
+/* 🎬 演奏台 / 曲谱跟弹键盘：按下 / 点亮的发光色跟随手别（左手紫、右手蓝），与上方落键、谱面同色。
+   每个键的 --ps-press 在载入时按「主手」写入（见 app.js loadSong / prepare）；未写入的键回退默认霓虹青。
+   仅作用于 #ps-kb / #scf-kb——绝不影响其它 60+ 模块共用的键盘默认配色。 */
+#ps-kb .kb-white.kb-press, #ps-kb .kb-white.kb-demo, #scf-kb .kb-white.kb-press, #scf-kb .kb-white.kb-demo {
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--ps-press, #4fd6f3) 30%, #ffffff) 0%,
     color-mix(in srgb, var(--ps-press, #4fd6f3) 72%, #ffffff) 52%,
@@ -1665,7 +1665,7 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
   box-shadow: 0 0 18px 3px var(--ps-press, var(--kb-press-glow)),
     inset 0 2px 4px rgba(255,255,255,.6), inset 0 -5px 9px rgba(8,90,130,.32);
 }
-#ps-kb .kb-black.kb-press, #ps-kb .kb-black.kb-demo {
+#ps-kb .kb-black.kb-press, #ps-kb .kb-black.kb-demo, #scf-kb .kb-black.kb-press, #scf-kb .kb-black.kb-demo, #scf-kb .kb-black.kb-press, #scf-kb .kb-black.kb-demo {
   background: linear-gradient(180deg,
     color-mix(in srgb, var(--ps-press, #5fe4ff) 55%, #ffffff) 0%,
     var(--ps-press, #1ab4e4) 55%,

@@ -9401,6 +9401,19 @@ function renderScoreFollow() {
     layout = kbBuildLayout(lo, hi);
     centerX = new Map();
     layout.keys.forEach((k) => centerX.set(k.midi, k.x + k.w / 2));
+    // 🎨 键盘按下/点亮色跟随手别（左手紫、右手蓝），与上方落键/谱面同色（与演奏台一致）
+    {
+      const tally = {};
+      for (const n of sf.notes) {
+        const t = tally[n.midi] || (tally[n.midi] = { l: 0, r: 0 });
+        t[n.hand === 'l' ? 'l' : 'r']++;
+      }
+      $('#scf-kb').querySelectorAll('[data-midi]').forEach((el) => {
+        const t = tally[+el.dataset.midi];
+        if (t) el.style.setProperty('--ps-press', kbHandColor(t.l > t.r ? 'l' : 'r'));
+        else el.style.removeProperty('--ps-press');
+      });
+    }
     $('#scf-highway').style.width = layout.width + 'px';
     demoPlayed = new Set();
     lastBeat = -1;
@@ -9716,11 +9729,11 @@ function renderScoreFollow() {
     }
     const hint = performance.now() < hintUntil;   // ⑥ 提示中：换更醒目的色与图标
     if (cue.length) {
-      const col = hint ? '#22d3ee' : '#fbbf24';
       const tx = hint ? '💡' : '▶';
+      // 待弹提示色跟随手别：左手银色、右手琥珀（按下后各自亮成紫 / 蓝，见 --ps-press，与落键色一致）
       // 🐣 启蒙曲目带指法时，键上直接显示该用第几根手指（比 ▶ 更有指导性）
       scfKb.highlightMany(cue.map((n) => ({
-        midi: n.midi, color: col,
+        midi: n.midi, color: hint ? '#22d3ee' : (n.hand === 'l' ? '#98a0ae' : '#fbbf24'),
         text: (!hint && n.finger != null) ? String(n.finger) : tx,
       })), { scroll: false });
     } else scfKb.clear();
