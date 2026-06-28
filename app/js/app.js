@@ -9917,6 +9917,8 @@ function renderPlayStage() {
   let kbFirst = 60, kbLast = 72;
   let demoPlayed = new Set();
   const realOn = new Set();
+  // ⚡ 预排到音频时钟的振荡器（纯 web 示范）：起奏采样级精确，不受掉帧影响
+  let demoOscs = [], demoAudioScheduled = false;
   let builtinCatalog = null, userCatalog = null;
   // #5 先听后弹（铃木法）：跟弹一首没听过的曲子前先自动放一遍示范，听完自动进入跟弹
   let listenFirst = true;
@@ -10019,6 +10021,39 @@ function renderPlayStage() {
   function voice(m, durMs, velocity) {
     const onPiano = realNoteOn(m, velocity, durMs);
     if (!onPiano) playTone(midiToFreq(m), 0, Math.min(0.9, (durMs || 400) / 1000), 0.2);
+  }
+
+  // ⚡ 示范（预听）的纯-web 发声：开播时把所有音符一次性按音频时钟 osc.start(绝对时刻) 预排。
+  // 这样起奏是采样级精确的，和主线程掉不掉帧无关。真琴负责发声时不预排（由 frame 逐音触发）。
+  function clearDemoAudio() {
+    demoOscs.forEach((o) => { try { o.stop(); } catch (_) {} try { o.disconnect(); } catch (_) {} });
+    demoOscs = [];
+    demoAudioScheduled = false;
+  }
+  function scheduleDemoAudio() {
+    clearDemoAudio();
+    if (realPiano && midiOutReady()) return;   // 真琴发声 → 不预排，仍由 frame() 逐音触发
+    let ctx;
+    try { _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)(); ctx = _audioCtx; } catch (_) { return; }
+    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (_) {} }
+    // 把 performance 时钟的 t=0 换算到音频时钟（两个钟都是 1:1 实时，取同一瞬间的偏移即可对齐）
+    const anchor = ctx.currentTime + (t0 - performance.now()) / 1000;
+    for (const n of sf.notes) {
+      const at = anchor + n.ms / 1000;
+      if (at <= ctx.currentTime) continue;
+      const dur = Math.min(0.9, (n.durMs || 400) / 1000);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = midiToFreq(n.midi);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.2, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(at); osc.stop(at + dur + 0.02);
+      demoOscs.push(osc);
+    }
+    demoAudioScheduled = true;
   }
 
   // ---- 载入一首曲目（统一入口）----
@@ -10312,7 +10347,7 @@ function renderPlayStage() {
       for (const n of sf.notes) {
         if (!demoPlayed.has(n.i) && t >= n.ms) {
           demoPlayed.add(n.i);
-          voice(n.midi, n.durMs, n.velocity);
+          if (!demoAudioScheduled) voice(n.midi, n.durMs, n.velocity);   // 预排时音频已在音频时钟上 → 这里只点亮键盘，不重复发声
           kb.flash(n.midi, kbHandColor(n.hand));
         }
       }
@@ -10339,6 +10374,7 @@ function renderPlayStage() {
     mode = which;
     demoPlayed = new Set();
     t0 = performance.now() + LEAD_MS;
+    if (which === 'demo') scheduleDemoAudio();   // ⚡ 纯-web 示范：所有音符预排到音频时钟，起奏不受掉帧影响
     if (which === 'follow') { playStageOnNote = (m, v) => judge(m, v, false); }
     else { playStageOnNote = null; }
     setRunUI(which);
@@ -10349,6 +10385,7 @@ function renderPlayStage() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     allRealOff();
+    clearDemoAudio();   // ⚡ 取消所有还没响的预排音符
     const wasFollow = mode === 'follow';
     const wasDemo = mode === 'demo';
     mode = null; playStageOnNote = null;
