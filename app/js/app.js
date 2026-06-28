@@ -9453,8 +9453,13 @@ function renderScoreFollow() {
       : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, sheet.nMeasures); // 回退：均匀映射
     const x = shCursorX(sheet.measures, idx, f) * sheetScale;
     cur.style.left = x + 'px';
-    // 逐帧用 instant 滚动：绕开 CSS 的 scroll-behavior:smooth（每帧设新目标会互相打断 → 中段发卡）。手动跳转仍走 scrollLeft= 享受平滑。
-    wrap.scrollTo({ left: Math.max(0, x - wrap.clientWidth / 2), behavior: 'instant' });
+    // 子像素平滑跟随：scrollLeft 只能取整数 → 慢速一跳一跳；整数走 scrollLeft，小数残差用 transform（子像素）。
+    const inner = $('#scf-sheet-inner');
+    const maxOff = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+    const off = Math.min(maxOff, Math.max(0, x - wrap.clientWidth / 2));
+    const base = Math.floor(off);
+    wrap.scrollTo({ left: base, behavior: 'instant' });
+    if (inner) inner.style.transform = `translateX(${base - off}px)`;
     if (idx !== sheetCurIdx) {
       const imgs = $('#scf-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (sheetCurIdx >= 0 && imgs[sheetCurIdx]) imgs[sheetCurIdx].classList.remove('cur');
@@ -9489,6 +9494,7 @@ function renderScoreFollow() {
     if (!sheet) return;
     const wrap = $('#scf-sheet-ribbon'), cur = $('#scf-sheet-cursor');
     if (!wrap) return;
+    const inner = $('#scf-sheet-inner'); if (inner) inner.style.transform = '';   // 清掉播放遗留的子像素残差
     const i = Math.max(0, Math.min(sheet.nMeasures - 1, idx));
     const x = shCursorX(sheet.measures, i, f || 0) * sheetScale;
     if (cur) cur.style.left = x + 'px';
@@ -10159,8 +10165,14 @@ function renderPlayStage() {
       : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, psSheet.nMeasures);
     const x = shCursorX(psSheet.measures, idx, f) * psSheetScale;
     cur.style.left = x + 'px';
-    // 逐帧用 instant 滚动：绕开 CSS 的 scroll-behavior:smooth。每帧都设新目标会让平滑滚动动画互相打断 → 中段滚动发卡（首尾因 scrollLeft 被限位不变所以不卡）。手动跳转仍走 scrollLeft= 享受平滑。
-    wrap.scrollTo({ left: Math.max(0, x - wrap.clientWidth / 2), behavior: 'instant' });
+    // 子像素平滑跟随：scrollLeft 只能取整数 → 慢速（尤其缩小谱面）会一跳一跳。
+    // 整数部分走原生 scrollLeft，小数残差用 inner 的 transform（GPU 合成器，子像素）→ 像下面高速路一样顺。
+    const inner = $('#ps-sheet-inner');
+    const maxOff = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+    const off = Math.min(maxOff, Math.max(0, x - wrap.clientWidth / 2));
+    const base = Math.floor(off);
+    wrap.scrollTo({ left: base, behavior: 'instant' });
+    if (inner) inner.style.transform = `translateX(${base - off}px)`;
     if (idx !== psSheetCurIdx) {
       const imgs = $('#ps-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (psSheetCurIdx >= 0 && imgs[psSheetCurIdx]) imgs[psSheetCurIdx].classList.remove('cur');
@@ -10174,6 +10186,7 @@ function renderPlayStage() {
   function psScrollSheet(idx, f) {
     if (!psSheet) return;
     const wrap = $('#ps-sheet-ribbon'), cur = $('#ps-sheet-cursor'); if (!wrap) return;
+    const inner = $('#ps-sheet-inner'); if (inner) inner.style.transform = '';   // 清掉播放遗留的子像素残差，手动跳转位置准确
     const i = Math.max(0, Math.min(psSheet.nMeasures - 1, idx));
     const x = shCursorX(psSheet.measures, i, f || 0) * psSheetScale;
     if (cur) cur.style.left = x + 'px';
