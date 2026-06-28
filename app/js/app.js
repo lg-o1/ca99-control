@@ -8496,6 +8496,8 @@ function renderScoreFollow() {
   let hintUntil = 0;        // ⑥ 等待模式提示高亮的截止时刻
   let waitTolerant = true;  // 🌟 容差等待：节奏对、音高差≤2半音也帮过（宽容 MIDI 毛刺/相邻误触），默认开
   let lastDrawT = 0;        // 最近一次绘制的播放头时间（标签切换时重绘用）
+  // ⚡ 五线谱缓存（与演奏台同款）：音符位置静态，载入时整段画一次，每帧只移光标 + 同步判定色
+  let scfStaffBuilt = false, scfStaffCursor = null, scfStaffWrap = null, scfStaffNoteEls = [], scfStaffNoteGrade = [];
   let sheet = null;         // 📖 课本谱面（解析后的 index + 累计宽度 + folder）
   let sheetScale = 1;       // 谱面源像素 → 显示像素的缩放
   let sheetCurIdx = -1;     // 当前高亮的小节（避免每帧重设 class）
@@ -9075,6 +9077,7 @@ function renderScoreFollow() {
     if (mode) return;
     loopOn = !loopOn;
     drawLoopControls();
+    scfStaffBuilt = false;   // ⚡ 循环区变化 → 重建五线谱
     drawStaff(-LEAD_MS);
   };
   function onLoopInput() {
@@ -9082,6 +9085,7 @@ function renderScoreFollow() {
     loopFrom = parseInt($('#scf-loop-from').value, 10) || 1;
     loopTo = parseInt($('#scf-loop-to').value, 10) || 1;
     drawLoopControls();
+    scfStaffBuilt = false;
     drawStaff(-LEAD_MS);
   }
   $('#scf-loop-from').onchange = onLoopInput;
@@ -9402,6 +9406,7 @@ function renderScoreFollow() {
     lastBeat = -1;
     updateMeta();
     drawLoopControls();
+    scfStaffBuilt = false;   // ⚡ 新引擎 → 五线谱整段重建一次
     drawStaff(-LEAD_MS);
     drawHighway(-LEAD_MS);
     refreshStats();
@@ -9610,47 +9615,57 @@ function renderScoreFollow() {
   const CLEF_GLYPH = { treble: '𝄞', bass: '𝄢' };
   function drawStaff(t) {
     if (!sf) return;
-    const leftPad = 50, beatPx = 26, topY = 30, stepPx = 7, rightPad = 24;
+    if (!scfStaffBuilt || !scfStaffCursor) buildScfStaff();
+    // 判定颜色：只有 grade 真正变化的音符才改 class（平时仅整型比较，几乎零成本）
+    const notes = sf.notes;
+    for (let i = 0; i < notes.length; i++) {
+      if (notes[i].grade !== scfStaffNoteGrade[i]) {
+        if (scfStaffNoteEls[i]) scfStaffNoteEls[i].setAttribute('class', scfStaffGradeClass(notes[i]));
+        scfStaffNoteGrade[i] = notes[i].grade;
+      }
+    }
+    const curX = SCF_STAFF.lp + Math.max(0, sf.beatAt(t)) * SCF_STAFF.beatPx;
+    if (scfStaffCursor) { scfStaffCursor.setAttribute('x1', curX); scfStaffCursor.setAttribute('x2', curX); }
+    const sw = scfStaffWrap && scfStaffWrap.parentElement;
+    if (sw) sw.scrollLeft = Math.max(0, curX - sw.clientWidth / 2);
+  }
+  const SCF_STAFF = { lp: 50, beatPx: 26, topY: 30, step: 7, rp: 24, H: 150 };
+  function scfStaffGradeClass(n) {
+    let cls = 'note-head';
+    if (n.grade === SCF_GRADE.PERFECT) cls += ' nh-perfect';
+    else if (n.grade === SCF_GRADE.GOOD) cls += ' nh-good';
+    else if (n.grade === SCF_GRADE.MISS) cls += ' nh-miss';
+    else if (n.hand === 'l') cls += ' nh-left';
+    return cls;
+  }
+  // 整段五线谱（循环区 + 谱线 + 谱号 + 所有音符 + 光标线）只在载入时画一次
+  function buildScfStaff() {
+    const leftPad = SCF_STAFF.lp, beatPx = SCF_STAFF.beatPx, topY = SCF_STAFF.topY, stepPx = SCF_STAFF.step, rightPad = SCF_STAFF.rp, H = SCF_STAFF.H;
     const W = leftPad + sf.totalBeats * beatPx + rightPad;
-    const H = 150;
     const yForPos = (pos) => topY + (8 - pos) * stepPx;
     const xForBeat = (beat) => leftPad + beat * beatPx;
     let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="scf-staff-svg" preserveAspectRatio="xMinYMid meet">`;
-    // ③ 循环区高亮（画在五线谱之下）
     if (loopOn) {
       const lx0 = xForBeat(loopStartBeat), lx1 = xForBeat(loopEndBeat);
       svg += `<rect x="${lx0}" y="10" width="${Math.max(0, lx1 - lx0)}" height="${H - 20}" class="scf-loop-region"/>`;
     }
-    for (let p = 0; p <= 8; p += 2) {
-      const y = yForPos(p);
-      svg += `<line x1="${leftPad - 14}" y1="${y}" x2="${W - 8}" y2="${y}" class="staff-line"/>`;
-    }
+    for (let p = 0; p <= 8; p += 2) { const y = yForPos(p); svg += `<line x1="${leftPad - 14}" y1="${y}" x2="${W - 8}" y2="${y}" class="staff-line"/>`; }
     svg += `<text x="${leftPad - 44}" y="${yForPos(2) + 6}" class="clef-glyph">${CLEF_GLYPH[sf.clef] || CLEF_GLYPH.treble}</text>`;
-    // 音符
     for (const n of sf.notes) {
       const pos = staffPosition(n.midi, sf.clef);
-      const cy = yForPos(pos);
-      const cx = xForBeat(n.beat);
+      const cy = yForPos(pos), cx = xForBeat(n.beat);
       if (pos > 8) for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
       if (pos < 0) for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
-      let cls = 'note-head';
-      if (n.grade === SCF_GRADE.PERFECT) cls += ' nh-perfect';
-      else if (n.grade === SCF_GRADE.GOOD) cls += ' nh-good';
-      else if (n.grade === SCF_GRADE.MISS) cls += ' nh-miss';
-      else if (n.hand === 'l') cls += ' nh-left';
       const op = sf._handOk(n) ? '' : ' opacity="0.25"';
-      svg += `<g transform="translate(${cx},${cy})"${op}><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${cls}"/></g>`;
+      svg += `<g transform="translate(${cx},${cy})"${op}><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${scfStaffGradeClass(n)}"/></g>`;
     }
-    // 光标（按引擎时间→拍位插值，兼容变速 MIDI）
-    const cursorBeat = Math.max(0, sf.beatAt(t));
-    const curX = xForBeat(cursorBeat);
-    svg += `<line x1="${curX}" y1="14" x2="${curX}" y2="${H - 10}" class="scf-cursor-line"/>`;
-    svg += `</svg>`;
-    const wrap = $('#scf-staff');
-    wrap.innerHTML = svg;
-    // 自动滚动让光标居中
-    const sw = wrap.parentElement;
-    if (sw) sw.scrollLeft = Math.max(0, curX - sw.clientWidth / 2);
+    svg += `<line x1="${leftPad}" y1="14" x2="${leftPad}" y2="${H - 10}" class="scf-cursor-line" id="scf-staff-cursor"/></svg>`;
+    const wrap = $('#scf-staff'); wrap.innerHTML = svg;
+    scfStaffWrap = wrap;
+    scfStaffCursor = wrap.querySelector('#scf-staff-cursor');
+    scfStaffNoteEls = [...wrap.querySelectorAll('.note-head')];
+    scfStaffNoteGrade = sf.notes.map((n) => n.grade);
+    scfStaffBuilt = true;
   }
 
   // ---- 下落高速路（Synthesia）----
