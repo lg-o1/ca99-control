@@ -8499,6 +8499,8 @@ function renderScoreFollow() {
   let sheet = null;         // 📖 课本谱面（解析后的 index + 累计宽度 + folder）
   let sheetScale = 1;       // 谱面源像素 → 显示像素的缩放
   let sheetCurIdx = -1;     // 当前高亮的小节（避免每帧重设 class）
+  // 📖 谱面跟随模式：'page'=翻页 / 'half'=双页两槽 / 'scroll'=滚动。默认翻页，localStorage 记忆。
+  let scfSheetMode = (() => { try { const m = localStorage.getItem('ca99_scf_sheet_mode'); return (m === 'page' || m === 'half' || m === 'scroll') ? m : 'page'; } catch (_) { return 'page'; } })();
   let loopOn = false;       // ③ 区间循环开关
   let velViz = true;        // ② 力度可视化（上传 MIDI 的 velocity → 音符块亮度）
   let fxOn = true;          // ✨ 击中特效（粒子迸发 / 判定线发光 / 连击闪光）
@@ -8752,6 +8754,7 @@ function renderScoreFollow() {
           <span class="scf-sheet-label" id="scf-sheet-label"></span>
           <span class="scf-sheet-nav">
             <input type="range" class="scf-sheet-size" id="scf-sheet-size" min="72" max="360" step="4" title="谱面高度（拖动调整，适配横/竖屏）">
+            <button class="scf-sheet-navbtn" id="scf-sheet-mode" title="谱面跟随模式：📖翻页 / 📑双页 / 📜滚动">📖 翻页</button>
             <button class="scf-sheet-navbtn" id="scf-sheet-fit" title="自适应屏幕高度">⤢</button>
             <button class="scf-sheet-navbtn" id="scf-sheet-prev" title="上一小节">◀</button>
             <button class="scf-sheet-navbtn" id="scf-sheet-next" title="下一小节">▶</button>
@@ -8892,6 +8895,20 @@ function renderScoreFollow() {
   if ($('#scf-sheet-fit')) $('#scf-sheet-fit').onclick = () => {
     clearSheetH();                           // 清掉手动值 → 回到按视口自适应
     if (sheet) { sheetCurIdx = -1; buildSheetRibbon(); drawSheet(lastDrawT || -LEAD_MS); }
+  };
+  // 📖 翻页 / 📑 双页 / 📜 滚动 模式循环切换
+  const scfSheetModeBtn = $('#scf-sheet-mode');
+  const SCF_MODES = ['page', 'half', 'scroll'];
+  const SCF_MODE_LBL = { page: '📖 翻页', half: '📑 双页', scroll: '📜 滚动' };
+  const scfUpdateModeBtn = () => { if (scfSheetModeBtn) scfSheetModeBtn.textContent = SCF_MODE_LBL[scfSheetMode] || '📖 翻页'; };
+  scfUpdateModeBtn();
+  if (scfSheetModeBtn) scfSheetModeBtn.onclick = () => {
+    scfSheetMode = SCF_MODES[(SCF_MODES.indexOf(scfSheetMode) + 1) % SCF_MODES.length];
+    try { localStorage.setItem('ca99_scf_sheet_mode', scfSheetMode); } catch (_) {}
+    scfUpdateModeBtn();
+    const inner = $('#scf-sheet-inner'); if (inner) inner.style.transform = '';
+    const wrap = $('#scf-sheet-ribbon'); if (wrap) { wrap.classList.remove('half-mode'); wrap.style.overflowX = ''; wrap.scrollLeft = 0; }
+    if (sheet) { sheet._pages = null; sheet._hpages = null; sheetCurIdx = -1; drawSheet(lastDrawT || -LEAD_MS); }
   };
   // 横竖屏切换 / 窗口缩放：未手动设过高度时跟随视口自适应重排
   window.addEventListener('resize', () => {
@@ -9414,35 +9431,132 @@ function renderScoreFollow() {
     } catch { sheet = null; }
   }
 
-  function buildSheetRibbon() {
-    const inner = $('#scf-sheet-inner'); if (!inner || !sheet) return;
+  function scfStripHTML() {
     const dispH = sheetActiveH();
-    sheetScale = dispH / (sheet.height || 240);
-    const totalW = Math.round(sheet.totalWidth * sheetScale);
     let html = '';
     sheet.measures.forEach((m, i) => {
       const src = shPngUrl(sheet.folder, m.file).split('/').map(encodeURIComponent).join('/');
       const w = Math.max(1, Math.round(m.w * sheetScale));
       html += `<img class="scf-sheet-m${m.lowConf ? ' low-conf' : ''}" data-m="${i}" src="${src}" `
-        + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="lazy">`;
+        + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="eager" decoding="async">`;
     });
-    // 📖 重弹/八度徽章：贴在对应展开格左上角（↻N / 8va），让孩子一眼看出「这格又弹一遍/升八度」
     sheet.measures.forEach((m) => {
       const b = shBadge(m); if (!b) return;
       const left = Math.round(m.x0 * sheetScale);
       html += `<span class="scf-sheet-badge" style="left:${left}px">${b}</span>`;
     });
-    html += `<div class="scf-sheet-jump" id="scf-sheet-jump"></div>`;
-    html += `<div class="scf-sheet-cursor" id="scf-sheet-cursor"></div>`;
-    inner.style.width = totalW + 'px';
+    return html;
+  }
+  function buildSheetRibbon() {
+    const inner = $('#scf-sheet-inner'); if (!inner || !sheet) return;
+    const dispH = sheetActiveH();
+    sheetScale = dispH / (sheet.height || 240);
+    inner.style.width = Math.round(sheet.totalWidth * sheetScale) + 'px';
     inner.style.height = dispH + 'px';
-    inner.innerHTML = html;
-    inner.querySelectorAll('.scf-sheet-m').forEach((img) => {
-      img.onclick = () => scrollSheetTo(+img.dataset.m, 0.5);   // 点小节 → 定位预览
-    });
+    inner.innerHTML = scfStripHTML() + '<div class="scf-sheet-jump" id="scf-sheet-jump"></div><div class="scf-sheet-cursor" id="scf-sheet-cursor"></div>';
+    inner.querySelectorAll('.scf-sheet-m').forEach((img) => { img.onclick = () => scrollSheetTo(+img.dataset.m, 0.5); });
     const sz = $('#scf-sheet-size'); if (sz) sz.value = dispH;
+    if (sheet) sheet._halfScale = null;   // 📑 缩放变了 → 双页副本下次重建
   }
 
+  // 📖 谱面分页 / 双页 / 滚动（与「演奏台」同一套逻辑）
+  function scfEnsurePages(wrap) {
+    const cw = wrap.clientWidth || 1;
+    if (sheet._pages && sheet._pageW === cw && sheet._pageScale === sheetScale) return sheet._pages;
+    const n = sheet.nMeasures || sheet.measures.length;
+    const totalRight = (sheet.totalWidth || 0) * sheetScale;
+    const leftOf = (i) => shCursorX(sheet.measures, i, 0) * sheetScale;
+    const rightOf = (i) => (i < n - 1 ? leftOf(i + 1) : totalRight);
+    const pages = [];
+    let s = 0, sX = leftOf(0);
+    for (let i = 0; i < n; i++) {
+      if (i > s && rightOf(i) - sX > cw) { pages.push({ startIdx: s, startX: sX }); s = i; sX = leftOf(i); }
+    }
+    pages.push({ startIdx: s, startX: sX });
+    sheet._pages = pages; sheet._pageW = cw; sheet._pageScale = sheetScale;
+    return pages;
+  }
+  function scfPageStartX(wrap, idx) {
+    const pages = scfEnsurePages(wrap);
+    let sx = pages[0].startX;
+    for (const p of pages) { if (p.startIdx <= idx) sx = p.startX; else break; }
+    return sx;
+  }
+  function scfEnsureHalf() {
+    const ribbon = $('#scf-sheet-ribbon'); if (!ribbon || !sheet) return;
+    let half = $('#scf-half');
+    if (!half) {
+      half = document.createElement('div');
+      half.id = 'scf-half'; half.className = 'ps-half';
+      half.innerHTML = '<div class="ps-half-slot ph-l"><div class="ps-half-strip" id="scf-half-l-strip"></div></div>'
+        + '<div class="ps-half-slot ph-r"><div class="ps-half-strip" id="scf-half-r-strip"></div></div>'
+        + '<div class="scf-sheet-cursor" id="scf-half-cursor"></div>';
+      ribbon.appendChild(half);
+    }
+    if (sheet._halfScale !== sheetScale) {
+      const dispH = sheetActiveH();
+      const stripHTML = scfStripHTML();
+      const ls = $('#scf-half-l-strip'), rs = $('#scf-half-r-strip');
+      if (ls) { ls.style.height = dispH + 'px'; ls.innerHTML = stripHTML; }
+      if (rs) { rs.style.height = dispH + 'px'; rs.innerHTML = stripHTML; }
+      half.style.height = dispH + 'px';
+      sheet._halfScale = sheetScale;
+    }
+  }
+  function scfEnsureHalfPages(wrap) {
+    const hw = (wrap.clientWidth || 2) / 2;
+    if (sheet._hpages && sheet._hpW === hw && sheet._hpScale === sheetScale) return sheet._hpages;
+    const n = sheet.nMeasures || sheet.measures.length;
+    const totalRight = (sheet.totalWidth || 0) * sheetScale;
+    const leftOf = (i) => shCursorX(sheet.measures, i, 0) * sheetScale;
+    const rightOf = (i) => (i < n - 1 ? leftOf(i + 1) : totalRight);
+    const hps = [];
+    let s = 0, sX = leftOf(0);
+    for (let i = 0; i < n; i++) {
+      if (i > s && rightOf(i) - sX > hw) { hps.push({ startIdx: s, startX: sX }); s = i; sX = leftOf(i); }
+    }
+    hps.push({ startIdx: s, startX: sX });
+    sheet._hpages = hps; sheet._hpW = hw; sheet._hpScale = sheetScale;
+    return hps;
+  }
+  function scfHalfIdxOf(hps, idx) {
+    let k = 0;
+    for (let i = 0; i < hps.length; i++) { if (hps[i].startIdx <= idx) k = i; else break; }
+    return k;
+  }
+  function scfPositionSheet(wrap, inner, cur, x, idx) {
+    if (cur) cur.style.left = x + 'px';
+    if (scfSheetMode === 'half') {
+      if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
+      if (wrap.scrollLeft !== 0) wrap.scrollLeft = 0;
+      if (!wrap.classList.contains('half-mode')) wrap.classList.add('half-mode');
+      scfEnsureHalf();
+      const halfW = (wrap.clientWidth || 2) / 2;
+      const hps = scfEnsureHalfPages(wrap);
+      const M = hps.length;
+      const k = scfHalfIdxOf(hps, idx);
+      const within = x - hps[k].startX;
+      const leftIdx = (k % 2 === 0) ? k : Math.min(k + 1, M - 1);
+      const rightIdx = (k % 2 === 0) ? Math.min(k + 1, M - 1) : k;
+      const ls = $('#scf-half-l-strip'), rs = $('#scf-half-r-strip'), hc = $('#scf-half-cursor');
+      if (ls) ls.style.transform = `translateX(${-hps[leftIdx].startX}px)`;
+      if (rs) rs.style.transform = `translateX(${-hps[rightIdx].startX}px)`;
+      if (hc) hc.style.left = ((k % 2 === 0) ? within : (halfW + within)) + 'px';
+    } else if (scfSheetMode === 'page') {
+      if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
+      if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
+      if (wrap.scrollLeft !== 0) wrap.scrollLeft = 0;
+      if (inner) inner.style.transform = `translateX(${-scfPageStartX(wrap, idx)}px)`;
+    } else {
+      if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
+      if (wrap.style.overflowX === 'hidden') wrap.style.overflowX = '';
+      const maxOff = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+      const off = Math.min(maxOff, Math.max(0, x - wrap.clientWidth / 2));
+      const base = Math.floor(off);
+      wrap.scrollTo({ left: base, behavior: 'instant' });
+      if (inner) inner.style.transform = `translateX(${base - off}px)`;
+    }
+  }
   function drawSheet(t) {
     if (!sheet) return;
     const wrap = $('#scf-sheet-ribbon'), cur = $('#scf-sheet-cursor');
@@ -9452,14 +9566,7 @@ function renderScoreFollow() {
       ? shMeasureAtRange(sheet.measures, beat)                       // 精确：按真实拍区间二分（反复/弱起/变拍稳）
       : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, sheet.nMeasures); // 回退：均匀映射
     const x = shCursorX(sheet.measures, idx, f) * sheetScale;
-    cur.style.left = x + 'px';
-    // 子像素平滑跟随：scrollLeft 只能取整数 → 慢速一跳一跳；整数走 scrollLeft，小数残差用 transform（子像素）。
-    const inner = $('#scf-sheet-inner');
-    const maxOff = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
-    const off = Math.min(maxOff, Math.max(0, x - wrap.clientWidth / 2));
-    const base = Math.floor(off);
-    wrap.scrollTo({ left: base, behavior: 'instant' });
-    if (inner) inner.style.transform = `translateX(${base - off}px)`;
+    scfPositionSheet(wrap, $('#scf-sheet-inner'), cur, x, idx);
     if (idx !== sheetCurIdx) {
       const imgs = $('#scf-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (sheetCurIdx >= 0 && imgs[sheetCurIdx]) imgs[sheetCurIdx].classList.remove('cur');
@@ -9494,11 +9601,9 @@ function renderScoreFollow() {
     if (!sheet) return;
     const wrap = $('#scf-sheet-ribbon'), cur = $('#scf-sheet-cursor');
     if (!wrap) return;
-    const inner = $('#scf-sheet-inner'); if (inner) inner.style.transform = '';   // 清掉播放遗留的子像素残差
     const i = Math.max(0, Math.min(sheet.nMeasures - 1, idx));
     const x = shCursorX(sheet.measures, i, f || 0) * sheetScale;
-    if (cur) cur.style.left = x + 'px';
-    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+    scfPositionSheet(wrap, $('#scf-sheet-inner'), cur, x, i);
   }
 
   // ---- 五线谱（整曲横向 + 光标）----
@@ -10202,8 +10307,8 @@ function renderPlayStage() {
     if (!half) {
       half = document.createElement('div');
       half.id = 'ps-half'; half.className = 'ps-half';
-      half.innerHTML = '<div class="ps-half-slot" id="ps-half-l"><div class="ps-half-strip" id="ps-half-l-strip"></div></div>'
-        + '<div class="ps-half-slot" id="ps-half-r"><div class="ps-half-strip" id="ps-half-r-strip"></div></div>'
+      half.innerHTML = '<div class="ps-half-slot ph-l" id="ps-half-l"><div class="ps-half-strip" id="ps-half-l-strip"></div></div>'
+        + '<div class="ps-half-slot ph-r" id="ps-half-r"><div class="ps-half-strip" id="ps-half-r-strip"></div></div>'
         + '<div class="scf-sheet-cursor" id="ps-half-cursor"></div>';
       ribbon.appendChild(half);
     }

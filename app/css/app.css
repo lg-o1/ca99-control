@@ -2617,8 +2617,8 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .ps-half { position: absolute; inset: 0; display: none; }
 .scf-sheet-ribbon.half-mode .ps-half { display: block; }
 .ps-half-slot { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; }
-#ps-half-l { left: 0; }
-#ps-half-r { left: 50%; box-shadow: inset 1px 0 0 rgba(99,102,241,.2); }
+.ps-half-slot.ph-l { left: 0; }
+.ps-half-slot.ph-r { left: 50%; box-shadow: inset 1px 0 0 rgba(99,102,241,.2); }
 .ps-half-strip { position: absolute; top: 0; left: 0; white-space: nowrap; font-size: 0; will-change: transform; }
 .ps-half .scf-sheet-cursor { z-index: 5; }
 .scf-sheet-badge { position: absolute; top: 3px; font-size: 11px; line-height: 1; font-weight: 700; color: #fff; background: #7c3aed; padding: 2px 5px; border-radius: 6px; z-index: 4; pointer-events: none; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
