@@ -10046,6 +10046,9 @@ function renderPlayStage() {
   const realOn = new Set();
   // ⚡ 预排到音频时钟的振荡器（纯 web 示范）：起奏采样级精确，不受掉帧影响
   let demoOscs = [], demoAudioScheduled = false;
+  // 🐢 等待练习：播放头推进到当前音组就冻结，弹对整组才继续；🌟 容差通过 = 音高差≤2半音也帮过
+  let psGroups = [], psWaitIdx = 0, psFrozen = false, psWaitClock = 0, psLastNow = 0, psHintUntil = 0;
+  let psWaitTolerant = true;
   let builtinCatalog = null, userCatalog = null;
   // #5 先听后弹（铃木法）：跟弹一首没听过的曲子前先自动放一遍示范，听完自动进入跟弹
   let listenFirst = true;
@@ -10080,8 +10083,11 @@ function renderPlayStage() {
         <span class="ps-title" id="ps-title">—</span>
         <span class="ps-spacer"></span>
         <button class="ps-mbtn" id="ps-demo">▶ 预听</button>
+        <button class="ps-mbtn" id="ps-wait">🐢 等待练习</button>
         <button class="ps-mbtn primary" id="ps-follow">🎯 跟弹</button>
         <button class="ps-mbtn" id="ps-stop" disabled>⏸ 停止</button>
+        <button class="ps-mbtn" id="ps-hint" disabled title="等待练习卡住时，按一下让该弹的键闪 3 秒并示范发声">💡 提示</button>
+        <label class="ps-toggle" title="开启后，等待练习里节奏对、音高只差一点点（≤2 半音）也会帮你过，不会被 MIDI 小误差/相邻误触卡住"><input type="checkbox" id="ps-tol" checked> 🌟 容差通过</label>
         <label class="ps-toggle" title="开启后，跟弹一首还没听过的曲子前会先自动放一遍示范（铃木教学法：先听后弹），听完自动进入跟弹"><input type="checkbox" id="ps-listen" checked> 🎧 先听后弹</label>
         <label class="ps-toggle" title="开启后预听/示范会同时让连接的 CA99 真琴发声"><input type="checkbox" id="ps-real" checked> 🎹 真琴发声</label>
         <label class="ps-toggle"><input type="checkbox" id="ps-labels" checked> 🔤 音名</label>
@@ -10524,10 +10530,16 @@ function renderPlayStage() {
       else if (Math.abs(dt) <= sf.goodMs) cls += ' n-due';
       if (cls !== hwLastCls[i]) { el.className = cls; hwLastCls[i] = cls; }   // 仅判定色变化时改 class
     }
-    // 键盘高亮：判定窗内的音 → 提示该弹的键
-    const cue = sf.active(t);
+    // 键盘高亮：等待模式高亮“当前该弹的整组”，其余模式高亮判定窗内的音
+    let cue;
+    if (mode === 'wait' && psFrozen && psGroups[psWaitIdx]) {
+      cue = psGroups[psWaitIdx].notes.filter((n) => !n.judged);
+    } else {
+      cue = sf.active(t);
+    }
+    const hint = performance.now() < psHintUntil;   // 💡 提示中 → 换更醒目的色与图标
     if (cue.length) {
-      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: kbCueColor(), text: '▶' })), { scroll: false });
+      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: hint ? '#22d3ee' : kbCueColor(), text: hint ? '💡' : '▶' })), { scroll: false });
     } else kb.clear();
   }
 
@@ -10536,6 +10548,8 @@ function renderPlayStage() {
     if (mode === 'follow') {
       const st = sf.stars;
       $('#ps-stat').textContent = `★${'★'.repeat(st)}${'☆'.repeat(Math.max(0, 3 - st))}　${sf.judgedCount}/${sf.total}　连对 ${sf.combo}`;
+    } else if (mode === 'wait') {
+      $('#ps-stat').textContent = `🐢 等待练习　${sf.judgedCount}/${sf.total}　连对 ${sf.combo}`;
     } else {
       $('#ps-stat').textContent = `共 ${sf.notes.length} 音　${Math.round(sf.durationMs / 1000)}s`;
     }
@@ -10559,9 +10573,33 @@ function renderPlayStage() {
   // ---- 输入：屏幕点键 / 真琴按键 ----
   function onClickKey(m) {
     if (mode === 'follow') { judge(m, 90, true); return; }
-    // 非跟弹：当作试听，点哪个键响哪个键（真琴优先）
+    if (mode === 'wait') { waitOnNote(m, 90, true); return; }
+    // 非跟弹/等待：当作试听，点哪个键响哪个键（真琴优先）
     voice(m, 500, 90);
     kb.flash(m, '#22d3ee');
+  }
+  // 🐢 等待模式击键：只接受当前组里还没弹的音，弹齐整组才前进；🌟 容差通过开 → 音高差≤2半音也帮过（记 GOOD）
+  function waitOnNote(m, vel = 90, fromScreen = false) {
+    if (!sf || mode !== 'wait' || !psFrozen) return;
+    const g = psGroups[psWaitIdx]; if (!g) return;
+    const r = sf.waitMatch(m, g.notes, { tolerant: psWaitTolerant, semis: 2 });
+    if (!r) { kb.flash(m, '#f87171'); if (fromScreen) voice(m, 220, vel); return; }   // 不在容差内 → 红闪，不前进
+    if (r.exact) {
+      sf.judge(m, g.ms); kb.flash(m, '#34d399'); popGrade('perfect');
+      if (fromScreen) voice(m, 320, vel);
+    } else {
+      sf.accept(r.note); kb.flash(m, '#fbbf24'); kb.flash(r.note.midi, '#34d399'); popGrade('good');
+      if (fromScreen) voice(r.note.midi, 320, vel);
+    }
+    refreshStat();
+    if (g.notes.every((x) => x.judged)) { psWaitIdx++; psFrozen = false; }
+  }
+  // 💡 提示：把当前该弹的整组键高亮闪 3 秒并示范发声
+  function doHint() {
+    if (mode !== 'wait' || !psFrozen) return;
+    const g = psGroups[psWaitIdx]; if (!g) return;
+    psHintUntil = performance.now() + 3000;
+    g.notes.filter((n) => !n.judged).forEach((n) => { kb.flash(n.midi, '#22d3ee'); voice(n.midi, 480, n.velocity); });
   }
   function judge(m, vel, fromScreen) {
     if (!sf || mode !== 'follow') return;
@@ -10586,6 +10624,20 @@ function renderPlayStage() {
 
   // ---- 播放循环 ----
   function frame() {
+    if (mode === 'wait') {
+      if (psWaitIdx >= psGroups.length) { stop(true); return; }   // 全部弹完 → 完成
+      const now = performance.now();
+      if (!psFrozen) {
+        psWaitClock += now - psLastNow;
+        const g = psGroups[psWaitIdx];
+        if (g && psWaitClock >= g.ms) { psWaitClock = g.ms; psFrozen = true; }   // 推进到当前组 → 冻结等你弹
+      }
+      psLastNow = now;
+      const wt = psWaitClock;
+      drawHighway(wt); drawStaff(wt); psDrawSheet(wt); refreshStat();
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     const t = performance.now() - t0;
     if (mode === 'demo') {
       for (const n of sf.notes) {
@@ -10605,9 +10657,12 @@ function renderPlayStage() {
 
   function setRunUI(which) {
     $('#ps-demo').disabled = which && which !== 'demo';
+    $('#ps-wait').disabled = which && which !== 'wait';
     $('#ps-follow').disabled = which && which !== 'follow';
     $('#ps-stop').disabled = !which;
+    $('#ps-hint').disabled = which !== 'wait';
     $('#ps-demo').classList.toggle('running', which === 'demo');
+    $('#ps-wait').classList.toggle('running', which === 'wait');
     $('#ps-follow').classList.toggle('running', which === 'follow');
   }
 
@@ -10619,7 +10674,13 @@ function renderPlayStage() {
     demoPlayed = new Set();
     t0 = performance.now() + LEAD_MS;
     if (which === 'demo') scheduleDemoAudio();   // ⚡ 纯-web 示范：所有音符预排到音频时钟，起奏不受掉帧影响
+    psHintUntil = 0;
     if (which === 'follow') { playStageOnNote = (m, v) => judge(m, v, false); }
+    else if (which === 'wait') {
+      psGroups = sf.groups();
+      psWaitIdx = 0; psFrozen = false; psWaitClock = -LEAD_MS; psLastNow = performance.now();
+      playStageOnNote = (m, v) => waitOnNote(m, v, false);
+    }
     else { playStageOnNote = null; }
     setRunUI(which);
     raf = requestAnimationFrame(frame);
@@ -10630,8 +10691,10 @@ function renderPlayStage() {
     raf = null;
     allRealOff();
     clearDemoAudio();   // ⚡ 取消所有还没响的预排音符
+    psHintUntil = 0; psFrozen = false;
     const wasFollow = mode === 'follow';
     const wasDemo = mode === 'demo';
+    const wasWait = mode === 'wait';
     mode = null; playStageOnNote = null;
     setRunUI(null);
     kb.clear();
@@ -10656,6 +10719,9 @@ function renderPlayStage() {
       if (finished) {
         try { victoryLightShow(root, { confetti: 80 + s.stars * 40, text: s.stars >= 3 ? '🌈 满星通关！太厉害了！' : '🌈 通关啦！真棒！' }); } catch (_) {}
       }
+    } else if (wasWait && finished && sf) {
+      $('#ps-stat').textContent = `🎉 等待练习完成！全曲 ${sf.total} 个音都弹对了，去 🎯 跟弹 挑战计时评分吧。`;
+      try { recordPractice('playstage', '演奏台', sf.total, sf.judgedCount, sf.maxCombo); } catch (_) {}
     } else {
       drawHighway(-LEAD_MS); drawStaff(-LEAD_MS); refreshStat();
     }
@@ -10791,6 +10857,9 @@ function renderPlayStage() {
     }
   };
   $('#ps-stop').onclick = () => stop();
+  $('#ps-wait').onclick = () => start('wait');
+  $('#ps-hint').onclick = doHint;
+  $('#ps-tol').onchange = (e) => { psWaitTolerant = e.target.checked; };
   $('#ps-listen').onchange = (e) => { listenFirst = e.target.checked; };
   $('#ps-real').onchange = (e) => { realPiano = e.target.checked; if (!realPiano) allRealOff(); };
   $('#ps-labels').onchange = (e) => { labelsOn = e.target.checked; hwBuilt = false; if (sf && !mode) drawHighway(-LEAD_MS); };
