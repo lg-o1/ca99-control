@@ -9934,6 +9934,9 @@ function renderPlayStage() {
   const songKey = () => (song && (song.id || song.title)) || '';
   let psSheet = null, psSheetScale = 1, psSheetCurIdx = -1;   // 📖 课本谱面状态
   let psLastT = -LEAD_MS;
+  // 📖 谱面跟随模式：true=翻页（红线在一页内从左扫到右、到页尾翻下一页、红线回左，谱面不连续滚）；
+  //    false=滚动（红线钉中央、谱面持续左滚）。默认翻页，localStorage 记忆。
+  let psSheetPaged = (() => { try { return localStorage.getItem('ca99_ps_sheet_paged') !== '0'; } catch (_) { return true; } })();
   // ⚡ 五线谱缓存：音符位置是静态的——载入时把整段 SVG 画一次，播放时每帧只移动光标线 + 滚动，
   //    不再每帧重建几百个音符的 SVG（那是纯 web 播放卡顿的主因）。判定颜色变化时才单独改对应音符。
   let staffBuilt = false, staffCursorEl = null, staffWrapEl = null, staffNoteEls = [], staffNoteGrade = [];
@@ -9968,6 +9971,7 @@ function renderPlayStage() {
           <span class="scf-sheet-label" id="ps-sheet-label"></span>
           <span class="scf-sheet-nav">
             <input type="range" class="scf-sheet-size" id="ps-sheet-size" min="72" max="360" step="4" title="谱面高度（拖动调整，适配横/竖屏）">
+            <button class="scf-sheet-navbtn" id="ps-sheet-mode" title="翻页 / 滚动 模式切换：翻页=红线在一页内左→右扫、到页尾翻下一页（谱面不连续滚）">📖 翻页</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-fit" title="自适应屏幕高度">⤢</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-prev" title="上一小节">◀</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-next" title="下一小节">▶</button>
@@ -10154,6 +10158,47 @@ function renderPlayStage() {
     clearTimeout(el._jt);
     el._jt = setTimeout(() => el.classList.remove('show'), 950);
   }
+  // 📖 谱面分页（翻页模式）：把小节按当前视宽贪心打包成「页」，记每页起始小节 + 起始 x（显示像素）。
+  // 视宽或缩放变化时惰性重算（缓存在 psSheet 上）。
+  function psEnsurePages(wrap) {
+    const cw = wrap.clientWidth || 1;
+    if (psSheet._pages && psSheet._pageW === cw && psSheet._pageScale === psSheetScale) return psSheet._pages;
+    const n = psSheet.nMeasures || psSheet.measures.length;
+    const totalRight = (psSheet.totalWidth || 0) * psSheetScale;
+    const leftOf = (i) => shCursorX(psSheet.measures, i, 0) * psSheetScale;
+    const rightOf = (i) => (i < n - 1 ? leftOf(i + 1) : totalRight);
+    const pages = [];
+    let s = 0, sX = leftOf(0);
+    for (let i = 0; i < n; i++) {
+      if (i > s && rightOf(i) - sX > cw) { pages.push({ startIdx: s, startX: sX }); s = i; sX = leftOf(i); }
+    }
+    pages.push({ startIdx: s, startX: sX });
+    psSheet._pages = pages; psSheet._pageW = cw; psSheet._pageScale = psSheetScale;
+    return pages;
+  }
+  function psPageStartX(wrap, idx) {
+    const pages = psEnsurePages(wrap);
+    let sx = pages[0].startX;
+    for (const p of pages) { if (p.startIdx <= idx) sx = p.startX; else break; }
+    return sx;
+  }
+  // 把红线 + 谱条按当前模式定位。翻页：只显示当前页、红线左→右扫、到页尾翻页（红线回左、谱面不滚）；
+  // 滚动：红线钉中央、谱面子像素平滑左滚。
+  function psPositionSheet(wrap, inner, cur, x, idx) {
+    if (cur) cur.style.left = x + 'px';
+    if (psSheetPaged) {
+      if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
+      if (wrap.scrollLeft !== 0) wrap.scrollLeft = 0;
+      if (inner) inner.style.transform = `translateX(${-psPageStartX(wrap, idx)}px)`;
+    } else {
+      if (wrap.style.overflowX === 'hidden') wrap.style.overflowX = '';
+      const maxOff = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
+      const off = Math.min(maxOff, Math.max(0, x - wrap.clientWidth / 2));
+      const base = Math.floor(off);
+      wrap.scrollTo({ left: base, behavior: 'instant' });
+      if (inner) inner.style.transform = `translateX(${base - off}px)`;
+    }
+  }
   function psDrawSheet(t) {
     if (!psSheet) return;
     psLastT = t;
@@ -10164,15 +10209,7 @@ function renderPlayStage() {
       ? shMeasureAtRange(psSheet.measures, beat)
       : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, psSheet.nMeasures);
     const x = shCursorX(psSheet.measures, idx, f) * psSheetScale;
-    cur.style.left = x + 'px';
-    // 子像素平滑跟随：scrollLeft 只能取整数 → 慢速（尤其缩小谱面）会一跳一跳。
-    // 整数部分走原生 scrollLeft，小数残差用 inner 的 transform（GPU 合成器，子像素）→ 像下面高速路一样顺。
-    const inner = $('#ps-sheet-inner');
-    const maxOff = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
-    const off = Math.min(maxOff, Math.max(0, x - wrap.clientWidth / 2));
-    const base = Math.floor(off);
-    wrap.scrollTo({ left: base, behavior: 'instant' });
-    if (inner) inner.style.transform = `translateX(${base - off}px)`;
+    psPositionSheet(wrap, $('#ps-sheet-inner'), cur, x, idx);
     if (idx !== psSheetCurIdx) {
       const imgs = $('#ps-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (psSheetCurIdx >= 0 && imgs[psSheetCurIdx]) imgs[psSheetCurIdx].classList.remove('cur');
@@ -10186,11 +10223,9 @@ function renderPlayStage() {
   function psScrollSheet(idx, f) {
     if (!psSheet) return;
     const wrap = $('#ps-sheet-ribbon'), cur = $('#ps-sheet-cursor'); if (!wrap) return;
-    const inner = $('#ps-sheet-inner'); if (inner) inner.style.transform = '';   // 清掉播放遗留的子像素残差，手动跳转位置准确
     const i = Math.max(0, Math.min(psSheet.nMeasures - 1, idx));
     const x = shCursorX(psSheet.measures, i, f || 0) * psSheetScale;
-    if (cur) cur.style.left = x + 'px';
-    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+    psPositionSheet(wrap, $('#ps-sheet-inner'), cur, x, i);
   }
 
   // ---- 五线谱 ----
@@ -10529,6 +10564,17 @@ function renderPlayStage() {
   if ($('#ps-sheet-fit')) $('#ps-sheet-fit').onclick = () => {
     clearSheetH();
     if (psSheet) { psSheetCurIdx = -1; psBuildSheet(); psDrawSheet(psLastT || 0); }
+  };
+  // 📖 翻页 / 滚动 模式切换
+  const psSheetModeBtn = $('#ps-sheet-mode');
+  const psUpdateModeBtn = () => { if (psSheetModeBtn) psSheetModeBtn.textContent = psSheetPaged ? '📖 翻页' : '📜 滚动'; };
+  psUpdateModeBtn();
+  if (psSheetModeBtn) psSheetModeBtn.onclick = () => {
+    psSheetPaged = !psSheetPaged;
+    try { localStorage.setItem('ca99_ps_sheet_paged', psSheetPaged ? '1' : '0'); } catch (_) {}
+    psUpdateModeBtn();
+    const inner = $('#ps-sheet-inner'); if (inner) inner.style.transform = '';
+    if (psSheet) { psSheet._pages = null; psDrawSheet(psLastT || 0); }
   };
   window.addEventListener('resize', () => {
     if (psSheet && !sheetUserOverride()) { psSheetCurIdx = -1; psBuildSheet(); psDrawSheet(psLastT || 0); }
