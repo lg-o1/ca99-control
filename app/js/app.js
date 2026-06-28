@@ -9925,6 +9925,12 @@ function renderPlayStage() {
   const songKey = () => (song && (song.id || song.title)) || '';
   let psSheet = null, psSheetScale = 1, psSheetCurIdx = -1;   // 📖 课本谱面状态
   let psLastT = -LEAD_MS;
+  // ⚡ 五线谱缓存：音符位置是静态的——载入时把整段 SVG 画一次，播放时每帧只移动光标线 + 滚动，
+  //    不再每帧重建几百个音符的 SVG（那是纯 web 播放卡顿的主因）。判定颜色变化时才单独改对应音符。
+  let staffBuilt = false, staffCursorEl = null, staffWrapEl = null, staffNoteEls = [], staffNoteGrade = [];
+  // ⚡ 高速路缓存：方块的水平位置/宽高/音名是静态的——载入时建好 DOM，播放时每帧只改可见音符的
+  //    transform(纵向下落) + 判定色 + 显隐，避免每帧重建 innerHTML。
+  let hwBuilt = false, hwEls = [], hwInfo = [], hwLastCls = [], hwVisible = [];
 
   root.innerHTML = `
     <div class="ps-wrap">
@@ -10021,6 +10027,8 @@ function renderPlayStage() {
     const hasHands = !!(song.hands) || (Array.isArray(song.notes) && song.notes.some((n) => n.hand === 'l'));
     if (!hasHands) hand = 'both';   // 单手曲：强制双手（其实只有一只手的音）
     sf = new ScoreFollow(song, { timeScale: 1, octaveAgnostic: false, handFilter: hasHands ? hand : 'both' });
+    staffBuilt = false;   // ⚡ 新引擎 → 五线谱下次绘制时整段重建一次
+    hwBuilt = false;      // ⚡ 新引擎/键盘区间 → 高速路下次绘制时重建一次
     // 🖐️ 左右手选择器：仅含左右手的 MIDI 才显示
     const hw = $('#ps-hand-wrap');
     if (hw) {
@@ -10136,10 +10144,19 @@ function renderPlayStage() {
   }
 
   // ---- 五线谱 ----
-  function drawStaff(t) {
-    if (!sf) return;
-    const leftPad = 50, beatPx = 26, topY = 30, stepPx = 7, rightPad = 24;
-    const W = leftPad + sf.totalBeats * beatPx + rightPad, H = 150;
+  const STAFF_LP = 50, STAFF_BEATPX = 26, STAFF_TOPY = 30, STAFF_STEP = 7, STAFF_RP = 24, STAFF_H = 150;
+  function staffGradeClass(n) {
+    let cls = 'note-head';
+    if (n.grade === SCF_GRADE.PERFECT) cls += ' nh-perfect';
+    else if (n.grade === SCF_GRADE.GOOD) cls += ' nh-good';
+    else if (n.grade === SCF_GRADE.MISS) cls += ' nh-miss';
+    else if (n.hand === 'l') cls += ' nh-left';
+    return cls;
+  }
+  // 整段五线谱（谱线 + 谱号 + 所有音符 + 光标线）只在载入时画一次
+  function buildStaff() {
+    const leftPad = STAFF_LP, beatPx = STAFF_BEATPX, topY = STAFF_TOPY, stepPx = STAFF_STEP, rightPad = STAFF_RP, H = STAFF_H;
+    const W = leftPad + sf.totalBeats * beatPx + rightPad;
     const yForPos = (pos) => topY + (8 - pos) * stepPx;
     const xForBeat = (beat) => leftPad + beat * beatPx;
     let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="scf-staff-svg" preserveAspectRatio="xMinYMid meet">`;
@@ -10150,46 +10167,84 @@ function renderPlayStage() {
       const cy = yForPos(pos), cx = xForBeat(n.beat);
       if (pos > 8) for (let p = 10; p <= pos; p += 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
       if (pos < 0) for (let p = -2; p >= pos; p -= 2) svg += `<line x1="${cx - 12}" y1="${yForPos(p)}" x2="${cx + 12}" y2="${yForPos(p)}" class="ledger-line"/>`;
-      let cls = 'note-head';
-      if (n.grade === SCF_GRADE.PERFECT) cls += ' nh-perfect';
-      else if (n.grade === SCF_GRADE.GOOD) cls += ' nh-good';
-      else if (n.grade === SCF_GRADE.MISS) cls += ' nh-miss';
-      else if (n.hand === 'l') cls += ' nh-left';
       const op = sf._handOk(n) ? '' : ' opacity="0.22"';   // 🖐️ 非当前练习手 → 淡显
-      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${cls}"${op}/></g>`;
+      svg += `<g transform="translate(${cx},${cy})"><ellipse rx="6.5" ry="5" transform="rotate(-20)" class="${staffGradeClass(n)}"${op}/></g>`;
     }
-    const cursorBeat = Math.max(0, sf.beatAt(t)), curX = xForBeat(cursorBeat);
-    svg += `<line x1="${curX}" y1="14" x2="${curX}" y2="${H - 10}" class="scf-cursor-line"/></svg>`;
+    svg += `<line x1="${leftPad}" y1="14" x2="${leftPad}" y2="${H - 10}" class="scf-cursor-line" id="ps-staff-cursor"/></svg>`;
     const wrap = $('#ps-staff'); wrap.innerHTML = svg;
-    const sw = wrap.parentElement;
+    staffWrapEl = wrap;
+    staffCursorEl = wrap.querySelector('#ps-staff-cursor');
+    staffNoteEls = [...wrap.querySelectorAll('.note-head')];
+    staffNoteGrade = sf.notes.map((n) => n.grade);
+    staffBuilt = true;
+  }
+  function drawStaff(t) {
+    if (!sf) return;
+    if (!staffBuilt || !staffCursorEl) buildStaff();
+    // 判定颜色：只有 grade 真正变化的音符才改 class（平时仅整型比较，几乎零成本）
+    const notes = sf.notes;
+    for (let i = 0; i < notes.length; i++) {
+      if (notes[i].grade !== staffNoteGrade[i]) {
+        if (staffNoteEls[i]) staffNoteEls[i].setAttribute('class', staffGradeClass(notes[i]));
+        staffNoteGrade[i] = notes[i].grade;
+      }
+    }
+    const curX = STAFF_LP + Math.max(0, sf.beatAt(t)) * STAFF_BEATPX;
+    if (staffCursorEl) { staffCursorEl.setAttribute('x1', curX); staffCursorEl.setAttribute('x2', curX); }
+    const sw = staffWrapEl && staffWrapEl.parentElement;
     if (sw) sw.scrollLeft = Math.max(0, curX - sw.clientWidth / 2);
   }
 
   // ---- 下落高速路（Synthesia）----
-  function drawHighway(t) {
-    if (!sf) return;
+  // 一次性把每个音符的方块建好（水平位置/宽高/音名固定），播放时只移动 + 上色
+  function buildHighway() {
+    const hw = $('#ps-hw'); if (!hw) return;
     const pxPerMs = HW_H / LOOK_MS;
+    const notes = sf.notes;
+    hwInfo = new Array(notes.length).fill(null);
     let html = '';
-    for (const n of sf.notes) {
-      const dt = n.ms - t;
-      if (dt > LOOK_MS || dt < -260) continue;
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i];
       const cx = centerX.get(n.midi);
-      if (cx == null) continue;
+      if (cx == null) continue;                            // 超出键盘区间的音不画
       const isBlack = [1, 3, 6, 8, 10].includes(((n.midi % 12) + 12) % 12);
       const w = isBlack ? layout.blackW : layout.whiteW - 3;
       const h = Math.max(14, n.durMs * pxPerMs);
-      const top = HW_H - dt * pxPerMs - h;
-      let cls = 'scf-note';
-      if (n.hand === 'l') cls += ' n-left';
-      if (!sf._handOk(n)) cls += ' n-dim';                 // 🖐️ 非当前练习手 → 淡显
+      const base = 'scf-note' + (n.hand === 'l' ? ' n-left' : '') + (sf._handOk(n) ? '' : ' n-dim');
+      const lbl = (labelsOn && h >= 15) ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
+      hwInfo[i] = { h, base };
+      html += `<div class="${base}" data-i="${i}" style="left:${cx - w / 2}px;top:0;width:${w}px;height:${h}px;display:none">${lbl}</div>`;
+    }
+    hw.innerHTML = html;
+    hwEls = new Array(notes.length).fill(null);
+    hw.querySelectorAll('.scf-note').forEach((el) => { hwEls[+el.dataset.i] = el; });
+    hwLastCls = new Array(notes.length).fill('');
+    hwVisible = new Array(notes.length).fill(false);
+    hwBuilt = true;
+  }
+  function drawHighway(t) {
+    if (!sf) return;
+    if (!hwBuilt) buildHighway();
+    const pxPerMs = HW_H / LOOK_MS;
+    const notes = sf.notes;
+    for (let i = 0; i < notes.length; i++) {
+      const el = hwEls[i]; if (!el) continue;
+      const n = notes[i];
+      const dt = n.ms - t;
+      if (dt > LOOK_MS || dt < -260) {                     // 出窗 → 隐藏
+        if (hwVisible[i]) { el.style.display = 'none'; hwVisible[i] = false; }
+        continue;
+      }
+      const info = hwInfo[i];
+      el.style.transform = `translateY(${HW_H - dt * pxPerMs - info.h}px)`;   // 下落（合成器层，便宜）
+      if (!hwVisible[i]) { el.style.display = ''; hwVisible[i] = true; }
+      let cls = info.base;
       if (n.grade === SCF_GRADE.PERFECT) cls += ' n-perfect';
       else if (n.grade === SCF_GRADE.GOOD) cls += ' n-good';
       else if (n.grade === SCF_GRADE.MISS) cls += ' n-miss';
       else if (Math.abs(dt) <= sf.goodMs) cls += ' n-due';
-      const lbl = (labelsOn && h >= 15) ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
-      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px;">${lbl}</div>`;
+      if (cls !== hwLastCls[i]) { el.className = cls; hwLastCls[i] = cls; }   // 仅判定色变化时改 class
     }
-    $('#ps-hw').innerHTML = html;
     // 键盘高亮：判定窗内的音 → 提示该弹的键
     const cue = sf.active(t);
     if (cue.length) {
@@ -10443,7 +10498,7 @@ function renderPlayStage() {
   $('#ps-stop').onclick = () => stop();
   $('#ps-listen').onchange = (e) => { listenFirst = e.target.checked; };
   $('#ps-real').onchange = (e) => { realPiano = e.target.checked; if (!realPiano) allRealOff(); };
-  $('#ps-labels').onchange = (e) => { labelsOn = e.target.checked; };
+  $('#ps-labels').onchange = (e) => { labelsOn = e.target.checked; hwBuilt = false; if (sf && !mode) drawHighway(-LEAD_MS); };
   $('#ps-hand').querySelectorAll('.ear-chip').forEach((b) => {
     b.onclick = () => {
       if (mode) return;   // 演奏中不切手，避免判定状态错乱
