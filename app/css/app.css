@@ -2611,6 +2611,9 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-sheet-m:not(.cur) { filter: grayscale(0.15) brightness(0.97); }
 .scf-sheet-m.low-conf { background: #fffbeb; box-shadow: inset 0 -3px 0 #fbbf24; }
 .scf-sheet-cursor { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; box-shadow: 0 0 6px 1px rgba(239,68,68,.7); pointer-events: none; z-index: 3; }
+.scf-sheet-badge { position: absolute; top: 3px; font-size: 11px; line-height: 1; font-weight: 700; color: #fff; background: #7c3aed; padding: 2px 5px; border-radius: 6px; z-index: 4; pointer-events: none; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.scf-sheet-jump { position: absolute; top: 6px; transform: translateX(-50%); font-size: 13px; line-height: 1; font-weight: 800; color: #fff; background: #ef4444; padding: 4px 10px; border-radius: 12px; z-index: 6; pointer-events: none; white-space: nowrap; opacity: 0; transition: opacity .15s; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.scf-sheet-jump.show { opacity: 1; }
 .scf-lib-sheet { display: inline-block; margin-left: 6px; padding: 0 6px; font-size: 11px; border-radius: 6px; background: #312e81; color: #c7d2fe; border: 1px solid #4338ca; vertical-align: middle; }
 
 /* ===== 共享：大号下拉选择 ===== */

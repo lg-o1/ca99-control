@@ -1,6 +1,106 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSheetIndex, measureAtBeat, measureAtBeatRange, measureAtTime, cursorX, sheetPaths, pngUrl, defaultSheetHeight, clampSheetHeight, SHEET_H } from './sheet-index.js';
+import { parseSheetIndex, measureAtBeat, measureAtBeatRange, measureAtTime, cursorX, sheetPaths, pngUrl, defaultSheetHeight, clampSheetHeight, SHEET_H, sheetMeasureLabel, sheetMeasureBadge } from './sheet-index.js';
+
+// 📖 反复展开 fixture：blackforestpolka「D.S. al Fine, 2nd time 8va」
+// 曲式 A(1–8)→B(9–16)→A′(17–24)→D.S.→B(9–16)+8va→Fine
+// 展开后印刷小节序列 1..16, 17..24, 9..16；最后 8 条复用 m009..m016，pass:2 octave_shift:12，拍区间严格更晚。
+function blackforestExpanded() {
+  const measures = [];
+  let beat = 0;
+  const push = (printed, pass, oct) => {
+    const file = 'm' + String(printed).padStart(3, '0') + '.png';
+    measures.push({ i: measures.length + 1, file, w: 120, printed_measure: printed, pass, octave_shift: oct,
+      beat_start: beat, beat_end: beat + 4 });
+    beat += 4;
+  };
+  for (let p = 1; p <= 16; p++) push(p, 1, 0);   // A + B 首遍
+  for (let p = 17; p <= 24; p++) push(p, 1, 0);  // A′
+  for (let p = 9; p <= 16; p++) push(p, 2, 12);  // D.S. 重弹 B，2nd time 8va
+  return { stem: 'blackforestpolka', height: 240, bpm: 120,
+    structure: [{ type: 'ds', from_printed: 9, to_printed: 16, pass: 2, octave_shift: 12, label: 'D.S. al Fine, 2nd time 8va' }],
+    measures };
+}
+
+test('parseSheetIndex: expanded repeat index parses with hasBeats + hasRepeats + monotonic beats', () => {
+  const s = parseSheetIndex(blackforestExpanded());
+  assert.equal(s.nMeasures, 32);              // 16 + 8 + 8
+  assert.equal(s.hasBeats, true);
+  assert.equal(s.hasRepeats, true);
+  // beatStart 单调不减
+  let prev = -Infinity;
+  for (const m of s.measures) { assert.ok(m.beatStart >= prev); prev = m.beatStart; }
+  // structure 透传
+  assert.equal(s.structure.length, 1);
+  assert.equal(s.structure[0].label, 'D.S. al Fine, 2nd time 8va');
+});
+
+test('measureAtBeatRange: reprise beat resolves to the SECOND copy of m9-16, not the first', () => {
+  const s = parseSheetIndex(blackforestExpanded());
+  const ms = s.measures;
+  // 首遍 m9 起拍 = 8*4 = 32（数组第 8 条，0基idx 8）
+  const first = measureAtBeatRange(ms, 33).idx;
+  assert.equal(ms[first].printedMeasure, 9);
+  assert.equal(ms[first].pass, 1);
+  // 重弹段起拍：16+8 = 24 条之后 → 24*4 = 96；m9 重弹起拍 96
+  const second = measureAtBeatRange(ms, 97).idx;
+  assert.equal(ms[second].printedMeasure, 9);
+  assert.equal(ms[second].pass, 2);
+  assert.equal(ms[second].octaveShift, 12);
+  assert.notEqual(first, second);             // 解析到不同条目
+});
+
+test('parseSheetIndex: printedMeasure/pass/octaveShift legacy defaults', () => {
+  // 老一次性谱面（无新字段）：printedMeasure=i, pass=1, octaveShift=0, hasRepeats=false
+  const s = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'm001.png', w: 100, beat_start: 0, beat_end: 4 },
+      { i: 2, file: 'm002.png', w: 100, beat_start: 4, beat_end: 8 },
+    ],
+  });
+  assert.equal(s.hasRepeats, false);
+  assert.deepEqual(s.measures.map((m) => [m.printedMeasure, m.pass, m.octaveShift]), [[1, 1, 0], [2, 1, 0]]);
+  // 完全缺 i 也兜底成 1基序号
+  const s2 = parseSheetIndex({ measures: [{ file: 'a.png', w: 10 }, { file: 'b.png', w: 10 }] });
+  assert.deepEqual(s2.measures.map((m) => m.printedMeasure), [1, 2]);
+});
+
+test('sheetMeasureLabel: legacy once-through keeps 第 idx+1 / n 小节 format', () => {
+  const s = parseSheetIndex({
+    measures: [
+      { i: 1, file: 'a.png', w: 100, low_confidence: false },
+      { i: 2, file: 'b.png', w: 100, low_confidence: true },
+    ],
+  });
+  assert.equal(sheetMeasureLabel(s, 0), '第 1 / 2 小节');
+  assert.equal(sheetMeasureLabel(s, 1), '第 2 / 2 小节　⚠️ 这格识别可能不准');
+});
+
+test('sheetMeasureLabel: repeat shows printed measure + pass + 8va', () => {
+  const s = parseSheetIndex(blackforestExpanded());
+  // 重弹段第二条（idx 25）= 印刷 m10, pass2, 8va
+  const idx = 25;
+  assert.equal(s.measures[idx].printedMeasure, 10);
+  assert.equal(s.measures[idx].pass, 2);
+  assert.equal(sheetMeasureLabel(s, idx), '第 10 小节 · 第 2 遍 · 8va');
+  // 首遍段保持「第 {印刷} 小节」无遍数/8va
+  assert.equal(sheetMeasureLabel(s, 0), '第 1 小节');
+});
+
+test('sheetMeasureLabel: 8vb for negative octave shift; out-of-range safe', () => {
+  const s = parseSheetIndex({ measures: [{ i: 1, file: 'a.png', w: 10, pass: 2, octave_shift: -12, beat_start: 0, beat_end: 4 }] });
+  assert.equal(sheetMeasureLabel(s, 0), '第 1 小节 · 第 2 遍 · 8vb');
+  assert.equal(sheetMeasureLabel(s, 99), '');
+});
+
+test('sheetMeasureBadge: ↻N / 8va text, empty for plain first pass', () => {
+  assert.equal(sheetMeasureBadge({ pass: 1, octaveShift: 0 }), '');
+  assert.equal(sheetMeasureBadge({ pass: 2, octaveShift: 0 }), '↻2');
+  assert.equal(sheetMeasureBadge({ pass: 1, octaveShift: 12 }), '8va');
+  assert.equal(sheetMeasureBadge({ pass: 2, octaveShift: 12 }), '↻2 8va');
+  assert.equal(sheetMeasureBadge({ pass: 3, octaveShift: -12 }), '↻3 8vb');
+  assert.equal(sheetMeasureBadge(null), '');
+});
 
 const SAMPLE = {
   stem: 'blackforestpolka', height: 240, bpm: 120, bar_seconds: 2.0,

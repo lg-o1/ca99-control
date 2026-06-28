@@ -3,13 +3,26 @@
 //
 // index.json 形状（由 ribbon.py 之类的 OMR 切图工具生成）：
 //   { stem, height, bpm, bar_seconds, n_measures, total_seconds,
-//     measures:[{ i, file, w, t_start, t_end, low_confidence }] }
-// 每个 measures[k] 对应一张 <stem>/<file>（零填充命名，字典序=演奏序），w 为该小节源像素宽。
+//     measures:[{ i, file, w, t_start, t_end, low_confidence,
+//                 printed_measure?, pass?, octave_shift? }],
+//     structure?:[{ type, from_printed, to_printed, pass, octave_shift, label }] }
+// 每个 measures[k] 对应一张 <stem>/<file>（零填充命名，字典序=首遍演奏序），w 为该小节源像素宽。
 //
 // 设计要点：光标/滚动「不」用 t_start/t_end 秒数驱动（慢练 60%、渐进提速、变速 MIDI 会让秒数漂移），
 // 而是用 app 播放引擎的「乐拍位置」按 totalBeats↔n_measures 均匀映射到小节——天然跟随 timeScale，
 // 真实谱面、合成五线谱、下落光柱三者帧帧同步。秒数仅作可选回退/校验保留。
 // 纯逻辑、无 DOM，便于单测。
+//
+// 📖 反复/D.C./D.S./Coda/8va 契约（与 OMR producer 约定的字段名，最终版）：
+//   measures[] 按「演奏顺序」排列。被反复/跳转重弹的印刷小节会展开成多条 entry，
+//   各条同一 file（指向同一张 m###.png），但带各自单调递增的 beat_start/beat_end。
+//   每条 entry 额外可带 3 个字段（缺省向后兼容，老一次性谱面无需提供）：
+//     • printed_measure : int(1基) 该 entry 对应的「印刷小节号」（多条共享同一号）。缺省=i。驱动人读标签。
+//     • pass            : int(1基) 这是第几遍演奏（1=首遍，2=反复/D.S./D.C. 重弹…）。缺省=1。
+//     • octave_shift    : int 该遍的「显示」八度提示（12=2nd time 8va）。缺省=0。
+//                          ⚠️ 仅视觉用——音频的高八度音已在 producer 的演奏 MIDI 里，app 合成直接播，不做移调。
+//   顶层可选 structure[]（仅供调试/未来导航，光标不依赖）。
+//   不变量：展开后 beat_start 仍须单调不减（重弹副本的拍区间严格晚于首遍），hasBeats 才为 true。
 
 // 解析 + 归一化：算出每小节在 ribbon 中的累计像素 x（x0..x1）与总宽 totalWidth。
 // 若每小节带 beat_start/beat_end（OMR 给出的真实 MIDI 拍区间，按演奏顺序排列、单调不减），
@@ -17,7 +30,7 @@
 // D.S./反复/二房等「同一谱面小节被演奏多遍或跳转」的情形（均匀映射在这些跳转点必崩）。
 export function parseSheetIndex(json) {
   const src = (json && Array.isArray(json.measures)) ? json.measures : [];
-  const measures = src.map((m) => {
+  const measures = src.map((m, k) => {
     const hasBS = m.beat_start != null && m.beat_end != null;
     const bs = +m.beat_start, be = +m.beat_end;
     return {
@@ -30,6 +43,10 @@ export function parseSheetIndex(json) {
       beatStart: hasBS && Number.isFinite(bs) ? bs : null,
       beatEnd: hasBS && Number.isFinite(be) ? be : null,
       lowConf: !!m.low_confidence,
+      // 📖 反复展开字段（缺省向后兼容）：印刷小节号 / 第几遍 / 八度显示提示
+      printedMeasure: m.printed_measure != null ? (Math.round(+m.printed_measure) || 0) : (+m.i || (k + 1)),
+      pass: Math.max(1, Math.round(+m.pass || 1)),
+      octaveShift: Math.round(+m.octave_shift || 0),
       x0: 0, x1: 0,
     };
   });
@@ -44,6 +61,11 @@ export function parseSheetIndex(json) {
     }
     prev = m.beatStart;
   }
+  // 是否含反复/八度结构：任一格 pass>1 或 octaveShift≠0 → 标签切到「印刷小节·第N遍·8va」格式
+  let hasRepeats = false;
+  for (const m of measures) {
+    if (m.pass > 1 || m.octaveShift !== 0) { hasRepeats = true; break; }
+  }
   return {
     stem: (json && json.stem) || '',
     height: Math.max(1, Math.round((json && +json.height) || 240)),
@@ -53,8 +75,39 @@ export function parseSheetIndex(json) {
     totalSeconds: (json && +json.total_seconds) || 0,
     totalWidth: x,
     hasBeats,
+    hasRepeats,
+    structure: (json && Array.isArray(json.structure)) ? json.structure : [],
     measures,
   };
+}
+
+// 谱面光标「人读标签」（纯文本，无 DOM，便于单测）。
+//   • 一次性谱面（hasRepeats=false）：保持旧格式「第 idx+1 / n 小节」——15 首已部署曲目逐字不变。
+//   • 反复展开谱面：显示「第 {印刷小节} 小节 · 第 {遍} 遍 · 8va」——而非展开后的原始条目序号。
+// 末尾保留 low_confidence 的 ⚠️ 识别提醒。
+export function sheetMeasureLabel(sheet, idx) {
+  const ms = (sheet && sheet.measures) || [];
+  const m = ms[idx];
+  if (!m) return '';
+  const warn = m.lowConf ? '　⚠️ 这格识别可能不准' : '';
+  if (!sheet || !sheet.hasRepeats) {
+    return `第 ${idx + 1} / ${(sheet && sheet.nMeasures) || ms.length} 小节` + warn;
+  }
+  let s = `第 ${m.printedMeasure} 小节`;
+  if (m.pass > 1) s += ` · 第 ${m.pass} 遍`;
+  if (m.octaveShift > 0) s += ' · 8va';
+  else if (m.octaveShift < 0) s += ' · 8vb';
+  return s + warn;
+}
+
+// 谱面小节徽章文案（纯文本，无 DOM）：重弹格标 ↻N，升八度标 8va/8vb；首遍且无八度返回 ''（不贴徽章）。
+export function sheetMeasureBadge(m) {
+  if (!m) return '';
+  const parts = [];
+  if (m.pass > 1) parts.push('↻' + m.pass);
+  if (m.octaveShift > 0) parts.push('8va');
+  else if (m.octaveShift < 0) parts.push('8vb');
+  return parts.join(' ');
 }
 
 // 主映射（均匀回退）：把整曲乐拍区间 [0, totalBeats) 均匀铺到 n 个谱面小节上。

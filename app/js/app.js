@@ -68,7 +68,7 @@ import { LoopSession, timeScaleForPct as loopTimeScale } from './loop-trainer.js
 import { MelodyPalace, pitchesFromSeq } from './melody-palace.js';
 import { dayKey as dsDayKey, pickDailyIndex as dsPickIndex, prettyName as dsPretty, catEmoji as dsCatEmoji } from './daily-song.js';
 import { buildSongTree as stBuildTree, findNode as stFindNode, findSub as stFindSub, searchSongs as stSearch, countMatches as stCount } from './song-tree.js';
-import { parseSheetIndex as shParse, measureAtBeat as shMeasureAtBeat, measureAtBeatRange as shMeasureAtRange, cursorX as shCursorX, sheetPaths as shPaths, pngUrl as shPngUrl, defaultSheetHeight as shDefaultH, clampSheetHeight as shClampH, SHEET_H as SH_CFG } from './sheet-index.js';
+import { parseSheetIndex as shParse, measureAtBeat as shMeasureAtBeat, measureAtBeatRange as shMeasureAtRange, cursorX as shCursorX, sheetPaths as shPaths, pngUrl as shPngUrl, defaultSheetHeight as shDefaultH, clampSheetHeight as shClampH, SHEET_H as SH_CFG, sheetMeasureLabel as shLabel, sheetMeasureBadge as shBadge } from './sheet-index.js';
 
 // 📖 谱面卷帘显示高度（两 tab 共享）：localStorage 有手动值则用之；否则按视口自适应。
 function sheetActiveH() {
@@ -9426,6 +9426,13 @@ function renderScoreFollow() {
       html += `<img class="scf-sheet-m${m.lowConf ? ' low-conf' : ''}" data-m="${i}" src="${src}" `
         + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="lazy">`;
     });
+    // 📖 重弹/八度徽章：贴在对应展开格左上角（↻N / 8va），让孩子一眼看出「这格又弹一遍/升八度」
+    sheet.measures.forEach((m) => {
+      const b = shBadge(m); if (!b) return;
+      const left = Math.round(m.x0 * sheetScale);
+      html += `<span class="scf-sheet-badge" style="left:${left}px">${b}</span>`;
+    });
+    html += `<div class="scf-sheet-jump" id="scf-sheet-jump"></div>`;
     html += `<div class="scf-sheet-cursor" id="scf-sheet-cursor"></div>`;
     inner.style.width = totalW + 'px';
     inner.style.height = dispH + 'px';
@@ -9451,12 +9458,30 @@ function renderScoreFollow() {
       const imgs = $('#scf-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (sheetCurIdx >= 0 && imgs[sheetCurIdx]) imgs[sheetCurIdx].classList.remove('cur');
       if (imgs[idx]) imgs[idx].classList.add('cur');
+      flashSheetJump('#scf-sheet-jump', sheet, sheetCurIdx, idx, x);   // D.C./D.S./反复跳回时闪提示
       sheetCurIdx = idx;
       const lbl = $('#scf-sheet-label');
-      if (lbl) lbl.textContent = `第 ${idx + 1} / ${sheet.nMeasures} 小节`
-        + (sheet.measures[idx] && sheet.measures[idx].lowConf ? '　⚠️ 这格识别可能不准' : '');
+      if (lbl) lbl.textContent = shLabel(sheet, idx);
     }
   }
+
+  // 📖 跳转提示：光标跨入「遍数增加」或「印刷小节回退」的边界（即 D.C./D.S./反复跳回）时，
+  // 在跳转处短暂闪一个标签（优先用 structure[].label，否则按遍数显示「↻ 第N遍」），让卷帘回滚可读。
+  function flashSheetJump(sel, sh, prevIdx, idx, x) {
+    if (!sh || prevIdx < 0) return;
+    const prev = sh.measures[prevIdx], cur = sh.measures[idx];
+    if (!prev || !cur) return;
+    const jumped = cur.pass > prev.pass || cur.printedMeasure < prev.printedMeasure;
+    if (!jumped) return;
+    const el = $(sel); if (!el) return;
+    const st = (sh.structure || []).find((s) => +s.pass === cur.pass);
+    let txt = st && st.label ? String(st.label) : `↻ 第 ${cur.pass} 遍`;
+    if (!(st && st.label) && cur.octaveShift) txt += cur.octaveShift > 0 ? ' · 8va' : ' · 8vb';
+    el.textContent = txt;
+    el.style.left = Math.round(x) + 'px';
+    el.classList.add('show');
+    clearTimeout(el._jt);
+    el._jt = setTimeout(() => el.classList.remove('show'), 950);
 
   function scrollSheetTo(idx, f) {
     if (!sheet) return;
@@ -10046,6 +10071,12 @@ function renderPlayStage() {
       html += `<img class="scf-sheet-m${m.lowConf ? ' low-conf' : ''}" data-m="${i}" src="${src}" `
         + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="lazy">`;
     });
+    psSheet.measures.forEach((m) => {
+      const b = shBadge(m); if (!b) return;
+      const left = Math.round(m.x0 * psSheetScale);
+      html += `<span class="scf-sheet-badge" style="left:${left}px">${b}</span>`;
+    });
+    html += `<div class="scf-sheet-jump" id="ps-sheet-jump"></div>`;
     html += `<div class="scf-sheet-cursor" id="ps-sheet-cursor"></div>`;
     inner.style.width = Math.round(psSheet.totalWidth * psSheetScale) + 'px';
     inner.style.height = dispH + 'px';
@@ -10069,10 +10100,10 @@ function renderPlayStage() {
       const imgs = $('#ps-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (psSheetCurIdx >= 0 && imgs[psSheetCurIdx]) imgs[psSheetCurIdx].classList.remove('cur');
       if (imgs[idx]) imgs[idx].classList.add('cur');
+      flashSheetJump('#ps-sheet-jump', psSheet, psSheetCurIdx, idx, x);
       psSheetCurIdx = idx;
       const lbl = $('#ps-sheet-label');
-      if (lbl) lbl.textContent = `第 ${idx + 1} / ${psSheet.nMeasures} 小节`
-        + (psSheet.measures[idx] && psSheet.measures[idx].lowConf ? '　⚠️ 这格识别可能不准' : '');
+      if (lbl) lbl.textContent = shLabel(psSheet, idx);
     }
   }
   function psScrollSheet(idx, f) {
