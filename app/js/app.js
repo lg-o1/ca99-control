@@ -9453,7 +9453,8 @@ function renderScoreFollow() {
       : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, sheet.nMeasures); // 回退：均匀映射
     const x = shCursorX(sheet.measures, idx, f) * sheetScale;
     cur.style.left = x + 'px';
-    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+    // 逐帧用 instant 滚动：绕开 CSS 的 scroll-behavior:smooth（每帧设新目标会互相打断 → 中段发卡）。手动跳转仍走 scrollLeft= 享受平滑。
+    wrap.scrollTo({ left: Math.max(0, x - wrap.clientWidth / 2), behavior: 'instant' });
     if (idx !== sheetCurIdx) {
       const imgs = $('#scf-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (sheetCurIdx >= 0 && imgs[sheetCurIdx]) imgs[sheetCurIdx].classList.remove('cur');
@@ -10158,7 +10159,8 @@ function renderPlayStage() {
       : shMeasureAtBeat(beat, sf ? sf.totalBeats : 0, psSheet.nMeasures);
     const x = shCursorX(psSheet.measures, idx, f) * psSheetScale;
     cur.style.left = x + 'px';
-    wrap.scrollLeft = Math.max(0, x - wrap.clientWidth / 2);
+    // 逐帧用 instant 滚动：绕开 CSS 的 scroll-behavior:smooth。每帧都设新目标会让平滑滚动动画互相打断 → 中段滚动发卡（首尾因 scrollLeft 被限位不变所以不卡）。手动跳转仍走 scrollLeft= 享受平滑。
+    wrap.scrollTo({ left: Math.max(0, x - wrap.clientWidth / 2), behavior: 'instant' });
     if (idx !== psSheetCurIdx) {
       const imgs = $('#ps-sheet-inner').querySelectorAll('.scf-sheet-m');
       if (psSheetCurIdx >= 0 && imgs[psSheetCurIdx]) imgs[psSheetCurIdx].classList.remove('cur');
