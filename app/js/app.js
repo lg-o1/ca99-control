@@ -9482,6 +9482,7 @@ function renderScoreFollow() {
     el.classList.add('show');
     clearTimeout(el._jt);
     el._jt = setTimeout(() => el.classList.remove('show'), 950);
+  }
 
   function scrollSheetTo(idx, f) {
     if (!sheet) return;
