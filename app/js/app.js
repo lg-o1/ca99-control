@@ -10085,6 +10085,25 @@ function renderPlayStage() {
     inner.querySelectorAll('.scf-sheet-m').forEach((img) => { img.onclick = () => psScrollSheet(+img.dataset.m, 0.5); });
     const sz = $('#ps-sheet-size'); if (sz) sz.value = dispH;
   }
+  // 📖 跳转提示：光标跨入「遍数增加」或「印刷小节回退」的边界（D.C./D.S./反复跳回）时，
+  // 在跳转处短暂闪一个标签（与「曲谱跟弹」同款）。注意此函数必须定义在「演奏台」闭包内——
+  // 它与「曲谱跟弹」里的同名函数不在同一作用域，缺了它 psDrawSheet 会抛 ReferenceError。
+  function flashSheetJump(sel, sh, prevIdx, idx, x) {
+    if (!sh || prevIdx < 0) return;
+    const prev = sh.measures[prevIdx], cur = sh.measures[idx];
+    if (!prev || !cur) return;
+    const jumped = cur.pass > prev.pass || cur.printedMeasure < prev.printedMeasure;
+    if (!jumped) return;
+    const el = $(sel); if (!el) return;
+    const st = (sh.structure || []).find((s) => +s.pass === cur.pass);
+    let txt = st && st.label ? String(st.label) : `↻ 第 ${cur.pass} 遍`;
+    if (!(st && st.label) && cur.octaveShift) txt += cur.octaveShift > 0 ? ' · 8va' : ' · 8vb';
+    el.textContent = txt;
+    el.style.left = Math.round(x) + 'px';
+    el.classList.add('show');
+    clearTimeout(el._jt);
+    el._jt = setTimeout(() => el.classList.remove('show'), 950);
+  }
   function psDrawSheet(t) {
     if (!psSheet) return;
     psLastT = t;
