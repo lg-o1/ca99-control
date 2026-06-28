@@ -29,6 +29,11 @@ def file_title(name):
 
 
 def main():
+    # Windows consoles default to GBK and choke on the category emoji below.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     root = sys.argv[1] if len(sys.argv) > 1 else "data"
     base = os.path.join(APP, root)
     if not os.path.isdir(base):
@@ -45,8 +50,16 @@ def main():
         categories.append({"slug": slug, "emoji": emoji, "label": label, "count": len(mids)})
         for f in mids:
             rel = "/".join([root] + ([dirname] if dirname else []) + [f])
-            songs.append({"file": f, "title": file_title(f), "composer": "",
-                          "cat": "", "fn": slug, "path": rel})
+            song = {"file": f, "title": file_title(f), "composer": "",
+                    "cat": "", "fn": slug, "path": rel}
+            # A same-name folder (strip .mid) containing index.json is a printed
+            # -score sheet (CA99 convention) -> flag it so the library shows 📖
+            # and the cursor follows the page.
+            stem = re.sub(r"\.midi?$", "", f, flags=re.I)
+            sheet_dir = os.path.join(base, *(([dirname] if dirname else []) + [stem]))
+            if os.path.isfile(os.path.join(sheet_dir, "index.json")):
+                song["sheet"] = True
+            songs.append(song)
 
     # subdirectories = categories
     subdirs = sorted(d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d)))
