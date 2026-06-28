@@ -8499,6 +8499,7 @@ function renderScoreFollow() {
   // ⚡ 五线谱缓存（与演奏台同款）：音符位置静态，载入时整段画一次，每帧只移光标 + 同步判定色
   let scfStaffBuilt = false, scfStaffCursor = null, scfStaffWrap = null, scfStaffNoteEls = [], scfStaffNoteGrade = [];
   let sheet = null;         // 📖 课本谱面（解析后的 index + 累计宽度 + folder）
+  let sheetPath = null;     // 当前已载入的谱面路径（同曲复用，避免预听时谱面闪一下）
   let sheetScale = 1;       // 谱面源像素 → 显示像素的缩放
   let sheetCurIdx = -1;     // 当前高亮的小节（避免每帧重设 class）
   // 📖 谱面跟随模式：'page'=翻页 / 'half'=双页两槽 / 'scroll'=滚动。默认翻页，localStorage 记忆。
@@ -9431,6 +9432,8 @@ function renderScoreFollow() {
   // 数据来自切图工具产出的 <stem>/index.json + m001.png…；光标按引擎乐拍均匀映射到小节，
   // 跟随慢练/变速同步，不依赖秒数。无谱面文件夹的曲目自动隐藏本面板。
   async function loadSheetFor(path) {
+    if (path && sheet && sheetPath === path) { drawSheet(lastDrawT || -LEAD_MS); return; }  // 同曲已载入 → 复用 DOM，预听重播时谱面不再消失重建
+    sheetPath = path;
     sheet = null; sheetCurIdx = -1;
     const panel = $('#scf-sheet-panel'); if (panel) panel.hidden = true;
     const inner = $('#scf-sheet-inner'); if (inner) inner.innerHTML = '';
@@ -10068,7 +10071,7 @@ function renderPlayStage() {
   let autoFollowAfter = false;
   const previewed = new Set();          // 已完整听过示范的曲子（按 songKey）
   const songKey = () => (song && (song.id || song.title)) || '';
-  let psSheet = null, psSheetScale = 1, psSheetCurIdx = -1;   // 📖 课本谱面状态
+  let psSheet = null, psSheetScale = 1, psSheetCurIdx = -1, psSheetPath = null;   // 📖 课本谱面状态（psSheetPath: 同曲复用避免闪一下）
   let psLastT = -LEAD_MS;
   // 📖 谱面跟随模式：true=翻页（红线在一页内从左扫到右、到页尾翻下一页、红线回左，谱面不连续滚）；
   //    false=滚动（红线钉中央、谱面持续左滚）。默认翻页，localStorage 记忆。
@@ -10260,6 +10263,8 @@ function renderPlayStage() {
 
   // ---- 📖 课本谱面（与曲谱跟弹同一套：真实书本照片按小节切片，跟弹时同步高亮）----
   async function psLoadSheet(path) {
+    if (path && psSheet && psSheetPath === path) { psDrawSheet(psLastT); return; }  // 同曲已载入 → 复用 DOM，预听重播时谱面不再消失重建
+    psSheetPath = path;
     psSheet = null; psSheetCurIdx = -1;
     const panel = $('#ps-sheet-panel'); if (panel) panel.hidden = true;
     const inner = $('#ps-sheet-inner'); if (inner) inner.innerHTML = '';
