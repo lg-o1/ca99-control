@@ -10556,7 +10556,7 @@ function renderPlayStage() {
       kb.highlightMany(cue.map((n) => ({
         midi: n.midi,
         // 待弹（还没按）提示色跟随手别：左手银色、右手琥珀；按下后再各自亮成紫 / 蓝（见 --ps-press），与落键色一致
-        color: hint ? '#22d3ee' : (n.hand === 'l' ? '#cdd3de' : kbCueColor()),
+        color: hint ? '#22d3ee' : (n.hand === 'l' ? '#98a0ae' : kbCueColor()),
         text: hint ? '💡' : '▶',
       })), { scroll: false });
     } else kb.clear();
