@@ -2611,6 +2611,16 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-sheet-m:not(.cur) { filter: grayscale(0.15) brightness(0.97); }
 .scf-sheet-m.low-conf { background: #fffbeb; box-shadow: inset 0 -3px 0 #fbbf24; }
 .scf-sheet-cursor { position: absolute; top: 0; bottom: 0; width: 2px; background: #ef4444; box-shadow: 0 0 6px 1px rgba(239,68,68,.7); pointer-events: none; z-index: 3; }
+/* 📑 双页（两槽轮流刷新）模式：左右各放一个半页副本，红线扫满全宽、非当前半页提前刷新成下一段 */
+.scf-sheet-ribbon.half-mode { overflow: hidden; }
+.scf-sheet-ribbon.half-mode > .scf-sheet-inner { visibility: hidden; }
+.ps-half { position: absolute; inset: 0; display: none; }
+.scf-sheet-ribbon.half-mode .ps-half { display: block; }
+.ps-half-slot { position: absolute; top: 0; bottom: 0; width: 50%; overflow: hidden; }
+#ps-half-l { left: 0; }
+#ps-half-r { left: 50%; box-shadow: inset 1px 0 0 rgba(99,102,241,.2); }
+.ps-half-strip { position: absolute; top: 0; left: 0; white-space: nowrap; font-size: 0; will-change: transform; }
+.ps-half .scf-sheet-cursor { z-index: 5; }
 .scf-sheet-badge { position: absolute; top: 3px; font-size: 11px; line-height: 1; font-weight: 700; color: #fff; background: #7c3aed; padding: 2px 5px; border-radius: 6px; z-index: 4; pointer-events: none; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
 .scf-sheet-jump { position: absolute; top: 6px; transform: translateX(-50%); font-size: 13px; line-height: 1; font-weight: 800; color: #fff; background: #ef4444; padding: 4px 10px; border-radius: 12px; z-index: 6; pointer-events: none; white-space: nowrap; opacity: 0; transition: opacity .15s; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
 .scf-sheet-jump.show { opacity: 1; }

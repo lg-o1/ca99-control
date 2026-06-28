@@ -9936,7 +9936,16 @@ function renderPlayStage() {
   let psLastT = -LEAD_MS;
   // 📖 谱面跟随模式：true=翻页（红线在一页内从左扫到右、到页尾翻下一页、红线回左，谱面不连续滚）；
   //    false=滚动（红线钉中央、谱面持续左滚）。默认翻页，localStorage 记忆。
-  let psSheetPaged = (() => { try { return localStorage.getItem('ca99_ps_sheet_paged') !== '0'; } catch (_) { return true; } })();
+  // 📖 谱面跟随模式：'page'=翻页（红线在一页内左→右扫、到页尾翻下一页）；
+  //    'half'=双页（左右两槽，红线扫满全宽，非当前半页提前刷新成下一段）；'scroll'=滚动（红线钉中央、谱面平滑左滚）。
+  //    默认翻页，localStorage 记忆。
+  let psSheetMode = (() => {
+    try {
+      const m = localStorage.getItem('ca99_ps_sheet_mode');
+      if (m === 'page' || m === 'half' || m === 'scroll') return m;
+      return localStorage.getItem('ca99_ps_sheet_paged') === '0' ? 'scroll' : 'page';   // 兼容旧键
+    } catch (_) { return 'page'; }
+  })();
   // ⚡ 五线谱缓存：音符位置是静态的——载入时把整段 SVG 画一次，播放时每帧只移动光标线 + 滚动，
   //    不再每帧重建几百个音符的 SVG（那是纯 web 播放卡顿的主因）。判定颜色变化时才单独改对应音符。
   let staffBuilt = false, staffCursorEl = null, staffWrapEl = null, staffNoteEls = [], staffNoteGrade = [];
@@ -9971,7 +9980,7 @@ function renderPlayStage() {
           <span class="scf-sheet-label" id="ps-sheet-label"></span>
           <span class="scf-sheet-nav">
             <input type="range" class="scf-sheet-size" id="ps-sheet-size" min="72" max="360" step="4" title="谱面高度（拖动调整，适配横/竖屏）">
-            <button class="scf-sheet-navbtn" id="ps-sheet-mode" title="翻页 / 滚动 模式切换：翻页=红线在一页内左→右扫、到页尾翻下一页（谱面不连续滚）">📖 翻页</button>
+            <button class="scf-sheet-navbtn" id="ps-sheet-mode" title="谱面跟随模式切换：📖翻页（一页内左→右扫、到尾翻页） / 📑双页（左右两槽、非当前半页提前刷新） / 📜滚动（红线钉中央、持续左滚）">📖 翻页</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-fit" title="自适应屏幕高度">⤢</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-prev" title="上一小节">◀</button>
             <button class="scf-sheet-navbtn" id="ps-sheet-next" title="下一小节">▶</button>
@@ -10115,29 +10124,33 @@ function renderPlayStage() {
       psDrawSheet(psLastT);
     } catch { psSheet = null; }
   }
-  function psBuildSheet() {
-    const inner = $('#ps-sheet-inner'); if (!inner || !psSheet) return;
+  // 谱条的小节图 + 徽章 HTML（单条带光标的 inner 与双页的两个副本共用）
+  function psStripHTML() {
     const dispH = sheetActiveH();
-    psSheetScale = dispH / (psSheet.height || 240);
     let html = '';
     psSheet.measures.forEach((m, i) => {
       const src = shPngUrl(psSheet.folder, m.file).split('/').map(encodeURIComponent).join('/');
       const w = Math.max(1, Math.round(m.w * psSheetScale));
       html += `<img class="scf-sheet-m${m.lowConf ? ' low-conf' : ''}" data-m="${i}" src="${src}" `
-        + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="lazy">`;
+        + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="eager" decoding="async">`;
     });
     psSheet.measures.forEach((m) => {
       const b = shBadge(m); if (!b) return;
       const left = Math.round(m.x0 * psSheetScale);
       html += `<span class="scf-sheet-badge" style="left:${left}px">${b}</span>`;
     });
-    html += `<div class="scf-sheet-jump" id="ps-sheet-jump"></div>`;
-    html += `<div class="scf-sheet-cursor" id="ps-sheet-cursor"></div>`;
+    return html;
+  }
+  function psBuildSheet() {
+    const inner = $('#ps-sheet-inner'); if (!inner || !psSheet) return;
+    const dispH = sheetActiveH();
+    psSheetScale = dispH / (psSheet.height || 240);
     inner.style.width = Math.round(psSheet.totalWidth * psSheetScale) + 'px';
     inner.style.height = dispH + 'px';
-    inner.innerHTML = html;
+    inner.innerHTML = psStripHTML() + '<div class="scf-sheet-jump" id="ps-sheet-jump"></div><div class="scf-sheet-cursor" id="ps-sheet-cursor"></div>';
     inner.querySelectorAll('.scf-sheet-m').forEach((img) => { img.onclick = () => psScrollSheet(+img.dataset.m, 0.5); });
     const sz = $('#ps-sheet-size'); if (sz) sz.value = dispH;
+    if (psSheet) psSheet._halfScale = null;   // 📑 缩放变了 → 双页副本下次重建
   }
   // 📖 跳转提示：光标跨入「遍数增加」或「印刷小节回退」的边界（D.C./D.S./反复跳回）时，
   // 在跳转处短暂闪一个标签（与「曲谱跟弹」同款）。注意此函数必须定义在「演奏台」闭包内——
@@ -10182,15 +10195,76 @@ function renderPlayStage() {
     for (const p of pages) { if (p.startIdx <= idx) sx = p.startX; else break; }
     return sx;
   }
-  // 把红线 + 谱条按当前模式定位。翻页：只显示当前页、红线左→右扫、到页尾翻页（红线回左、谱面不滚）；
-  // 滚动：红线钉中央、谱面子像素平滑左滚。
+  // 📑 双页模式：两个半宽槽各放一个「半页」（谱条副本）。确保 DOM 存在并按当前缩放填好。
+  function psEnsureHalf() {
+    const ribbon = $('#ps-sheet-ribbon'); if (!ribbon || !psSheet) return;
+    let half = $('#ps-half');
+    if (!half) {
+      half = document.createElement('div');
+      half.id = 'ps-half'; half.className = 'ps-half';
+      half.innerHTML = '<div class="ps-half-slot" id="ps-half-l"><div class="ps-half-strip" id="ps-half-l-strip"></div></div>'
+        + '<div class="ps-half-slot" id="ps-half-r"><div class="ps-half-strip" id="ps-half-r-strip"></div></div>'
+        + '<div class="scf-sheet-cursor" id="ps-half-cursor"></div>';
+      ribbon.appendChild(half);
+    }
+    if (psSheet._halfScale !== psSheetScale) {
+      const dispH = sheetActiveH();
+      const stripHTML = psStripHTML();
+      const ls = $('#ps-half-l-strip'), rs = $('#ps-half-r-strip');
+      if (ls) { ls.style.height = dispH + 'px'; ls.innerHTML = stripHTML; }
+      if (rs) { rs.style.height = dispH + 'px'; rs.innerHTML = stripHTML; }
+      half.style.height = dispH + 'px';
+      psSheet._halfScale = psSheetScale;
+    }
+  }
+  // 把小节按「半个视宽」贪心打包成半页，记每半页起始小节 + 起始 x。
+  function psEnsureHalfPages(wrap) {
+    const hw = (wrap.clientWidth || 2) / 2;
+    if (psSheet._hpages && psSheet._hpW === hw && psSheet._hpScale === psSheetScale) return psSheet._hpages;
+    const n = psSheet.nMeasures || psSheet.measures.length;
+    const totalRight = (psSheet.totalWidth || 0) * psSheetScale;
+    const leftOf = (i) => shCursorX(psSheet.measures, i, 0) * psSheetScale;
+    const rightOf = (i) => (i < n - 1 ? leftOf(i + 1) : totalRight);
+    const hps = [];
+    let s = 0, sX = leftOf(0);
+    for (let i = 0; i < n; i++) {
+      if (i > s && rightOf(i) - sX > hw) { hps.push({ startIdx: s, startX: sX }); s = i; sX = leftOf(i); }
+    }
+    hps.push({ startIdx: s, startX: sX });
+    psSheet._hpages = hps; psSheet._hpW = hw; psSheet._hpScale = psSheetScale;
+    return hps;
+  }
+  function psHalfIdxOf(hps, idx) {
+    let k = 0;
+    for (let i = 0; i < hps.length; i++) { if (hps[i].startIdx <= idx) k = i; else break; }
+    return k;
+  }
+  // 把红线 + 谱条按当前模式定位。page=翻页；half=双页两槽；scroll=子像素平滑左滚。
   function psPositionSheet(wrap, inner, cur, x, idx) {
     if (cur) cur.style.left = x + 'px';
-    if (psSheetPaged) {
+    if (psSheetMode === 'half') {
+      if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
+      if (wrap.scrollLeft !== 0) wrap.scrollLeft = 0;
+      if (!wrap.classList.contains('half-mode')) wrap.classList.add('half-mode');
+      psEnsureHalf();
+      const halfW = (wrap.clientWidth || 2) / 2;
+      const hps = psEnsureHalfPages(wrap);
+      const M = hps.length;
+      const k = psHalfIdxOf(hps, idx);
+      const within = x - hps[k].startX;
+      const leftIdx = (k % 2 === 0) ? k : Math.min(k + 1, M - 1);
+      const rightIdx = (k % 2 === 0) ? Math.min(k + 1, M - 1) : k;
+      const ls = $('#ps-half-l-strip'), rs = $('#ps-half-r-strip'), hc = $('#ps-half-cursor');
+      if (ls) ls.style.transform = `translateX(${-hps[leftIdx].startX}px)`;
+      if (rs) rs.style.transform = `translateX(${-hps[rightIdx].startX}px)`;
+      if (hc) hc.style.left = ((k % 2 === 0) ? within : (halfW + within)) + 'px';
+    } else if (psSheetMode === 'page') {
+      if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
       if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
       if (wrap.scrollLeft !== 0) wrap.scrollLeft = 0;
       if (inner) inner.style.transform = `translateX(${-psPageStartX(wrap, idx)}px)`;
     } else {
+      if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
       if (wrap.style.overflowX === 'hidden') wrap.style.overflowX = '';
       const maxOff = Math.max(0, wrap.scrollWidth - wrap.clientWidth);
       const off = Math.min(maxOff, Math.max(0, x - wrap.clientWidth / 2));
@@ -10565,16 +10639,19 @@ function renderPlayStage() {
     clearSheetH();
     if (psSheet) { psSheetCurIdx = -1; psBuildSheet(); psDrawSheet(psLastT || 0); }
   };
-  // 📖 翻页 / 滚动 模式切换
+  // 📖 翻页 / 📑 双页 / 📜 滚动 模式循环切换
   const psSheetModeBtn = $('#ps-sheet-mode');
-  const psUpdateModeBtn = () => { if (psSheetModeBtn) psSheetModeBtn.textContent = psSheetPaged ? '📖 翻页' : '📜 滚动'; };
+  const PS_MODES = ['page', 'half', 'scroll'];
+  const PS_MODE_LBL = { page: '📖 翻页', half: '📑 双页', scroll: '📜 滚动' };
+  const psUpdateModeBtn = () => { if (psSheetModeBtn) psSheetModeBtn.textContent = PS_MODE_LBL[psSheetMode] || '📖 翻页'; };
   psUpdateModeBtn();
   if (psSheetModeBtn) psSheetModeBtn.onclick = () => {
-    psSheetPaged = !psSheetPaged;
-    try { localStorage.setItem('ca99_ps_sheet_paged', psSheetPaged ? '1' : '0'); } catch (_) {}
+    psSheetMode = PS_MODES[(PS_MODES.indexOf(psSheetMode) + 1) % PS_MODES.length];
+    try { localStorage.setItem('ca99_ps_sheet_mode', psSheetMode); } catch (_) {}
     psUpdateModeBtn();
     const inner = $('#ps-sheet-inner'); if (inner) inner.style.transform = '';
-    if (psSheet) { psSheet._pages = null; psDrawSheet(psLastT || 0); }
+    const wrap = $('#ps-sheet-ribbon'); if (wrap) { wrap.classList.remove('half-mode'); wrap.style.overflowX = ''; wrap.scrollLeft = 0; }
+    if (psSheet) { psSheet._pages = null; psSheet._hpages = null; psSheetCurIdx = -1; psDrawSheet(psLastT || 0); }
   };
   window.addEventListener('resize', () => {
     if (psSheet && !sheetUserOverride()) { psSheetCurIdx = -1; psBuildSheet(); psDrawSheet(psLastT || 0); }
