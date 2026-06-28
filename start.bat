@@ -8,7 +8,11 @@ REM --- auto-detect this machine's LAN IP (the adapter that has a default gatewa
 set LAN_IP=
 for /f "delims=" %%i in ('powershell -NoProfile -Command "Get-NetIPConfiguration ^| Where-Object { $_.IPv4DefaultGateway -ne $null -and $_.NetAdapter.Status -eq 'Up' } ^| Select-Object -First 1 -ExpandProperty IPv4Address ^| Select-Object -ExpandProperty IPAddress" 2^>nul') do set LAN_IP=%%i
 if "%LAN_IP%"=="" set LAN_IP=127.0.0.1
-set APP_URL=http://%LAN_IP%:%APP_PORT%/
+REM ?bridge=1 forces the WebSocket MIDI bridge we launch below (so the Bluetooth
+REM BLE-MIDI CA99 is used) instead of the browser's Web MIDI -- which on
+REM localhost is the default and can't see BLE devices (shows the permission
+REM dialog + finds nothing). The bridge is always running when started this way.
+set APP_URL=http://%LAN_IP%:%APP_PORT%/?bridge=1
 
 set SCOOP_PY=%USERPROFILE%\scoop\apps\python\current\python.exe
 if exist "%SCOOP_PY%" (set PYTHON=%SCOOP_PY%) else (set PYTHON=python)
