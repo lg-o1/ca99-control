@@ -10224,6 +10224,20 @@ function renderPlayStage() {
     layout = kbBuildLayout(lo, hi);
     centerX = new Map();
     layout.keys.forEach((k) => centerX.set(k.midi, k.x + k.w / 2));
+    // 🎨 键盘按下/点亮色跟随手别：按每个键的「主手」写入 --ps-press（左手紫、右手蓝），
+    // 让屏幕琴键按下时与上方落键/谱面同色。#ps-kb 作用域的 CSS 用它替换默认霓虹青。
+    {
+      const tally = {};
+      for (const n of sf.notes) {
+        const t = tally[n.midi] || (tally[n.midi] = { l: 0, r: 0 });
+        t[n.hand === 'l' ? 'l' : 'r']++;
+      }
+      $('#ps-kb').querySelectorAll('[data-midi]').forEach((el) => {
+        const t = tally[+el.dataset.midi];
+        if (t) el.style.setProperty('--ps-press', kbHandColor(t.l > t.r ? 'l' : 'r'));
+        else el.style.removeProperty('--ps-press');
+      });
+    }
     $('#ps-hw').style.width = layout.width + 'px';
     $('#ps-title').textContent = song.title || '未命名';
     demoPlayed = new Set();
@@ -10539,7 +10553,12 @@ function renderPlayStage() {
     }
     const hint = performance.now() < psHintUntil;   // 💡 提示中 → 换更醒目的色与图标
     if (cue.length) {
-      kb.highlightMany(cue.map((n) => ({ midi: n.midi, color: hint ? '#22d3ee' : kbCueColor(), text: hint ? '💡' : '▶' })), { scroll: false });
+      kb.highlightMany(cue.map((n) => ({
+        midi: n.midi,
+        // 待弹（还没按）提示色跟随手别：左手银色、右手琥珀；按下后再各自亮成紫 / 蓝（见 --ps-press），与落键色一致
+        color: hint ? '#22d3ee' : (n.hand === 'l' ? '#cdd3de' : kbCueColor()),
+        text: hint ? '💡' : '▶',
+      })), { scroll: false });
     } else kb.clear();
   }
 
