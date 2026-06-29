@@ -9608,13 +9608,13 @@ function renderScoreFollow() {
       const within = x - hps[k].startX;
       const leftIdx = (k % 2 === 0) ? k : Math.min(k + 1, M - 1);
       const rightIdx = (k % 2 === 0) ? Math.min(k + 1, M - 1) : k;
-      // 📑 双页只放完整小节并居中：半页钉到自己整小节的宽度(overflow:hidden 不让下一小节探进来被切)，放不满两侧留空
+      // 📑 双页只放完整小节、空白挤到两侧外缘（像翻开的书）：左页靠中缝右对齐、右页靠中缝左对齐，绝不在槽边切半个小节
       const endOf = (i) => ((i < M - 1) ? hps[i + 1].startX : sheet._hpTotal);
-      const offOf = (i) => Math.max(0, (halfW - (endOf(i) - hps[i].startX)) / 2);
+      const lOff = Math.max(0, halfW - (endOf(leftIdx) - hps[leftIdx].startX));
       const ls = $('#scf-half-l-strip'), rs = $('#scf-half-r-strip'), hc = $('#scf-half-cursor');
-      if (ls) { ls.style.width = endOf(leftIdx) + 'px'; ls.style.overflow = 'hidden'; ls.style.transform = `translateX(${(offOf(leftIdx) - hps[leftIdx].startX).toFixed(1)}px)`; }
-      if (rs) { rs.style.width = endOf(rightIdx) + 'px'; rs.style.overflow = 'hidden'; rs.style.transform = `translateX(${(offOf(rightIdx) - hps[rightIdx].startX).toFixed(1)}px)`; }
-      if (hc) hc.style.left = (((k % 2 === 0) ? within : (halfW + within)) + offOf(k)) + 'px';
+      if (ls) { ls.style.width = endOf(leftIdx) + 'px'; ls.style.overflow = 'hidden'; ls.style.transform = `translateX(${(lOff - hps[leftIdx].startX).toFixed(1)}px)`; }
+      if (rs) { rs.style.width = endOf(rightIdx) + 'px'; rs.style.overflow = 'hidden'; rs.style.transform = `translateX(${(-hps[rightIdx].startX).toFixed(1)}px)`; }
+      if (hc) hc.style.left = (((k % 2 === 0) ? within + lOff : (halfW + within))) + 'px';
     } else if (scfSheetMode === 'page') {
       if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
       if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
@@ -10501,13 +10501,13 @@ function renderPlayStage() {
       const within = x - hps[k].startX;
       const leftIdx = (k % 2 === 0) ? k : Math.min(k + 1, M - 1);
       const rightIdx = (k % 2 === 0) ? Math.min(k + 1, M - 1) : k;
-      // 📑 双页只放完整小节并居中：半页钉到自己整小节的宽度(overflow:hidden 不让下一小节探进来被切)，放不满两侧留空
+      // 📑 双页只放完整小节、空白挤到两侧外缘（像翻开的书）：左页靠中缝右对齐、右页靠中缝左对齐，绝不在槽边切半个小节
       const endOf = (i) => ((i < M - 1) ? hps[i + 1].startX : psSheet._hpTotal);
-      const offOf = (i) => Math.max(0, (halfW - (endOf(i) - hps[i].startX)) / 2);
+      const lOff = Math.max(0, halfW - (endOf(leftIdx) - hps[leftIdx].startX));
       const ls = $('#ps-half-l-strip'), rs = $('#ps-half-r-strip'), hc = $('#ps-half-cursor');
-      if (ls) { ls.style.width = endOf(leftIdx) + 'px'; ls.style.overflow = 'hidden'; ls.style.transform = `translateX(${(offOf(leftIdx) - hps[leftIdx].startX).toFixed(1)}px)`; }
-      if (rs) { rs.style.width = endOf(rightIdx) + 'px'; rs.style.overflow = 'hidden'; rs.style.transform = `translateX(${(offOf(rightIdx) - hps[rightIdx].startX).toFixed(1)}px)`; }
-      if (hc) hc.style.left = (((k % 2 === 0) ? within : (halfW + within)) + offOf(k)) + 'px';
+      if (ls) { ls.style.width = endOf(leftIdx) + 'px'; ls.style.overflow = 'hidden'; ls.style.transform = `translateX(${(lOff - hps[leftIdx].startX).toFixed(1)}px)`; }
+      if (rs) { rs.style.width = endOf(rightIdx) + 'px'; rs.style.overflow = 'hidden'; rs.style.transform = `translateX(${(-hps[rightIdx].startX).toFixed(1)}px)`; }
+      if (hc) hc.style.left = (((k % 2 === 0) ? within + lOff : (halfW + within))) + 'px';
     } else if (psSheetMode === 'page') {
       if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
       if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
