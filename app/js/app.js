@@ -9757,7 +9757,7 @@ function renderScoreFollow() {
         vstyle = `filter:brightness(${br}) saturate(${sat});`;
       }
       scfHwInfo[i] = h;
-      html += `<div class="scf-note" data-i="${i}" style="left:${(cx - w / 2).toFixed(1)}px;top:0;width:${w}px;height:${h}px;${vstyle}">${fgr}${lbl}</div>`;
+      html += `<div class="scf-note" data-i="${i}" style="left:${(cx - w / 2).toFixed(1)}px;top:0;width:${w}px;height:${h}px;display:none;${vstyle}">${fgr}${lbl}</div>`;
     }
     hw.innerHTML = html;
     scfHwEls = new Array(notes.length);
