@@ -8488,6 +8488,7 @@ function renderScoreFollow() {
   let kbFirst = 60, kbLast = 72;
   let layout = null, centerX = new Map();
   let demoPlayed = new Set();
+  let demoTimers = [], demoScheduled = false;   // 🎹 真琴(蓝牙)示范：预排 note on/off，和 rAF 解耦，去掉逐帧发送的卡顿
   let labelsOn = true;      // ① 下落音符上显示音名标签
   let metroOn = false;      // ④ 节拍器（示范/跟弹跟随播放头；等待模式用自由运行的 scfBeat）
   let scfBeat = null;       // ④ 等待模式专用自由运行节拍器（播放头冻结时也持续打拍，帮孩子把握节奏）
@@ -9131,6 +9132,27 @@ function renderScoreFollow() {
   function allRealOff() {
     if (typeof kbMidiOff === 'function') realOn.forEach((m) => kbMidiOff(m, 0));
     realOn.clear();
+  }
+  // 🎹 真琴(蓝牙)示范预排：开播时把每个音的 on/off 排成定时器，与 rAF 解耦——不再被谱面/高速路重绘掉帧带卡；
+  // 同一时刻的和弦合成一个 tick 发出，减少 BLE-MIDI 包数、降抖。frame() 仍负责点屏幕键。
+  function clearRealDemo() {
+    demoTimers.forEach((id) => clearTimeout(id)); demoTimers = [];
+    demoScheduled = false;
+  }
+  function scheduleRealDemo() {
+    clearRealDemo();
+    const now = performance.now();
+    const byMs = new Map();
+    for (const n of sf.notes) { let g = byMs.get(n.ms); if (!g) byMs.set(n.ms, g = []); g.push(n); }
+    for (const [ms, ns] of byMs) {
+      const on = t0 + ms - now; if (on < -50) continue;
+      demoTimers.push(setTimeout(() => { for (const n of ns) { try { if (realOn.has(n.midi)) kbMidiOff(n.midi, 0); kbMidiOn(n.midi, 0, Math.max(1, Math.min(127, n.velocity || 82))); realOn.add(n.midi); } catch (_) {} } }, Math.max(0, on)));
+      for (const n of ns) {
+        const off = on + Math.max(120, Math.min(2200, n.durMs || 400));
+        demoTimers.push(setTimeout(() => { try { if (realOn.has(n.midi)) { kbMidiOff(n.midi, 0); realOn.delete(n.midi); } } catch (_) {} }, Math.max(0, off)));
+      }
+    }
+    demoScheduled = true;
   }
 
   // ⑦ 完成后落点时间对比图：每个音画在"准点线"上下，抢拍在上、拖拍在下
@@ -9826,6 +9848,7 @@ function renderScoreFollow() {
         if (!demoPlayed.has(n.i) && !(loopOn && n.judged && n.grade == null) && t >= n.ms) {
           demoPlayed.add(n.i);
           scfKb.flash(n.midi, kbHandColor(n.hand));
+          if (demoScheduled) continue;                 // 真琴音已预排好（定时器发）→ 这里只点屏幕键
           if (realPiano && midiOutReady()) {
             realNoteOn(n.midi, n.velocity, n.durMs);   // 真琴就绪 → 仅真琴发声（音色更真）
           } else {
@@ -9941,6 +9964,7 @@ function renderScoreFollow() {
     } else { // demo
       t0 = performance.now() - lead0;
       scfOnNote = null;
+      if (realPiano && midiOutReady() && !loopOn) scheduleRealDemo();   // 🎹 真琴(蓝牙)：预排 on/off，去掉逐帧发送卡顿
       $('#scf-feedback').textContent = '🔊 示范播放中，看音符怎么落、听旋律…';
       $('#scf-feedback').className = 'sight-feedback';
     }
@@ -9958,6 +9982,7 @@ function renderScoreFollow() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     stopScfBeat();   // ④ 关掉等待模式的自由节拍
+    clearRealDemo();   // 🎹 取消还没发的预排真琴音
     allRealOff();   // ④ 关掉所有真琴上还响着的音
     const wasScored = mode === 'practice' || mode === 'wait';
     mode = null; scfOnNote = null;
@@ -9987,6 +10012,7 @@ function renderScoreFollow() {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     stopScfBeat();   // ④ 关掉等待模式的自由节拍
+    clearRealDemo();   // 🎹 取消还没发的预排真琴音
     allRealOff();   // ④ 关掉所有真琴上还响着的音
     const wasScored = mode === 'practice' || mode === 'wait';
     const wasWait = mode === 'wait';
@@ -10061,7 +10087,7 @@ function renderPlayStage() {
   let demoPlayed = new Set();
   const realOn = new Set();
   // ⚡ 预排到音频时钟的振荡器（纯 web 示范）：起奏采样级精确，不受掉帧影响
-  let demoOscs = [], demoAudioScheduled = false;
+  let demoOscs = [], demoAudioScheduled = false, demoTimers = [];
   // 🐢 等待练习：播放头推进到当前音组就冻结，弹对整组才继续；🌟 容差通过 = 音高差≤2半音也帮过
   let psGroups = [], psWaitIdx = 0, psFrozen = false, psWaitClock = 0, psLastNow = 0, psHintUntil = 0;
   let psWaitTolerant = true;
@@ -10190,11 +10216,29 @@ function renderPlayStage() {
   function clearDemoAudio() {
     demoOscs.forEach((o) => { try { o.stop(); } catch (_) {} try { o.disconnect(); } catch (_) {} });
     demoOscs = [];
+    demoTimers.forEach((id) => clearTimeout(id)); demoTimers = [];
+    if (demoAudioScheduled) allRealOff();   // 取消预排的真琴音（中途停止不留响）
     demoAudioScheduled = false;
+  }
+  // 🎹 真琴(蓝牙)示范：开播时把每个音的 on/off 预排成定时器，与 rAF 解耦——不再被谱面/高速路重绘掉帧带卡；
+  // 同一时刻的和弦合成一个 tick 发出，减少 BLE-MIDI 包数、降抖动。
+  function scheduleRealDemo() {
+    const now = performance.now();
+    const byMs = new Map();
+    for (const n of sf.notes) { let g = byMs.get(n.ms); if (!g) byMs.set(n.ms, g = []); g.push(n); }
+    for (const [ms, ns] of byMs) {
+      const on = t0 + ms - now; if (on < -50) continue;
+      demoTimers.push(setTimeout(() => { for (const n of ns) { try { kbMidiOn(n.midi, 0, Math.max(1, Math.min(127, n.velocity || 82))); realOn.add(n.midi); } catch (_) {} } }, Math.max(0, on)));
+      for (const n of ns) {
+        const off = on + Math.max(120, Math.min(2200, n.durMs || 400));
+        demoTimers.push(setTimeout(() => { try { if (realOn.has(n.midi)) { kbMidiOff(n.midi, 0); realOn.delete(n.midi); } } catch (_) {} }, Math.max(0, off)));
+      }
+    }
+    demoAudioScheduled = true;
   }
   function scheduleDemoAudio() {
     clearDemoAudio();
-    if (realPiano && midiOutReady()) return;   // 真琴发声 → 不预排，仍由 frame() 逐音触发
+    if (realPiano && midiOutReady()) { scheduleRealDemo(); return; }   // 真琴也预排（定时器），去掉逐帧发送的卡顿
     let ctx;
     try { _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)(); ctx = _audioCtx; } catch (_) { return; }
     if (ctx.state === 'suspended') { try { ctx.resume(); } catch (_) {} }
