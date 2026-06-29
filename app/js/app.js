@@ -9775,7 +9775,7 @@ function renderScoreFollow() {
     for (let i = 0; i < notes.length; i++) {
       const el = scfHwEls[i]; if (!el) continue;
       const n = notes[i];
-      const hidden = (loopOn && mode && n.judged && n.grade == null);   // ③ 循环：窗外被屏蔽的音
+      const hidden = !mode || (loopOn && n.judged && n.grade == null);   // 未播放→全收起(不留悬空预备块)；③ 循环：窗外被屏蔽的音
       const dt = n.ms - t;
       if (hidden || dt > LOOK_MS || dt < -260) { if (scfHwVisible[i]) { el.style.display = 'none'; scfHwVisible[i] = false; } continue; }
       const h = scfHwInfo[i];
@@ -10640,7 +10640,7 @@ function renderPlayStage() {
       const el = hwEls[i]; if (!el) continue;
       const n = notes[i];
       const dt = n.ms - t;
-      if (dt > LOOK_MS || dt < -260) {                     // 出窗 → 隐藏
+      if (!mode || dt > LOOK_MS || dt < -260) {            // 未播放→全收起(不留悬空预备块)；出窗→隐藏
         if (hwVisible[i]) { el.style.display = 'none'; hwVisible[i] = false; }
         continue;
       }
