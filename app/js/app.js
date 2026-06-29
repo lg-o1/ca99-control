@@ -8500,6 +8500,8 @@ function renderScoreFollow() {
   let lastDrawT = 0;        // 最近一次绘制的播放头时间（标签切换时重绘用）
   // ⚡ 五线谱缓存（与演奏台同款）：音符位置静态，载入时整段画一次，每帧只移光标 + 同步判定色
   let scfStaffBuilt = false, scfStaffCursor = null, scfStaffWrap = null, scfStaffNoteEls = [], scfStaffNoteGrade = [];
+  // ⚡ 高速路池化（与演奏台同款）：所有音块载入时建一次，每帧只 transform 下移 + 仅判定色变时改 class
+  let scfHwBuilt = false, scfHwEls = [], scfHwInfo = [], scfHwLastCls = [], scfHwVisible = [];
   let sheet = null;         // 📖 课本谱面（解析后的 index + 累计宽度 + folder）
   let sheetPath = null;     // 当前已载入的谱面路径（同曲复用，避免预听时谱面闪一下）
   let sheetScale = 1;       // 谱面源像素 → 显示像素的缩放
@@ -8830,7 +8832,7 @@ function renderScoreFollow() {
     const s = getCurrentSong();
     const wb = $('#scf-wait');
     if (s.beginner) {
-      if (!labelsOn) { labelsOn = true; const lb = $('#scf-aux-labels'); if (lb) lb.classList.add('on'); if (sf) drawHighway(lastDrawT); }
+      if (!labelsOn) { labelsOn = true; const lb = $('#scf-aux-labels'); if (lb) lb.classList.add('on'); scfHwBuilt = false; if (sf) drawHighway(lastDrawT); }
       if (wb) wb.classList.add('beginner-pulse');
       const fb = $('#scf-feedback');
       const hasFgr = Array.isArray(s.seq) && s.seq.some((e) => e[2] != null);
@@ -8879,11 +8881,11 @@ function renderScoreFollow() {
     b.classList.toggle('on', get());
     b.onclick = () => { set(!get()); b.classList.toggle('on', get()); };
   }
-  bindToggle('#scf-aux-labels', () => labelsOn, (v) => { labelsOn = v; if (sf) drawHighway(lastDrawT); });
+  bindToggle('#scf-aux-labels', () => labelsOn, (v) => { labelsOn = v; scfHwBuilt = false; if (sf) drawHighway(lastDrawT); });
   bindToggle('#scf-aux-metro', () => metroOn, (v) => { metroOn = v; if (mode === 'wait') { v ? startScfBeat() : stopScfBeat(); } });
   bindToggle('#scf-aux-tol', () => waitTolerant, (v) => { waitTolerant = v; });
   bindToggle('#scf-aux-prog', () => progSpeed, (v) => { progSpeed = v; updateMeta(); });
-  bindToggle('#scf-aux-velviz', () => velViz, (v) => { velViz = v; if (sf) drawHighway(lastDrawT); });
+  bindToggle('#scf-aux-velviz', () => velViz, (v) => { velViz = v; scfHwBuilt = false; if (sf) drawHighway(lastDrawT); });
   bindToggle('#scf-aux-fx', () => fxOn, (v) => { fxOn = v; });
   bindToggle('#scf-aux-real', () => realPiano, (v) => { realPiano = v; if (!v) allRealOff(); });
   $('#scf-metro-sound').onchange = (e) => { setMetroSound(e.target.value); playMetroClick('accent'); };
@@ -9467,6 +9469,7 @@ function renderScoreFollow() {
     updateMeta();
     drawLoopControls();
     scfStaffBuilt = false;   // ⚡ 新引擎 → 五线谱整段重建一次
+    scfHwBuilt = false;      // ⚡ 新引擎 → 高速路整段重建一次
     drawStaff(-LEAD_MS);
     drawHighway(-LEAD_MS);
     refreshStats();
@@ -9731,44 +9734,59 @@ function renderScoreFollow() {
   }
 
   // ---- 下落高速路（Synthesia）----
-  function drawHighway(t) {
-    if (!sf) return;
-    lastDrawT = t;
-    const pxPerMs = HW_H / LOOK_MS;
-    let html = '';
-    for (const n of sf.notes) {
-      if (loopOn && mode && n.judged && n.grade == null) continue;   // ③ 循环：隐藏窗外被屏蔽的音
-      const dt = n.ms - t;            // >0 在上方未到，=0 到判定线
-      if (dt > LOOK_MS || dt < -260) continue;
-      const cx = centerX.get(n.midi);
-      if (cx == null) continue;
+  // ⚡ 池化：音块的位置/宽高/标签都是静态，载入时建一次；每帧只改 transform 与判定色 class
+  function buildHwScf() {
+    const hw = $('#scf-highway'); if (!hw || !sf) return;
+    const notes = sf.notes; const pxPerMs = HW_H / LOOK_MS;
+    scfHwInfo = new Array(notes.length); let html = '';
+    for (let i = 0; i < notes.length; i++) {
+      const n = notes[i]; n.i = i;
+      const cx = centerX.get(n.midi); if (cx == null) { scfHwInfo[i] = null; continue; }
       const isBlack = [1, 3, 6, 8, 10].includes(((n.midi % 12) + 12) % 12);
       const w = isBlack ? layout.blackW : layout.whiteW - 3;
       const h = Math.max(14, n.durMs * pxPerMs);
-      const top = HW_H - dt * pxPerMs - h;
+      const lbl = (labelsOn && sf._handOk(n) && h >= 15) ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
+      const fgr = (labelsOn && sf._handOk(n) && n.finger != null && h >= 15) ? `<span class="scf-note-fgr">${n.finger}</span>` : '';
+      let vstyle = '';
+      if (velViz && n.velocity != null && sf._handOk(n)) {
+        const br = (0.62 + (n.velocity / 127) * 0.66).toFixed(2);
+        const sat = (0.85 + (n.velocity / 127) * 0.5).toFixed(2);
+        vstyle = `filter:brightness(${br}) saturate(${sat});`;
+      }
+      scfHwInfo[i] = h;
+      html += `<div class="scf-note" data-i="${i}" style="left:${(cx - w / 2).toFixed(1)}px;top:0;width:${w}px;height:${h}px;${vstyle}">${fgr}${lbl}</div>`;
+    }
+    hw.innerHTML = html;
+    scfHwEls = new Array(notes.length);
+    hw.querySelectorAll('.scf-note').forEach((el) => { scfHwEls[+el.dataset.i] = el; });
+    scfHwLastCls = new Array(notes.length).fill('');
+    scfHwVisible = new Array(notes.length).fill(false);
+    scfHwBuilt = true;
+  }
+  function drawHighway(t) {
+    if (!sf) return;
+    lastDrawT = t;
+    if (!scfHwBuilt) buildHwScf();
+    const pxPerMs = HW_H / LOOK_MS;
+    const notes = sf.notes;
+    for (let i = 0; i < notes.length; i++) {
+      const el = scfHwEls[i]; if (!el) continue;
+      const n = notes[i];
+      const hidden = (loopOn && mode && n.judged && n.grade == null);   // ③ 循环：窗外被屏蔽的音
+      const dt = n.ms - t;
+      if (hidden || dt > LOOK_MS || dt < -260) { if (scfHwVisible[i]) { el.style.display = 'none'; scfHwVisible[i] = false; } continue; }
+      const h = scfHwInfo[i];
+      el.style.transform = `translateY(${(HW_H - dt * pxPerMs - h).toFixed(1)}px)`;
+      if (!scfHwVisible[i]) { el.style.display = ''; scfHwVisible[i] = true; }
       let cls = 'scf-note';
-      if (!sf._handOk(n)) cls += ' n-dim';                 // 非当前练习手 → 淡显
-      else if (n.hand === 'l') cls += ' n-left';           // 左手音符 → 不同色
+      if (!sf._handOk(n)) cls += ' n-dim';
+      else if (n.hand === 'l') cls += ' n-left';
       if (n.grade === SCF_GRADE.PERFECT) cls += ' n-perfect';
       else if (n.grade === SCF_GRADE.GOOD) cls += ' n-good';
       else if (n.grade === SCF_GRADE.MISS) cls += ' n-miss';
       else if (sf._handOk(n) && Math.abs(dt) <= sf.goodMs) cls += ' n-due';
-      // ① 音名标签：块够高且开关打开时，把音名写在音符上
-      const lbl = (labelsOn && sf._handOk(n) && h >= 15)
-        ? `<span class="scf-note-lbl">${midiName(n.midi)}</span>` : '';
-      // 🐣 手指号：启蒙曲目带 finger（1=拇指…5=小指）时，在块顶画一个指法圆点
-      const fgr = (labelsOn && sf._handOk(n) && n.finger != null && h >= 15 && n.grade == null)
-        ? `<span class="scf-note-fgr">${n.finger}</span>` : '';
-      // ② 力度→亮度：上传 MIDI 自带 velocity 时，强音更亮、弱音更暗（仅未判定的音）
-      let vstyle = '';
-      if (velViz && n.velocity != null && n.grade == null && sf._handOk(n)) {
-        const br = (0.62 + (n.velocity / 127) * 0.66).toFixed(2); // 0.62~1.28
-        const sat = (0.85 + (n.velocity / 127) * 0.5).toFixed(2);
-        vstyle = `filter:brightness(${br}) saturate(${sat});`;
-      }
-      html += `<div class="${cls}" style="left:${cx - w / 2}px;top:${top}px;width:${w}px;height:${h}px;${vstyle}">${fgr}${lbl}</div>`;
+      if (cls !== scfHwLastCls[i]) { el.className = cls; scfHwLastCls[i] = cls; }
     }
-    $('#scf-highway').innerHTML = html;
     // 键盘高亮：等待模式高亮"当前该弹的整组"，其余模式高亮判定窗内的音
     let cue = [];
     if (mode === 'wait' && frozen && groups[waitIdx]) {
