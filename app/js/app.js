@@ -8489,6 +8489,7 @@ function renderScoreFollow() {
   let layout = null, centerX = new Map();
   let demoPlayed = new Set();
   let demoTimers = [], demoScheduled = false;   // 🎹 真琴(蓝牙)示范：预排 note on/off，和 rAF 解耦，去掉逐帧发送的卡顿
+  let demoOscs = [];        // ⚡ 纯-web 示范：预排到音频时钟的振荡器，起奏采样级精确不掉帧
   let labelsOn = true;      // ① 下落音符上显示音名标签
   let metroOn = false;      // ④ 节拍器（示范/跟弹跟随播放头；等待模式用自由运行的 scfBeat）
   let scfBeat = null;       // ④ 等待模式专用自由运行节拍器（播放头冻结时也持续打拍，帮孩子把握节奏）
@@ -9137,6 +9138,7 @@ function renderScoreFollow() {
   // 同一时刻的和弦合成一个 tick 发出，减少 BLE-MIDI 包数、降抖。frame() 仍负责点屏幕键。
   function clearRealDemo() {
     demoTimers.forEach((id) => clearTimeout(id)); demoTimers = [];
+    demoOscs.forEach((o) => { try { o.stop(); } catch (_) {} try { o.disconnect(); } catch (_) {} }); demoOscs = [];
     demoScheduled = false;
   }
   function scheduleRealDemo() {
@@ -9151,6 +9153,28 @@ function renderScoreFollow() {
         const off = on + Math.max(120, Math.min(2200, n.durMs || 400));
         demoTimers.push(setTimeout(() => { try { if (realOn.has(n.midi)) { kbMidiOff(n.midi, 0); realOn.delete(n.midi); } } catch (_) {} }, Math.max(0, off)));
       }
+    }
+    demoScheduled = true;
+  }
+  // ⚡ 纯-web 示范：开播时把所有音符按音频时钟 osc.start(绝对时刻) 一次性预排，起奏采样级精确、不受掉帧影响（与演奏台同款）
+  function scheduleWebDemo() {
+    clearRealDemo();
+    let ctx;
+    try { _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)(); ctx = _audioCtx; } catch (_) { return; }
+    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (_) {} }
+    const anchor = ctx.currentTime + (t0 - performance.now()) / 1000;
+    for (const n of sf.notes) {
+      const at = anchor + n.ms / 1000;
+      if (at <= ctx.currentTime) continue;
+      const dur = Math.min(0.9, (n.durMs || 400) / 1000);
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle'; osc.frequency.value = midiToFreq(n.midi);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(0.2, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(at); osc.stop(at + dur + 0.02);
+      demoOscs.push(osc);
     }
     demoScheduled = true;
   }
@@ -9964,7 +9988,7 @@ function renderScoreFollow() {
     } else { // demo
       t0 = performance.now() - lead0;
       scfOnNote = null;
-      if (realPiano && midiOutReady() && !loopOn) scheduleRealDemo();   // 🎹 真琴(蓝牙)：预排 on/off，去掉逐帧发送卡顿
+      if (!loopOn) { if (realPiano && midiOutReady()) scheduleRealDemo(); else scheduleWebDemo(); }   // 🎹 真琴(蓝牙)/纯web 都预排，去掉逐帧发送/逐帧 playTone 的卡顿
       $('#scf-feedback').textContent = '🔊 示范播放中，看音符怎么落、听旋律…';
       $('#scf-feedback').className = 'sight-feedback';
     }
