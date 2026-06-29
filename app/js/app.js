@@ -9586,7 +9586,7 @@ function renderScoreFollow() {
       if (i > s && rightOf(i) - sX > hw) { hps.push({ startIdx: s, startX: sX }); s = i; sX = leftOf(i); }
     }
     hps.push({ startIdx: s, startX: sX });
-    sheet._hpages = hps; sheet._hpW = hw; sheet._hpScale = sheetScale;
+    sheet._hpages = hps; sheet._hpW = hw; sheet._hpScale = sheetScale; sheet._hpTotal = totalRight;
     return hps;
   }
   function scfHalfIdxOf(hps, idx) {
@@ -9608,10 +9608,12 @@ function renderScoreFollow() {
       const within = x - hps[k].startX;
       const leftIdx = (k % 2 === 0) ? k : Math.min(k + 1, M - 1);
       const rightIdx = (k % 2 === 0) ? Math.min(k + 1, M - 1) : k;
+      // 📑 双页只放完整小节并居中：放不满的半页两侧留空，绝不在槽边截断半个小节
+      const offOf = (i) => Math.max(0, (halfW - (((i < M - 1) ? hps[i + 1].startX : sheet._hpTotal) - hps[i].startX)) / 2);
       const ls = $('#scf-half-l-strip'), rs = $('#scf-half-r-strip'), hc = $('#scf-half-cursor');
-      if (ls) ls.style.transform = `translateX(${-hps[leftIdx].startX}px)`;
-      if (rs) rs.style.transform = `translateX(${-hps[rightIdx].startX}px)`;
-      if (hc) hc.style.left = ((k % 2 === 0) ? within : (halfW + within)) + 'px';
+      if (ls) ls.style.transform = `translateX(${(offOf(leftIdx) - hps[leftIdx].startX).toFixed(1)}px)`;
+      if (rs) rs.style.transform = `translateX(${(offOf(rightIdx) - hps[rightIdx].startX).toFixed(1)}px)`;
+      if (hc) hc.style.left = (((k % 2 === 0) ? within : (halfW + within)) + offOf(k)) + 'px';
     } else if (scfSheetMode === 'page') {
       if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
       if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
@@ -10475,7 +10477,7 @@ function renderPlayStage() {
       if (i > s && rightOf(i) - sX > hw) { hps.push({ startIdx: s, startX: sX }); s = i; sX = leftOf(i); }
     }
     hps.push({ startIdx: s, startX: sX });
-    psSheet._hpages = hps; psSheet._hpW = hw; psSheet._hpScale = psSheetScale;
+    psSheet._hpages = hps; psSheet._hpW = hw; psSheet._hpScale = psSheetScale; psSheet._hpTotal = totalRight;
     return hps;
   }
   function psHalfIdxOf(hps, idx) {
@@ -10498,10 +10500,12 @@ function renderPlayStage() {
       const within = x - hps[k].startX;
       const leftIdx = (k % 2 === 0) ? k : Math.min(k + 1, M - 1);
       const rightIdx = (k % 2 === 0) ? Math.min(k + 1, M - 1) : k;
+      // 📑 双页只放完整小节并居中：放不满的半页两侧留空，绝不在槽边截断半个小节
+      const offOf = (i) => Math.max(0, (halfW - (((i < M - 1) ? hps[i + 1].startX : psSheet._hpTotal) - hps[i].startX)) / 2);
       const ls = $('#ps-half-l-strip'), rs = $('#ps-half-r-strip'), hc = $('#ps-half-cursor');
-      if (ls) ls.style.transform = `translateX(${-hps[leftIdx].startX}px)`;
-      if (rs) rs.style.transform = `translateX(${-hps[rightIdx].startX}px)`;
-      if (hc) hc.style.left = ((k % 2 === 0) ? within : (halfW + within)) + 'px';
+      if (ls) ls.style.transform = `translateX(${(offOf(leftIdx) - hps[leftIdx].startX).toFixed(1)}px)`;
+      if (rs) rs.style.transform = `translateX(${(offOf(rightIdx) - hps[rightIdx].startX).toFixed(1)}px)`;
+      if (hc) hc.style.left = (((k % 2 === 0) ? within : (halfW + within)) + offOf(k)) + 'px';
     } else if (psSheetMode === 'page') {
       if (wrap.classList.contains('half-mode')) wrap.classList.remove('half-mode');
       if (wrap.style.overflowX !== 'hidden') wrap.style.overflowX = 'hidden';
