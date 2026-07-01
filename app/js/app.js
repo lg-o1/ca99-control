@@ -316,6 +316,9 @@ const microStars = new MicroStars({
   storage: (typeof localStorage !== 'undefined') ? localStorage : undefined,
 });
 let microStarsOnUpdate = null; // 成长之星刷新回调（🌟 模块注册）
+// 🔇 全局关闭「解锁 / 升级 / 通关 / 盲盒」等庆祝弹窗、擒花、真琴华彩——这些会打断弹琴。
+// 成绩 / 奖牌 / 经验 / 图鉴仍照常静默累计（只是不弹窗）。
+const CELEBRATIONS_OFF = true;
 // 用某技能的最新累计练对数刷新微星；新点亮星时撒花 + 飘字庆祝
 function syncMicroStars(moduleId, label) {
   const m = practiceStats.moduleStats().find((x) => x.id === moduleId);
@@ -395,6 +398,7 @@ function renderDailyStrip() {
 
 // 解锁成就时主动庆祝（飘字 + 全屏撒花），不再只写日志
 function achievementCelebrate(a) {
+  if (CELEBRATIONS_OFF) return;
   cheerToast(`🏅 解锁成就：${a.icon} ${a.name}！`, null);
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:35';
@@ -431,6 +435,7 @@ function recordPractice(moduleId, label, attempts, correct, bestStreak) {
 // ---------- 通用庆祝特效（撒花 + 鼓励飘字）：任意模块可复用 ----------
 const CHEER_WORDS = ['太棒了！', '完美！', '好厉害！', '继续保持！', '你真行！', '超级棒！', '弹得真好！', '漂亮！🎵'];
 function cheerBurst(host, n = 70) {
+  if (CELEBRATIONS_OFF) return;
   if (!host) return;
   if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
   const colors = ['#34d399', '#22d3ee', '#fbbf24', '#fb7185', '#a78bfa', '#f472b6', '#60a5fa'];
@@ -448,6 +453,7 @@ function cheerBurst(host, n = 70) {
   setTimeout(() => layer.remove(), 2600);
 }
 function cheerToast(text, host) {
+  if (CELEBRATIONS_OFF) return;
   const el = document.createElement('div');
   el.className = 'cheer-toast';
   el.textContent = text || CHEER_WORDS[Math.floor(Math.random() * CHEER_WORDS.length)];
@@ -462,6 +468,7 @@ function cheerToast(text, host) {
 // 仅奖励用，绝不参与判分；未连真琴则用电脑发声，行为优雅降级。
 let _victoryBusy = false;
 function victoryLightShow(host, opts = {}) {
+  if (CELEBRATIONS_OFF) return;
   // 屏幕撒花（永远有）
   try { cheerBurst(host || document.body, opts.confetti || 90); } catch (_) {}
   if (opts.toast !== false) { try { cheerToast(opts.text || '🌈 通关啦！太棒了！', host); } catch (_) {} }
@@ -544,6 +551,7 @@ function mysteryRoll() {
 
 // 开盒揭晓：全屏盒子弹跳 → 蹦出音色卡 + 撒花
 function mysteryReveal(sound) {
+  if (CELEBRATIONS_OFF) return;
   const name = sound ? sound.name : '神秘音色';
   const stats = mysteryBox.stats(mysteryPool);
   const overlay = document.createElement('div');
@@ -8951,6 +8959,7 @@ function renderScoreFollow() {
 
   // ① 三星庆祝彩屑：在舞台里撒一阵彩色碎片（纯 DOM，自动清理）
   function fireConfetti() {
+    if (CELEBRATIONS_OFF) return;
     const host = root.querySelector('.scf-highway-wrap');
     if (!host) return;
     const colors = ['#34d399', '#22d3ee', '#fbbf24', '#f87171', '#a78bfa', '#f472b6'];
