@@ -2024,6 +2024,15 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .pd-result.ok { background: rgba(52,211,153,.16); color: #34d399; border: 1px solid rgba(52,211,153,.35); }
 .pd-result.no { background: rgba(244,63,94,.14);  color: #fb7185; border: 1px solid rgba(244,63,94,.32); }
 
+/* 🎹 黑键地图 (Black-Key Map) */
+.bk-prompt {
+  text-align: center; font-size: 20px; font-weight: 700; color: var(--text);
+  margin: 10px 0 12px; padding: 14px 16px; border-radius: 12px; line-height: 1.5;
+  background: linear-gradient(135deg, rgba(102,126,234,.14), rgba(168,85,247,.12));
+  border: 1px solid rgba(255,255,255,.10);
+}
+.bk-prompt b { color: #a5b4fc; }
+
 /* ========== 🎼 五线谱播放器（staff-view）========== */
 .sv-wrap {
   margin: 10px 0 6px; border-radius: 14px; overflow: hidden;

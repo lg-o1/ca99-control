@@ -37,6 +37,7 @@ import { ECHO_LEVELS as ME_LEVELS, levelById as meLevelById, MelodyEcho } from '
 import { CR_LEVELS, levelById as crLevelById, CallResponse } from './call-response.js';
 import { RHYTHM_LEVELS as RE_LEVELS, levelById as reLevelById, durName as reDurName, RhythmEcho } from './rhythm-echo.js';
 import { PD_LEVELS, levelById as pdLevelById, dirName as pdDirName, PitchDirection } from './pitch-direction.js';
+import { BK_LEVELS, levelById as bkLevelById, BlackKeyMap } from './black-key-map.js';
 import { BeatStability } from './beat-stability.js';
 import { HandsSync, DEFAULT_SPLIT } from './hands-sync.js';
 import { ArpeggioRuns, CHORD_INTERVALS, QUALITY_LABELS, midiName } from './arpeggio-runs.js';
@@ -220,6 +221,7 @@ let melEchoOnNote = null;    // 旋律回声记忆游戏的 note-on 回调（模
 let callRespOnNote = null;   // 即兴问答的 note-on 回调（模块61注册）
 let rhythmEchoTap = null;    // 节奏回声的击打回调（模块62注册，任意 note-on 当一次敲击）
 let pitchDirOnNote = null;   // 高低音方向感的 note-on 回调（模块63注册）
+let blackKeyOnNote = null;   // 黑键地图的 note-on 回调（模块注册）
 let staffWarsOnNote = null;  // 🚀 看谱击落的 note-on 回调（注册）
 let dropsOnNote = null;      // 🫧 接音水滴的 note-on 回调（注册）
 let cofPuzzleOnNote = null;  // 🧩 五度圈拼图的 note-on 回调（注册）
@@ -814,6 +816,8 @@ function onMidiIn(bytes) {
     if (rhythmEchoTap) rhythmEchoTap();
     // 驱动高低音方向感
     if (pitchDirOnNote) pitchDirOnNote(m.note);
+    // 驱动黑键地图
+    if (blackKeyOnNote) blackKeyOnNote(m.note);
     // 驱动 🚀 看谱击落（Staff Wars）
     if (staffWarsOnNote) staffWarsOnNote(m.note);
     // 驱动 🫧 接音水滴（Drops）
@@ -14537,6 +14541,130 @@ function renderPitchDirection() {
   pitchDirOnNote = (midi) => feed(midi);
 }
 
+// ========== 模块: 🎹 黑键地图（用黑键分组认键盘，零基础键盘地理）==========
+function renderBlackKeyMap() {
+  const root = $('#module-blackkey');
+  let levelId = BK_LEVELS[0].id;
+
+  root.innerHTML = `
+    <h2 style="margin-bottom:6px">🎹 黑键地图</h2>
+    <p style="color:var(--muted);margin-bottom:14px"><b>零基础键盘地理第一课</b>：钢琴的黑键永远<b>「2 个一组」和「3 个一组」</b>交替排列，这是导航整个键盘的<b>视觉地标</b>。认得它，不用记音名也能秒找到音：<b>2 个黑键</b>——左边白键=<b>C</b>、正中间=<b>D</b>、右边=<b>E</b>；<b>3 个黑键</b>——左边=<b>F</b>、右边=<b>B</b>。玩法：屏幕出一句提示，你在琴上弹<b>任意一个</b>符合的键就算对（<b>音区随你</b>，全键盘哪个八度都行）。这比「认音名」更早一步，是识谱之前的<b>地基</b>。答对<b>连击 +1</b> 🔥</p>
+
+    <div class="card-panel">
+      <div class="param-row"><label>难度</label>
+        <div id="bk-levels" class="ear-chips">${BK_LEVELS.map(l => `<button class="ear-chip${l.id === levelId ? ' on' : ''}" data-l="${l.id}">${l.name}</button>`).join('')}</div>
+      </div>
+    </div>
+
+    <div class="card-panel">
+      <div id="bk-banner" class="me-banner">点 <b>▶ 出题</b>，看提示在琴上找到那个键 🎹</div>
+      <div id="bk-prompt" class="bk-prompt">准备好了吗？</div>
+      <div id="bk-result" class="pd-result" style="display:none"></div>
+      <div id="bk-kb" class="me-kb"></div>
+    </div>
+
+    <div class="sight-stats">
+      <div class="sight-stat"><div id="bk-streak" class="sight-stat-num">0</div><div class="sight-stat-lbl">当前连击</div></div>
+      <div class="sight-stat"><div id="bk-best" class="sight-stat-num">0</div><div class="sight-stat-lbl">最佳连击</div></div>
+      <div class="sight-stat"><div id="bk-acc" class="sight-stat-num">—</div><div class="sight-stat-lbl">正确率</div></div>
+    </div>
+
+    <div class="rotate-bar">
+      <button id="bk-ask" class="big-btn">▶ 出题</button>
+      <button id="bk-hint" class="big-btn" style="background:#667eea" disabled>💡 在键盘上指给我看</button>
+    </div>`;
+
+  let game = null, kb = null, ac = null;
+  const bannerEl = $('#bk-banner');
+  const promptEl = $('#bk-prompt'), resultEl = $('#bk-result');
+  const streakEl = $('#bk-streak'), bestEl = $('#bk-best'), accEl = $('#bk-acc');
+  const askBtn = $('#bk-ask'), hintBtn = $('#bk-hint');
+
+  function ctx() { if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)(); return ac; }
+  function band(cls, html) { bannerEl.className = 'me-banner' + (cls ? ' ' + cls : ''); bannerEl.innerHTML = html; }
+  function curLevel() { return bkLevelById(levelId); }
+
+  function ensureKb() {
+    if (kb) return;
+    kb = new PianoKeyboard($('#bk-kb'), {
+      labels: 'c',
+      onNoteOn: (m) => { try { playTone(midiToFreq(m), 0, 0.5, 0.2); } catch (_) { /* ignore */ } feed(m); },
+    });
+    if (kb.scrollToShow) kb.scrollToShow(55, 79);
+  }
+
+  function updateStats() {
+    streakEl.textContent = game ? game.streak : 0;
+    bestEl.textContent = game ? game.best : 0;
+    accEl.textContent = game && game.attempts ? Math.round(game.accuracy() * 100) + '%' : '—';
+  }
+
+  // 在中央区找出该题所有合法键，淡淡标出来（提示用）
+  function legalMidisInView() {
+    if (!game || !game.task) return [];
+    const out = [];
+    for (let m = 48; m <= 84; m++) if (game.task.pcs.includes(((m % 12) + 12) % 12)) out.push(m);
+    return out;
+  }
+
+  function showHint() {
+    if (!kb || !game || !game.task) return;
+    const ms = legalMidisInView();
+    if (kb.highlightMany) {
+      kb.clear();
+      kb.highlightMany(ms.map(m => ({ midi: m, color: '#22d3ee', text: '' })));
+    }
+    ms.forEach((m, i) => setTimeout(() => kb.flash(m, '#22d3ee'), i * 90));
+  }
+
+  function ask() {
+    ensureKb();
+    if (!game) game = new BlackKeyMap({ level: curLevel() });
+    game.setLevel(curLevel());
+    const t = game.next();
+    if (typeof window !== 'undefined') window.__bkGame = game;
+    if (kb) kb.clear();
+    resultEl.style.display = 'none';
+    promptEl.innerHTML = t.prompt;
+    band('input', '🎹 在琴上弹一个符合的键（音区随你）');
+    hintBtn.disabled = false;
+    askBtn.textContent = '▶ 下一题';
+  }
+
+  function feed(note) {
+    if (!game || game.state !== 'ask') return;
+    const j = game.answer(note);
+    if (!j) return;
+    updateStats();
+    if (kb) kb.flash(note, j.correct ? '#34d399' : '#fb7185');
+    resultEl.style.display = '';
+    if (j.correct) {
+      resultEl.className = 'pd-result ok';
+      resultEl.innerHTML = `✅ <b>对！</b>找到了「${game.task.landmark}」　连击 ${game.streak} 🔥`;
+      band('win', '🌟 正确！继续下一题');
+    } else {
+      resultEl.className = 'pd-result no';
+      resultEl.innerHTML = `❌ 不是这个键——${game.task.prompt}。点「💡 在键盘上指给我看」看看它在哪`;
+      band('show', '🌱 再看看黑键的分组，试一次');
+    }
+    try { playTone(midiToFreq(note), 0, 0.35, 0.18); } catch (_) { /* ignore */ }
+    recordPractice('blackkey', '🎹 黑键地图', game.attempts, game.correct, game.best);
+    hintBtn.disabled = true;
+  }
+
+  $('#bk-levels').querySelectorAll('button').forEach(b => b.onclick = () => {
+    levelId = b.dataset.l;
+    $('#bk-levels').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (game) game.setLevel(curLevel());
+  });
+
+  askBtn.onclick = ask;
+  hintBtn.onclick = showHint;
+
+  // 真实 MIDI 驱动
+  blackKeyOnNote = (midi) => feed(midi);
+}
+
 // ========== 模块: 🐉 Boss 战（把难片段做成打怪，等待模式无时间压力）==========
 function renderBossBattle() {
   const root = $('#module-boss');
@@ -20734,7 +20862,7 @@ async function main() {
   initThemeUi();
   await loadData();
 
-  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderWeekMaster(); renderFlowMode(); renderConcertSim(); renderScoreError(); renderTimingHist(); renderScaffoldFade(); renderChorusLite(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderMultiAnchor(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
+  renderSounds(); renderVT(); renderSystem(); renderRhythm(); renderMonitor(); renderAutoRotate(); renderMorph(); renderVelocity(); renderVelVt(); renderPedal(); renderPresets(); renderChord(); renderMetro(); renderRecorder(); renderScale(); renderSight(); renderEar(); renderDynamics(); renderTransposer(); renderRhythmTrainer(); renderMelody(); renderChordProg(); renderBeatStability(); renderHandsSync(); renderArpeggio(); renderArticulation(); renderPedalTiming(); renderTrill(); renderOrnament(); renderLeap(); renderVoicing(); renderCrescendo(); renderTempoRamp(); renderPolyrhythm(); renderEvenness(); renderFingerInd(); renderScaleSpan(); renderRhythmDictation(); renderSightTranspose(); renderChordInversion(); renderKeySignature(); renderScaleFingering(); renderIntervalBuild(); renderModeId(); renderSolfege(); renderChordQuality(); renderProgressionEar(); renderScoreFollow(); renderCadence(); renderNoteId(); renderStaffRead(); renderSightPhrase(); renderChordSight(); renderRhythmSight(); renderAccompaniment(); renderChordColorBoard(); renderLightShow(); renderMelodyEcho(); renderCallResponse(); renderRhythmEcho(); renderPitchDirection(); renderBlackKeyMap(); renderMidiPlayer(); renderStaffView(); renderPlayStage(); renderBossBattle(); renderSpeedRun(); renderGhostRace(); renderRhythmJump(); renderFamilyDuel(); renderSoundPaint(); renderPet(); renderDiceWarmup(); renderBingoCard(); renderGuessSong(); renderWeekMaster(); renderFlowMode(); renderConcertSim(); renderScoreError(); renderTimingHist(); renderScaffoldFade(); renderChorusLite(); renderTimbreGuess(); renderVelocityCoaster(); renderToneTrees(); renderMultiAnchor(); renderPaddleTones(); renderRhythmPuzzles(); renderBackingBand(); renderCircleFifths(); renderMedalWall(); renderHeatmap(); renderReviewQueue(); renderParentWeekly(); renderMicroStars(); renderStreakCalendar(); renderMysteryBox(); renderDailyGoal(); renderWarmupRoutine(); renderPlayMood(); renderLoopTrainer(); renderMelodyPalace(); renderTodaySong(); renderShareCard(); renderStaffWars(); renderDrops(); renderCofPuzzle(); renderMagicJam(); renderLoopComposer(); renderXpLevel(); renderWeeklyQuest(); renderDashboard();
   document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchModule(b.dataset.module));
   setupNavSearch();
   renderDailyStrip();
