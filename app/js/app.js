@@ -8395,7 +8395,8 @@ function libPickerHTML(prefix) {
         <div class="ps-modal-head">
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 CA99 内置曲库</button>
-            <button class="ps-tab" data-tab="user">🎵 我的 MIDI（data/）</button>
+            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+            <button class="ps-tab" data-tab="user">📂 我的 MIDI（data/）</button>
           </div>
           <button class="ps-modal-x" id="${prefix}-modal-x">✕</button>
         </div>
@@ -8411,7 +8412,7 @@ function libPickerHTML(prefix) {
 // onPickPath(parsed, title)：模块拿到 parseMidi 结果 + 曲名后自行处理。返回 { openModal, closeModal }。
 function setupLibraryPicker(prefix, onPickPath) {
   const $$ = (suffix) => document.getElementById(prefix + suffix);
-  let builtinCatalog = null, userCatalog = null;
+  let builtinCatalog = null, userCatalog = null, popularCatalog = null;
   const modal = $$('-modal');
   const setStatus = (msg, cls) => { const el = $$('-modal-status'); if (el) { el.textContent = msg || ''; el.className = 'ps-modal-status' + (cls ? ' ' + cls : ''); } };
   function renderLib(catalog) {
@@ -8430,6 +8431,20 @@ function setupLibraryPicker(prefix, onPickPath) {
     builtinCatalog = { categories: cats, songs };
     renderLib(builtinCatalog);
     if (!songs.length) setStatus('📭 未找到 CA99 曲库（midi/catalog.json）。可切到「我的 MIDI」用 data/ 下的曲子。');
+  }
+  async function loadPopular() {
+    setStatus('⏳ 正在载入流行曲库…');
+    try {
+      const r = await fetch('midi-collection/catalog.json', { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const cj = await r.json();
+      popularCatalog = { categories: cj.categories || [], songs: cj.songs || [] };
+      renderLib(popularCatalog);
+      setStatus(`共 ${cj.total || popularCatalog.songs.length} 首流行曲目。`);
+    } catch (err) {
+      setStatus('⚠️ 流行曲库载入失败：' + (err && err.message ? err.message : err), 'err');
+      popularCatalog = null; renderLib({ categories: [], songs: [] });
+    }
   }
   async function loadUser() {
     setStatus('⏳ 正在扫描「data/」下你整理的 MIDI…');
@@ -8474,6 +8489,7 @@ function setupLibraryPicker(prefix, onPickPath) {
       modal.querySelectorAll('.ps-tab').forEach((t) => t.classList.toggle('on', t === tab));
       setStatus('');
       if (tab.dataset.tab === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog); else loadBuiltin(); }
+      else if (tab.dataset.tab === 'popular') { if (popularCatalog) renderLib(popularCatalog); else loadPopular(); }
       else { if (userCatalog) renderLib(userCatalog); else loadUser(); }
     };
   });
@@ -8665,7 +8681,8 @@ function renderScoreFollow() {
           <div class="ps-modal-head">
             <div class="ps-tabs">
               <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
-              <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
+              <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+              <button class="ps-tab" data-tab="user">📂 我的 MIDI</button>
             </div>
             <button class="ps-modal-x" id="scf-modal-x">✕</button>
           </div>
@@ -8680,7 +8697,7 @@ function renderScoreFollow() {
               <div class="scf-lib-status" id="scf-lib-status">正在载入 CA99 自带曲库…</div>
             </div>
           </div>
-          <div class="ps-pane" id="scf-pane-user" hidden>
+           <div class="ps-pane" id="scf-pane-user" hidden>
             <div class="scf-lib" id="scf-ulib">
               <div class="scf-ulib-root-row">
                 <span class="scf-ulib-lbl">目录</span>
@@ -8695,6 +8712,17 @@ function renderScoreFollow() {
               </div>
               <div class="scf-lib-list ps-songlist" id="scf-ulib-list"></div>
               <div class="scf-lib-status" id="scf-ulib-status">正在扫描你的曲库…</div>
+            </div>
+          </div>
+          <div class="ps-pane" id="scf-pane-popular" hidden>
+            <div class="scf-lib" id="scf-poplib">
+              <div class="scf-lib-cats" id="scf-poplib-cats"></div>
+              <div class="scf-lib-search-row">
+                <input type="text" id="scf-poplib-search" class="scf-lib-search" placeholder="🔎 搜曲名 / 分类…" spellcheck="false" autocomplete="off">
+                <span class="scf-lib-count" id="scf-poplib-count"></span>
+              </div>
+              <div class="scf-lib-list ps-songlist" id="scf-poplib-list"></div>
+              <div class="scf-lib-status" id="scf-poplib-status">正在载入流行曲库…</div>
             </div>
           </div>
         </div>
@@ -8880,6 +8908,8 @@ function renderScoreFollow() {
         const which = tab.dataset.tab;
         $('#scf-pane-builtin').hidden = which !== 'builtin';
         $('#scf-pane-user').hidden = which !== 'user';
+        $('#scf-pane-popular').hidden = which !== 'popular';
+        if (which === 'popular' && !$('#scf-poplib-cats').children.length) setupPopularLibrary();
       };
     });
   }
@@ -9400,6 +9430,30 @@ function renderScoreFollow() {
     }
     if ($('#scf-ulib-scan')) $('#scf-ulib-scan').onclick = run;
     run();
+  }
+
+  // 🎵 流行曲库：载入 midi-collection/catalog.json（967 首下载 MIDI）
+  async function setupPopularLibrary() {
+    const statusEl = $('#scf-poplib-status');
+    if (!$('#scf-poplib') || !statusEl) return;
+    statusEl.textContent = '⏳ 正在载入流行曲库…';
+    statusEl.className = 'scf-lib-status';
+    let catalog;
+    try {
+      const r = await fetch('midi-collection/catalog.json', { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      catalog = await r.json();
+    } catch (err) {
+      statusEl.textContent = '⚠️ 流行曲库未载入：' + (err && err.message ? err.message : err);
+      statusEl.className = 'scf-lib-status err';
+      return;
+    }
+    buildLibBrowser({
+      els: { cats: $('#scf-poplib-cats'), search: $('#scf-poplib-search'), list: $('#scf-poplib-list'), count: $('#scf-poplib-count'), status: statusEl },
+      catalog,
+      prefix: '🎵 ',
+      idleMsg: `共 ${catalog.total} 首流行曲目，选分类或搜索后点击即可载入练习。`,
+    });
   }
 
   // ⑤ 拍谱识别（OMR）：把乐谱图片 POST 给本机 OMR 服务，返回 MIDI 后自动导入
@@ -10149,7 +10203,7 @@ function renderPlayStage() {
   // 🐢 等待练习：播放头推进到当前音组就冻结，弹对整组才继续；🌟 容差通过 = 音高差≤2半音也帮过
   let psGroups = [], psWaitIdx = 0, psFrozen = false, psWaitClock = 0, psLastNow = 0, psHintUntil = 0;
   let psWaitTolerant = true;
-  let builtinCatalog = null, userCatalog = null;
+  let builtinCatalog = null, userCatalog = null, popularCatalog = null;
   // #5 先听后弹（铃木法）：跟弹一首没听过的曲子前先自动放一遍示范，听完自动进入跟弹
   let listenFirst = true;
   let autoFollowAfter = false;
@@ -10227,7 +10281,8 @@ function renderPlayStage() {
         <div class="ps-modal-head">
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
-            <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
+            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+            <button class="ps-tab" data-tab="user">📂 我的 MIDI</button>
           </div>
           <button class="ps-modal-x" id="ps-modal-x">✕</button>
         </div>
@@ -10926,6 +10981,21 @@ function renderPlayStage() {
     }
   }
 
+  async function loadPopular() {
+    setModalStatus('⏳ 正在载入流行曲库…');
+    try {
+      const r = await fetch('midi-collection/catalog.json', { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const cj = await r.json();
+      popularCatalog = { categories: cj.categories || [], songs: cj.songs || [] };
+      renderLib(popularCatalog, '🎵 ');
+      setModalStatus(`共 ${cj.total || popularCatalog.songs.length} 首流行曲目。`);
+    } catch (err) {
+      setModalStatus('⚠️ 流行曲库载入失败：' + (err && err.message ? err.message : err), 'err');
+      popularCatalog = null; renderLib({ categories: [], songs: [] });
+    }
+  }
+
   // 渲染分类 chips + 列表（内置 / 我的 共用）
   // 选曲：统一用共享层级浏览器（分类 › 子分类 › 选曲）。onPick 区分启蒙小曲（_scfId）与曲库路径。
   function renderLib(catalog, prefix) {
@@ -11019,6 +11089,7 @@ function renderPlayStage() {
       const which = tab.dataset.tab;
       setModalStatus('');
       if (which === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog, '📚 '); else loadBuiltin(); }
+      else if (which === 'popular') { if (popularCatalog) renderLib(popularCatalog, '🎵 '); else loadPopular(); }
       else if (which === 'user') { if (userCatalog) renderLib(userCatalog, '🎵 '); else loadUser(); }
     };
   });
@@ -11046,7 +11117,7 @@ function renderBackingBand() {
   let layout = null, centerX = new Map(), kbFirst = 60, kbLast = 72;
   let bandCtx = null, bandGain = null, scheduled = [], rafB = null, perfT0 = 0, playing = false;
   let hits = 0;
-  let builtinCatalog = null, userCatalog = null;
+  let builtinCatalog = null, userCatalog = null, popularCatalog = null;
 
   root.innerHTML = `
     <div class="bb-wrap">
@@ -11078,7 +11149,8 @@ function renderBackingBand() {
         <div class="ps-modal-head">
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
-            <button class="ps-tab" data-tab="user">🎵 我的 MIDI</button>
+            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+            <button class="ps-tab" data-tab="user">📂 我的 MIDI</button>
           </div>
           <button class="ps-modal-x" id="bb-modal-x">✕</button>
         </div>
@@ -11367,6 +11439,21 @@ function renderBackingBand() {
     }
   }
 
+  async function loadPopular() {
+    setModalStatus('⏳ 正在载入流行曲库…');
+    try {
+      const r = await fetch('midi-collection/catalog.json', { cache: 'no-cache' });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const cj = await r.json();
+      popularCatalog = { categories: cj.categories || [], songs: cj.songs || [] };
+      renderLib(popularCatalog);
+      setModalStatus(`共 ${cj.total || popularCatalog.songs.length} 首流行曲目。`);
+    } catch (err) {
+      setModalStatus('⚠️ 流行曲库载入失败：' + (err && err.message ? err.message : err), 'err');
+      popularCatalog = null; renderLib({ categories: [], songs: [] });
+    }
+  }
+
   function renderLib(catalog) {
     mountHierBrowser(
       { cats: $('#bb-cats'), search: $('#bb-search'), list: $('#bb-songlist'), status: $('#bb-modal-status'), statusClass: 'ps-modal-status' },
@@ -11406,6 +11493,7 @@ function renderBackingBand() {
       const which = tab.dataset.tab;
       setModalStatus('');
       if (which === 'builtin') { if (builtinCatalog) renderLib(builtinCatalog); else loadBuiltin(); }
+      else if (which === 'popular') { if (popularCatalog) renderLib(popularCatalog); else loadPopular(); }
       else if (which === 'user') { if (userCatalog) renderLib(userCatalog); else loadUser(); }
     };
   });
