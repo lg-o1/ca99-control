@@ -1,7 +1,7 @@
 {
   "generated": "popular-midi-collection",
   "source": "Downloaded MIDI collection (967 songs)",
-  "total": 903,
+  "total": 967,
   "categories": [
     {
       "slug": "other",
@@ -9094,6 +9094,646 @@
       "difficulty": "Medium",
       "notes": 708,
       "path": "midi-collection/anime-game/Sailor Moon.mid"
+    },
+    {
+      "file": "Hark the Herald Angels Sing.mid",
+      "title": "Hark the Herald Angels Sing",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "holiday",
+      "difficulty": "Easy",
+      "notes": 379,
+      "path": "midi-collection/holiday/Hark the Herald Angels Sing.mid"
+    },
+    {
+      "file": "Les Miserables.mid",
+      "title": "Les Miserables",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "pop",
+      "difficulty": "Beginner",
+      "notes": 60,
+      "path": "midi-collection/pop/Les Miserables.mid"
+    },
+    {
+      "file": "Feliz Navidad.mid",
+      "title": "Feliz Navidad",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "holiday",
+      "difficulty": "Beginner",
+      "notes": 47,
+      "path": "midi-collection/holiday/Feliz Navidad.mid"
+    },
+    {
+      "file": "Waiting on a Miracle.mid",
+      "title": "Waiting on a Miracle",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "anime-game",
+      "difficulty": "Medium",
+      "notes": 627,
+      "path": "midi-collection/anime-game/Waiting on a Miracle.mid"
+    },
+    {
+      "file": "Lacrimosa.mid",
+      "title": "Lacrimosa",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "classical",
+      "difficulty": "Medium",
+      "notes": 1261,
+      "path": "midi-collection/classical/Lacrimosa.mid"
+    },
+    {
+      "file": "I Dreamed a Dream.mid",
+      "title": "I Dreamed a Dream",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "pop",
+      "difficulty": "Beginner",
+      "notes": 30,
+      "path": "midi-collection/pop/I Dreamed a Dream.mid"
+    },
+    {
+      "file": "Baby Shark.mid",
+      "title": "Baby Shark",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "kids-other",
+      "difficulty": "Medium",
+      "notes": 1143,
+      "path": "midi-collection/kids-other/Baby Shark.mid"
+    },
+    {
+      "file": "Rudolph the Red Nosed Reindeer.mid",
+      "title": "Rudolph the Red Nosed Reindeer",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "holiday",
+      "difficulty": "Easy",
+      "notes": 269,
+      "path": "midi-collection/holiday/Rudolph the Red Nosed Reindeer.mid"
+    },
+    {
+      "file": "Blue Bossa.mid",
+      "title": "Blue Bossa",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "jazz-blues",
+      "difficulty": "Easy",
+      "notes": 340,
+      "path": "midi-collection/jazz-blues/Blue Bossa.mid"
+    },
+    {
+      "file": "Beauty and the Beast.mid",
+      "title": "Beauty and the Beast",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "anime-game",
+      "difficulty": "Medium",
+      "notes": 1252,
+      "path": "midi-collection/anime-game/Beauty and the Beast.mid"
+    },
+    {
+      "file": "Away in a Manger.mid",
+      "title": "Away in a Manger",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "holiday",
+      "difficulty": "Medium",
+      "notes": 726,
+      "path": "midi-collection/holiday/Away in a Manger.mid"
+    },
+    {
+      "file": "Hakuna Matata.mid",
+      "title": "Hakuna Matata",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "anime-game",
+      "difficulty": "Hard",
+      "notes": 2042,
+      "path": "midi-collection/anime-game/Hakuna Matata.mid"
+    },
+    {
+      "file": "Giorno Theme.mid",
+      "title": "Giorno Theme",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "anime-game",
+      "difficulty": "Medium",
+      "notes": 1475,
+      "path": "midi-collection/anime-game/Giorno Theme.mid"
+    },
+    {
+      "file": "O Holy Night.mid",
+      "title": "O Holy Night",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "holiday",
+      "difficulty": "Medium",
+      "notes": 566,
+      "path": "midi-collection/holiday/O Holy Night.mid"
+    },
+    {
+      "file": "Strange World.mid",
+      "title": "Strange World",
+      "composer": "",
+      "cat": "Expert",
+      "fn": "anime-game",
+      "difficulty": "Expert",
+      "notes": 6953,
+      "path": "midi-collection/anime-game/Strange World.mid"
+    },
+    {
+      "file": "Happy Birthday.mid",
+      "title": "Happy Birthday",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "kids-other",
+      "difficulty": "Medium",
+      "notes": 723,
+      "path": "midi-collection/kids-other/Happy Birthday.mid"
+    },
+    {
+      "file": "Frosty the Snowman.mid",
+      "title": "Frosty the Snowman",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "holiday",
+      "difficulty": "Beginner",
+      "notes": 30,
+      "path": "midi-collection/holiday/Frosty the Snowman.mid"
+    },
+    {
+      "file": "Under the Sea.mid",
+      "title": "Under the Sea",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "anime-game",
+      "difficulty": "Medium",
+      "notes": 745,
+      "path": "midi-collection/anime-game/Under the Sea.mid"
+    },
+    {
+      "file": "Music of the Night.mid",
+      "title": "Music of the Night",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "pop",
+      "difficulty": "Medium",
+      "notes": 1199,
+      "path": "midi-collection/pop/Music of the Night.mid"
+    },
+    {
+      "file": "Into the Unknown.mid",
+      "title": "Into the Unknown",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "anime-game",
+      "difficulty": "Easy",
+      "notes": 287,
+      "path": "midi-collection/anime-game/Into the Unknown.mid"
+    },
+    {
+      "file": "Turkish March.mid",
+      "title": "Turkish March",
+      "composer": "",
+      "cat": "Expert",
+      "fn": "classical",
+      "difficulty": "Expert",
+      "notes": 6961,
+      "path": "midi-collection/classical/Turkish March.mid"
+    },
+    {
+      "file": "Somewhere Over the Rainbow.mid",
+      "title": "Somewhere Over the Rainbow",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "jazz-blues",
+      "difficulty": "Easy",
+      "notes": 403,
+      "path": "midi-collection/jazz-blues/Somewhere Over the Rainbow.mid"
+    },
+    {
+      "file": "Gymnopedie.mid",
+      "title": "Gymnopedie",
+      "composer": "",
+      "cat": "Expert",
+      "fn": "classical",
+      "difficulty": "Expert",
+      "notes": 3651,
+      "path": "midi-collection/classical/Gymnopedie.mid"
+    },
+    {
+      "file": "Silent Night.mid",
+      "title": "Silent Night",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "holiday",
+      "difficulty": "Medium",
+      "notes": 1034,
+      "path": "midi-collection/holiday/Silent Night.mid"
+    },
+    {
+      "file": "Rondo Alla Turca.mid",
+      "title": "Rondo Alla Turca",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "classical",
+      "difficulty": "Easy",
+      "notes": 492,
+      "path": "midi-collection/classical/Rondo Alla Turca.mid"
+    },
+    {
+      "file": "White Christmas.mid",
+      "title": "White Christmas",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "holiday",
+      "difficulty": "Medium",
+      "notes": 0,
+      "path": "midi-collection/holiday/White Christmas.mid"
+    },
+    {
+      "file": "Wish.mid",
+      "title": "Wish",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "anime-game",
+      "difficulty": "Easy",
+      "notes": 351,
+      "path": "midi-collection/anime-game/Wish.mid"
+    },
+    {
+      "file": "Show Yourself.mid",
+      "title": "Show Yourself",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "anime-game",
+      "difficulty": "Hard",
+      "notes": 1779,
+      "path": "midi-collection/anime-game/Show Yourself.mid"
+    },
+    {
+      "file": "Can You Feel the Love Tonight.mid",
+      "title": "Can You Feel the Love Tonight",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "anime-game",
+      "difficulty": "Beginner",
+      "notes": 189,
+      "path": "midi-collection/anime-game/Can You Feel the Love Tonight.mid"
+    },
+    {
+      "file": "Prelude in C Major.mid",
+      "title": "Prelude in C Major",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "classical",
+      "difficulty": "Medium",
+      "notes": 546,
+      "path": "midi-collection/classical/Prelude in C Major.mid"
+    },
+    {
+      "file": "Deck the Halls.mid",
+      "title": "Deck the Halls",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "holiday",
+      "difficulty": "Beginner",
+      "notes": 96,
+      "path": "midi-collection/holiday/Deck the Halls.mid"
+    },
+    {
+      "file": "What Else Can I Do.mid",
+      "title": "What Else Can I Do",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "anime-game",
+      "difficulty": "Easy",
+      "notes": 375,
+      "path": "midi-collection/anime-game/What Else Can I Do.mid"
+    },
+    {
+      "file": "Flight of the Bumblebee.mid",
+      "title": "Flight of the Bumblebee",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "classical",
+      "difficulty": "Medium",
+      "notes": 797,
+      "path": "midi-collection/classical/Flight of the Bumblebee.mid"
+    },
+    {
+      "file": "Auld Lang Syne.mid",
+      "title": "Auld Lang Syne",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "holiday",
+      "difficulty": "Hard",
+      "notes": 2799,
+      "path": "midi-collection/holiday/Auld Lang Syne.mid"
+    },
+    {
+      "file": "A Whole New World.mid",
+      "title": "A Whole New World",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "anime-game",
+      "difficulty": "Easy",
+      "notes": 224,
+      "path": "midi-collection/anime-game/A Whole New World.mid"
+    },
+    {
+      "file": "Circle of Life.mid",
+      "title": "Circle of Life",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "anime-game",
+      "difficulty": "Beginner",
+      "notes": 21,
+      "path": "midi-collection/anime-game/Circle of Life.mid"
+    },
+    {
+      "file": "The Way You Look Tonight.mid",
+      "title": "The Way You Look Tonight",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "jazz-blues",
+      "difficulty": "Hard",
+      "notes": 2015,
+      "path": "midi-collection/jazz-blues/The Way You Look Tonight.mid"
+    },
+    {
+      "file": "Rush E.mid",
+      "title": "Rush E",
+      "composer": "",
+      "cat": "Expert",
+      "fn": "anime-game",
+      "difficulty": "Expert",
+      "notes": 4043,
+      "path": "midi-collection/anime-game/Rush E.mid"
+    },
+    {
+      "file": "Friend Like Me.mid",
+      "title": "Friend Like Me",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "anime-game",
+      "difficulty": "Medium",
+      "notes": 1166,
+      "path": "midi-collection/anime-game/Friend Like Me.mid"
+    },
+    {
+      "file": "Let It Go.mid",
+      "title": "Let It Go",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "anime-game",
+      "difficulty": "Beginner",
+      "notes": 18,
+      "path": "midi-collection/anime-game/Let It Go.mid"
+    },
+    {
+      "file": "Clair de Lune_8e6aa6.mid",
+      "title": "Clair de Lune",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "classical",
+      "difficulty": "Easy",
+      "notes": 476,
+      "path": "midi-collection/classical/Clair de Lune_8e6aa6.mid"
+    },
+    {
+      "file": "Ievan Polkka.mid",
+      "title": "Ievan Polkka",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "anime-game",
+      "difficulty": "Medium",
+      "notes": 888,
+      "path": "midi-collection/anime-game/Ievan Polkka.mid"
+    },
+    {
+      "file": "Take Five.mid",
+      "title": "Take Five",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "jazz-blues",
+      "difficulty": "Hard",
+      "notes": 1651,
+      "path": "midi-collection/jazz-blues/Take Five.mid"
+    },
+    {
+      "file": "Heathers.mid",
+      "title": "Heathers",
+      "composer": "",
+      "cat": "Expert",
+      "fn": "pop",
+      "difficulty": "Expert",
+      "notes": 3410,
+      "path": "midi-collection/pop/Heathers.mid"
+    },
+    {
+      "file": "Misty.mid",
+      "title": "Misty",
+      "composer": "",
+      "cat": "Expert",
+      "fn": "jazz-blues",
+      "difficulty": "Expert",
+      "notes": 4020,
+      "path": "midi-collection/jazz-blues/Misty.mid"
+    },
+    {
+      "file": "Prince Ali.mid",
+      "title": "Prince Ali",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "anime-game",
+      "difficulty": "Beginner",
+      "notes": 163,
+      "path": "midi-collection/anime-game/Prince Ali.mid"
+    },
+    {
+      "file": "The First Noel.mid",
+      "title": "The First Noel",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "holiday",
+      "difficulty": "Beginner",
+      "notes": 38,
+      "path": "midi-collection/holiday/The First Noel.mid"
+    },
+    {
+      "file": "All Star.mid",
+      "title": "All Star",
+      "composer": "",
+      "cat": "Expert",
+      "fn": "pop",
+      "difficulty": "Expert",
+      "notes": 4329,
+      "path": "midi-collection/pop/All Star.mid"
+    },
+    {
+      "file": "Megalovania.mid",
+      "title": "Megalovania",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "anime-game",
+      "difficulty": "Hard",
+      "notes": 1888,
+      "path": "midi-collection/anime-game/Megalovania.mid"
+    },
+    {
+      "file": "We Wish You a Merry Christmas.mid",
+      "title": "We Wish You a Merry Christmas",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "holiday",
+      "difficulty": "Hard",
+      "notes": 1956,
+      "path": "midi-collection/holiday/We Wish You a Merry Christmas.mid"
+    },
+    {
+      "file": "Gangnam Style.mid",
+      "title": "Gangnam Style",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "pop",
+      "difficulty": "Medium",
+      "notes": 0,
+      "path": "midi-collection/pop/Gangnam Style.mid"
+    },
+    {
+      "file": "Mary Had a Little Lamb.mid",
+      "title": "Mary Had a Little Lamb",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "kids-other",
+      "difficulty": "Beginner",
+      "notes": 44,
+      "path": "midi-collection/kids-other/Mary Had a Little Lamb.mid"
+    },
+    {
+      "file": "Frozen Do You Want to Build a Snowman.mid",
+      "title": "Frozen Do You Want to Build a Snowman",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "holiday",
+      "difficulty": "Beginner",
+      "notes": 74,
+      "path": "midi-collection/holiday/Frozen Do You Want to Build a Snowman.mid"
+    },
+    {
+      "file": "What a Wonderful World.mid",
+      "title": "What a Wonderful World",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "jazz-blues",
+      "difficulty": "Beginner",
+      "notes": 14,
+      "path": "midi-collection/jazz-blues/What a Wonderful World.mid"
+    },
+    {
+      "file": "Joy to the World.mid",
+      "title": "Joy to the World",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "holiday",
+      "difficulty": "Easy",
+      "notes": 207,
+      "path": "midi-collection/holiday/Joy to the World.mid"
+    },
+    {
+      "file": "Georgia On My Mind.mid",
+      "title": "Georgia On My Mind",
+      "composer": "",
+      "cat": "Hard",
+      "fn": "jazz-blues",
+      "difficulty": "Hard",
+      "notes": 1590,
+      "path": "midi-collection/jazz-blues/Georgia On My Mind.mid"
+    },
+    {
+      "file": "One Day More.mid",
+      "title": "One Day More",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "pop",
+      "difficulty": "Beginner",
+      "notes": 174,
+      "path": "midi-collection/pop/One Day More.mid"
+    },
+    {
+      "file": "Little Drummer Boy.mid",
+      "title": "Little Drummer Boy",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "holiday",
+      "difficulty": "Easy",
+      "notes": 399,
+      "path": "midi-collection/holiday/Little Drummer Boy.mid"
+    },
+    {
+      "file": "Neon Genesis Evangelion.mid",
+      "title": "Neon Genesis Evangelion",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "anime-game",
+      "difficulty": "Easy",
+      "notes": 442,
+      "path": "midi-collection/anime-game/Neon Genesis Evangelion.mid"
+    },
+    {
+      "file": "Winter Wonderland.mid",
+      "title": "Winter Wonderland",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "holiday",
+      "difficulty": "Beginner",
+      "notes": 33,
+      "path": "midi-collection/holiday/Winter Wonderland.mid"
+    },
+    {
+      "file": "Moon River.mid",
+      "title": "Moon River",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "jazz-blues",
+      "difficulty": "Medium",
+      "notes": 547,
+      "path": "midi-collection/jazz-blues/Moon River.mid"
+    },
+    {
+      "file": "O Come All Ye Faithful.mid",
+      "title": "O Come All Ye Faithful",
+      "composer": "",
+      "cat": "Medium",
+      "fn": "holiday",
+      "difficulty": "Medium",
+      "notes": 625,
+      "path": "midi-collection/holiday/O Come All Ye Faithful.mid"
+    },
+    {
+      "file": "Part of Your World.mid",
+      "title": "Part of Your World",
+      "composer": "",
+      "cat": "Easy",
+      "fn": "anime-game",
+      "difficulty": "Easy",
+      "notes": 270,
+      "path": "midi-collection/anime-game/Part of Your World.mid"
+    },
+    {
+      "file": "Be Our Guest.mid",
+      "title": "Be Our Guest",
+      "composer": "",
+      "cat": "Beginner",
+      "fn": "anime-game",
+      "difficulty": "Beginner",
+      "notes": 41,
+      "path": "midi-collection/anime-game/Be Our Guest.mid"
     }
   ]
 }
