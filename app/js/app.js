@@ -9336,18 +9336,22 @@ function renderScoreFollow() {
         const info = loadMidiBuffer(await r.arrayBuffer(), s.title, prefix, s.sheet ? s.path : null);
         els.status.textContent = `✅ 已载入「${s.title}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。下面选一档训练开始。`;
         els.status.className = 'scf-lib-status ok';
-        // 📄 MuseScore sheet link
-        const oldMsBar = els.status.parentElement && els.status.parentElement.querySelector('.ms-sheet-bar');
+        // 📄 MuseScore sheet: show bar in main feedback area (not inside modal)
+        const _msSheetData = s._msSheet ? { key: s.file.replace(/\.mid$/i, ''), info: s._msSheet, title: s.title } : null;
+        const m = $('#scf-modal'); if (m) m.hidden = true;// 选好即关弹窗，回到练习区
+        const sec = $('#module-scf'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // 📄 Show sheet bar in main feedback area after modal closes
+        const oldMsBar = document.querySelector('.ms-sheet-bar');
         if (oldMsBar) oldMsBar.remove();
-        if (s._msSheet) {
-          const shKey = s.file.replace(/\.mid$/i, '');
-          const shFolder = 'midi-collection/sheets/' + shKey.split('/').map(encodeURIComponent).join('/');
+        if (_msSheetData) {
+          const shFolder = 'midi-collection/sheets/' + _msSheetData.key.split('/').map(encodeURIComponent).join('/');
           const bar = document.createElement('div');
           bar.className = 'ms-sheet-bar';
-          bar.innerHTML = `<span>📄 五线谱 ${s._msSheet.page_count}页</span> `
-            + `<a href="${shFolder}/sheet.pdf" download="${s.title.replace(/"/g,'')}.pdf" class="ms-btn">⬇️ 下载PDF</a> `
+          bar.innerHTML = `<span>📄 五线谱 ${_msSheetData.info.page_count}页</span> `
+            + `<a href="${shFolder}/sheet.pdf" download="${_msSheetData.title.replace(/"/g,'')}.pdf" class="ms-btn">⬇️ 下载PDF</a> `
             + `<button class="ms-btn ms-view-btn">👁️ 查看</button>`;
-          els.status.insertAdjacentElement('afterend', bar);
+          const fb = $('#scf-feedback');
+          if (fb) fb.insertAdjacentElement('afterend', bar);
           bar.querySelector('.ms-view-btn').onclick = (ev) => {
             ev.stopPropagation();
             let modal = document.getElementById('ms-sheet-modal');
@@ -9361,14 +9365,12 @@ function renderScoreFollow() {
               modal.onclick = (e) => { if (e.target === modal) modal.hidden = true; };
             }
             const body = modal.querySelector('.ms-sheet-body');
-            body.innerHTML = s._msSheet.pages.map(pg =>
+            body.innerHTML = _msSheetData.info.pages.map(pg =>
               `<img src="${shFolder}/${encodeURIComponent(pg)}" alt="${pg}" class="ms-sheet-page" loading="lazy">`
             ).join('');
             modal.hidden = false;
           };
         }
-        const m = $('#scf-modal'); if (m) m.hidden = true;// 选好即关弹窗，回到练习区
-        const sec = $('#module-scf'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
         els.status.textContent = '❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）';
         els.status.className = 'scf-lib-status err';
