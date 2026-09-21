@@ -8396,7 +8396,7 @@ function libPickerHTML(prefix) {
         <div class="ps-modal-head">
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 CA99 内置曲库</button>
-            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (2417)</button>
             <button class="ps-tab" data-tab="user">📂 我的 MIDI（data/）</button>
           </div>
           <button class="ps-modal-x" id="${prefix}-modal-x">✕</button>
@@ -8682,7 +8682,7 @@ function renderScoreFollow() {
           <div class="ps-modal-head">
             <div class="ps-tabs">
               <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
-              <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+              <button class="ps-tab" data-tab="popular">🎵 流行曲库 (2417)</button>
               <button class="ps-tab" data-tab="user">📂 我的 MIDI</button>
             </div>
             <button class="ps-modal-x" id="scf-modal-x">✕</button>
@@ -9468,7 +9468,7 @@ function renderScoreFollow() {
 
   let _msSheetIndex = null; // MuseScore sheet index {key: {pages, has_pdf, ...}}
 
-  // 🎵 流行曲库：载入 midi-collection/catalog.json（967 首下载 MIDI）
+  // 🎵 流行曲库：载入 midi-collection/catalog.json（2417 首下载 MIDI）
   async function setupPopularLibrary() {
     const statusEl = $('#scf-poplib-status');
     if (!$('#scf-poplib') || !statusEl) return;
@@ -10330,7 +10330,7 @@ function renderPlayStage() {
         <div class="ps-modal-head">
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
-            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (2417)</button>
             <button class="ps-tab" data-tab="user">📂 我的 MIDI</button>
           </div>
           <button class="ps-modal-x" id="ps-modal-x">✕</button>
@@ -11198,7 +11198,7 @@ function renderBackingBand() {
         <div class="ps-modal-head">
           <div class="ps-tabs">
             <button class="ps-tab on" data-tab="builtin">📚 内置曲库</button>
-            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (967)</button>
+            <button class="ps-tab" data-tab="popular">🎵 流行曲库 (2417)</button>
             <button class="ps-tab" data-tab="user">📂 我的 MIDI</button>
           </div>
           <button class="ps-modal-x" id="bb-modal-x">✕</button>
