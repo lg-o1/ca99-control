@@ -13,6 +13,9 @@ import { PresetStore } from './preset-store.js';
 import { describeNotes, detectChord } from './chord-detect.js';
 import { HeldNotes, ChordChallenge } from './chord-trainer.js';
 import { Metronome, TempoTracker } from './metronome.js';
+
+// Sheet music assets hosted on GitHub (SWA has 250MB limit, sheets are 2GB+)
+const SHEET_BASE = 'https://raw.githubusercontent.com/lg-o1/ca99-control/main/app/midi-collection/sheets';
 import * as MetroKit from './metro-kit.js';
 import { Recorder } from './recorder.js';
 import { SCALE_TYPES, buildScale, buildScaleUpDown, ScaleSession } from './scale-trainer.js';
@@ -9344,7 +9347,7 @@ function renderScoreFollow() {
         const oldMsBar = document.querySelector('.ms-sheet-bar');
         if (oldMsBar) oldMsBar.remove();
         if (_msSheetData) {
-          const shFolder = 'midi-collection/sheets/' + _msSheetData.key.split('/').map(encodeURIComponent).join('/');
+          const shFolder = SHEET_BASE + '/' + _msSheetData.key.split('/').map(encodeURIComponent).join('/');
           const bar = document.createElement('div');
           bar.className = 'ms-sheet-bar';
           bar.innerHTML = `<span>📄 五线谱 ${_msSheetData.info.page_count}页</span> `
@@ -10470,7 +10473,7 @@ function renderPlayStage() {
       const shKey = fileKey.replace(/\.mid$/i, '');
       const shInfo = shKey && _msSheetIndex[shKey];
       if (shInfo && shInfo.has_pdf) {
-        const shFolder = 'midi-collection/sheets/' + shKey.split('/').map(encodeURIComponent).join('/');
+        const shFolder = SHEET_BASE + '/' + shKey.split('/').map(encodeURIComponent).join('/');
         const btn = document.createElement('a');
         btn.href = shFolder + '/sheet.pdf';
         btn.download = (song.title || 'sheet').replace(/"/g, '') + '.pdf';
