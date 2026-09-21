@@ -10462,6 +10462,24 @@ function renderPlayStage() {
     }
     $('#ps-hw').style.width = layout.width + 'px';
     $('#ps-title').textContent = song.title || '未命名';
+    // 📄 MuseScore PDF download button next to title
+    const oldPdfBtn = document.querySelector('.ps-pdf-btn');
+    if (oldPdfBtn) oldPdfBtn.remove();
+    if (_msSheetIndex) {
+      const fileKey = song._midiFile || '';
+      const shKey = fileKey.replace(/\.mid$/i, '');
+      const shInfo = shKey && _msSheetIndex[shKey];
+      if (shInfo && shInfo.has_pdf) {
+        const shFolder = 'midi-collection/sheets/' + shKey.split('/').map(encodeURIComponent).join('/');
+        const btn = document.createElement('a');
+        btn.href = shFolder + '/sheet.pdf';
+        btn.download = (song.title || 'sheet').replace(/"/g, '') + '.pdf';
+        btn.className = 'ms-btn ps-pdf-btn';
+        btn.textContent = '⬇️ 下载PDF';
+        btn.style.marginLeft = '12px';
+        $('#ps-title').insertAdjacentElement('afterend', btn);
+      }
+    }
     demoPlayed = new Set();
     drawStaff(-LEAD_MS); drawHighway(-LEAD_MS); refreshStat();
     psLoadSheet(song._sheetPath || null);   // 📖 课本谱面
@@ -11036,6 +11054,13 @@ function renderPlayStage() {
       const r = await fetch('midi-collection/catalog.json', { cache: 'no-cache' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const cj = await r.json();
+      // Load MuseScore sheet index if not yet loaded
+      if (!_msSheetIndex) {
+        try {
+          const sr = await fetch('midi-collection/sheets/index.json', { cache: 'no-cache' });
+          if (sr.ok) _msSheetIndex = await sr.json();
+        } catch (_) {}
+      }
       popularCatalog = { categories: cj.categories || [], songs: cj.songs || [] };
       renderLib(popularCatalog, '🎵 ');
       setModalStatus(`共 ${cj.total || popularCatalog.songs.length} 首流行曲目。`);
@@ -11053,11 +11078,11 @@ function renderPlayStage() {
       catalog,
       (s) => {
         if (s._scfId) { const hit = SCF_SONGS.find((x) => x.id === s._scfId); if (hit) { loadSong(hit); closeModal(); } }
-        else if (s.path) loadPath(s.path, s.title, s.sheet ? s.path : null);
+        else if (s.path) loadPath(s.path, s.title, s.sheet ? s.path : null, s.file);
       },
     );
   }
-  async function loadPath(path, title, sheetPath = null) {
+  async function loadPath(path, title, sheetPath = null, midiFile = null) {
     setModalStatus('⏳ 载入「' + title + '」…');
     try {
       const url = String(path).split('/').map(encodeURIComponent).join('/');
@@ -11067,6 +11092,7 @@ function renderPlayStage() {
       if (!parsed.notes.length) throw new Error('文件里没有可用的音符');
       const so = scfFromMidi(parsed, { id: 'ps-' + Date.now(), title });
       so._sheetPath = sheetPath || null;   // 📖 带课本谱面则记下
+      so._midiFile = midiFile || '';       // 📄 用于 MuseScore sheet lookup
       loadSong(so);
       closeModal();
     } catch (err) {
