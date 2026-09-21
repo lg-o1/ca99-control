@@ -2634,6 +2634,18 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .scf-sheet-navbtn:hover { background: #334155; color: #fff; }
 .scf-sheet-ribbon { position: relative; overflow-x: auto; overflow-y: hidden; background: #fafafa; scroll-behavior: smooth; }
 .scf-sheet-inner { position: relative; white-space: nowrap; font-size: 0; }
+
+/* MuseScore sheet viewer */
+.ms-sheet-bar { display:flex; align-items:center; gap:8px; padding:6px 10px; margin:4px 0 8px; background:rgba(255,255,255,0.06); border-radius:6px; font-size:13px; }
+.ms-btn { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:4px; background:rgba(99,102,241,0.25); color:#a5b4fc; border:none; cursor:pointer; text-decoration:none; font-size:12px; }
+.ms-btn:hover { background:rgba(99,102,241,0.4); }
+.scf-lib-sheet.ms { background:rgba(99,102,241,0.2); color:#a5b4fc; }
+.ms-sheet-modal { position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.85); display:flex; justify-content:center; overflow-y:auto; padding:20px; }
+.ms-sheet-modal[hidden] { display:none; }
+.ms-sheet-modal-inner { position:relative; max-width:900px; width:100%; }
+.ms-sheet-close { position:sticky; top:0; text-align:right; font-size:28px; cursor:pointer; color:#fff; padding:4px 12px; z-index:1; }
+.ms-sheet-body { display:flex; flex-direction:column; gap:8px; align-items:center; }
+.ms-sheet-page { width:100%; max-width:860px; background:#fff; border-radius:4px; }
 .scf-sheet-m { display: inline-block; vertical-align: top; object-fit: contain; background: #fff; border-right: 1px solid #e5e7eb; transition: box-shadow .12s, filter .12s; }
 .scf-sheet-m.cur { box-shadow: inset 0 0 0 3px #6366f1; filter: none; }
 .scf-sheet-m:not(.cur) { filter: grayscale(0.15) brightness(0.97); }

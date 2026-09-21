@@ -8308,7 +8308,8 @@ function mountHierBrowser(els, catalog, onPick, opts = {}) {
       ? `<span class="scf-lib-c">${esc(ctxLabel(s))}</span>`
       : (s.composer ? `<span class="scf-lib-c">${esc(s.composer)}</span>` : '');
     const sheet = s.sheet ? `<span class="scf-lib-sheet" title="这首带真实课本谱面，跟弹时可同步看书">📖 谱</span>` : '';
-    return `<button class="scf-lib-item" data-i="${idx}"><span class="scf-lib-t">${esc(s.title)}</span>${sheet}${tail}</button>`;
+    const msSheet = s._msSheet ? `<span class="scf-lib-sheet ms" title="点击可查看/下载五线谱 PDF（${s._msSheet.page_count}页）">📄</span>` : '';
+    return `<button class="scf-lib-item" data-i="${idx}"><span class="scf-lib-t">${esc(s.title)}</span>${sheet}${msSheet}${tail}</button>`;
   };
   const bindCrumb = () => els.cats.querySelectorAll('.scf-crumb-link').forEach((b) => {
     b.onclick = () => {
@@ -9335,7 +9336,38 @@ function renderScoreFollow() {
         const info = loadMidiBuffer(await r.arrayBuffer(), s.title, prefix, s.sheet ? s.path : null);
         els.status.textContent = `✅ 已载入「${s.title}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。下面选一档训练开始。`;
         els.status.className = 'scf-lib-status ok';
-        const m = $('#scf-modal'); if (m) m.hidden = true;   // 选好即关弹窗，回到练习区
+        // 📄 MuseScore sheet link
+        const oldMsBar = els.status.parentElement && els.status.parentElement.querySelector('.ms-sheet-bar');
+        if (oldMsBar) oldMsBar.remove();
+        if (s._msSheet) {
+          const shKey = s.file.replace(/\.mid$/i, '');
+          const shFolder = 'midi-collection/sheets/' + shKey.split('/').map(encodeURIComponent).join('/');
+          const bar = document.createElement('div');
+          bar.className = 'ms-sheet-bar';
+          bar.innerHTML = `<span>📄 五线谱 ${s._msSheet.page_count}页</span> `
+            + `<a href="${shFolder}/sheet.pdf" download="${s.title.replace(/"/g,'')}.pdf" class="ms-btn">⬇️ 下载PDF</a> `
+            + `<button class="ms-btn ms-view-btn">👁️ 查看</button>`;
+          els.status.insertAdjacentElement('afterend', bar);
+          bar.querySelector('.ms-view-btn').onclick = (ev) => {
+            ev.stopPropagation();
+            let modal = document.getElementById('ms-sheet-modal');
+            if (!modal) {
+              modal = document.createElement('div');
+              modal.id = 'ms-sheet-modal';
+              modal.className = 'ms-sheet-modal';
+              modal.innerHTML = '<div class="ms-sheet-modal-inner"><div class="ms-sheet-close">✕</div><div class="ms-sheet-body"></div></div>';
+              document.body.appendChild(modal);
+              modal.querySelector('.ms-sheet-close').onclick = () => modal.hidden = true;
+              modal.onclick = (e) => { if (e.target === modal) modal.hidden = true; };
+            }
+            const body = modal.querySelector('.ms-sheet-body');
+            body.innerHTML = s._msSheet.pages.map(pg =>
+              `<img src="${shFolder}/${encodeURIComponent(pg)}" alt="${pg}" class="ms-sheet-page" loading="lazy">`
+            ).join('');
+            modal.hidden = false;
+          };
+        }
+        const m = $('#scf-modal'); if (m) m.hidden = true;// 选好即关弹窗，回到练习区
         const sec = $('#module-scf'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (err) {
         els.status.textContent = '❌ 这首解析失败：' + (err && err.message ? err.message : err) + '（换一首试试）';
@@ -9432,6 +9464,8 @@ function renderScoreFollow() {
     run();
   }
 
+  let _msSheetIndex = null; // MuseScore sheet index {key: {pages, has_pdf, ...}}
+
   // 🎵 流行曲库：载入 midi-collection/catalog.json（967 首下载 MIDI）
   async function setupPopularLibrary() {
     const statusEl = $('#scf-poplib-status');
@@ -9443,6 +9477,19 @@ function renderScoreFollow() {
       const r = await fetch('midi-collection/catalog.json', { cache: 'no-cache' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       catalog = await r.json();
+      // Load MuseScore sheet index
+      try {
+        const sr = await fetch('midi-collection/sheets/index.json', { cache: 'no-cache' });
+        if (sr.ok) {
+          _msSheetIndex = await sr.json();
+          if (catalog.songs) {
+            for (const s of catalog.songs) {
+              const key = s.file.replace(/\.mid$/i, '');
+              if (_msSheetIndex[key]) s._msSheet = _msSheetIndex[key];
+            }
+          }
+        }
+      } catch (_) {}
     } catch (err) {
       statusEl.textContent = '⚠️ 流行曲库未载入：' + (err && err.message ? err.message : err);
       statusEl.className = 'scf-lib-status err';
