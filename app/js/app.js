@@ -9484,7 +9484,7 @@ function renderScoreFollow() {
       catalog = await r.json();
       // Load MuseScore sheet index
       try {
-        const sr = await fetch('midi-collection/sheets/index.json', { cache: 'no-cache' });
+        const sr = await fetch(SHEET_BASE + '/index.json', { cache: 'no-cache' });
         if (sr.ok) {
           _msSheetIndex = await sr.json();
           if (catalog.songs) {
@@ -11060,7 +11060,7 @@ function renderPlayStage() {
       // Load MuseScore sheet index if not yet loaded
       if (!_msSheetIndex) {
         try {
-          const sr = await fetch('midi-collection/sheets/index.json', { cache: 'no-cache' });
+          const sr = await fetch(SHEET_BASE + '/index.json', { cache: 'no-cache' });
           if (sr.ok) _msSheetIndex = await sr.json();
         } catch (_) {}
       }
