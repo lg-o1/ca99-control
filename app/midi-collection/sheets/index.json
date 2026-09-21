@@ -10886,15 +10886,6 @@
   "has_pdf": true,
   "midi": "Peaches.mid"
  },
- "Kiss Me More": {
-  "title": "Kiss Me More",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "Kiss Me More.mid"
- },
  "Stay": {
   "title": "Stay",
   "pages": [
@@ -10903,21 +10894,6 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "Stay.mid"
- },
- "Good 4 U": {
-  "title": "Good 4 U",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png"
-  ],
-  "page_count": 7,
-  "has_pdf": true,
-  "midi": "Good 4 U.mid"
  },
  "drivers license": {
   "title": "drivers license",
@@ -10932,20 +10908,14 @@
   "has_pdf": true,
   "midi": "drivers license.mid"
  },
- "deja vu": {
-  "title": "deja vu",
+ "positions": {
+  "title": "positions",
   "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png"
+   "001.png"
   ],
-  "page_count": 7,
+  "page_count": 1,
   "has_pdf": true,
-  "midi": "deja vu.mid"
+  "midi": "positions.mid"
  },
  "Butter": {
   "title": "Butter",
@@ -10963,46 +10933,14 @@
   "has_pdf": true,
   "midi": "Butter.mid"
  },
- "Permission to Dance": {
-  "title": "Permission to Dance",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "Permission to Dance.mid"
- },
- "My Universe": {
-  "title": "My Universe",
+ "Unholy": {
+  "title": "Unholy",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "My Universe.mid"
- },
- "About Damn Time": {
-  "title": "About Damn Time",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "About Damn Time.mid"
+  "midi": "Unholy.mid"
  },
  "Flowers": {
   "title": "Flowers",
@@ -11020,6 +10958,21 @@
   "has_pdf": true,
   "midi": "Flowers.mid"
  },
+ "Kill Bill": {
+  "title": "Kill Bill",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
+  ],
+  "page_count": 7,
+  "has_pdf": true,
+  "midi": "Kill Bill.mid"
+ },
  "Calm Down": {
   "title": "Calm Down",
   "pages": [
@@ -11031,22 +10984,6 @@
   "page_count": 4,
   "has_pdf": true,
   "midi": "Calm Down.mid"
- },
- "Water": {
-  "title": "Water",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "Water.mid"
  },
  "Espresso": {
   "title": "Espresso",
@@ -11076,22 +11013,6 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "Beautiful Things.mid"
- },
- "Stairway to Heaven": {
-  "title": "Stairway to Heaven",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "Stairway to Heaven.mid"
  },
  "Hotel California": {
   "title": "Hotel California",
@@ -11135,6 +11056,15 @@
   "has_pdf": true,
   "midi": "November Rain.mid"
  },
+ "Dream On": {
+  "title": "Dream On",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "Dream On.mid"
+ },
  "Black Dog": {
   "title": "Black Dog",
   "pages": [
@@ -11159,6 +11089,15 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "Purple Haze.mid"
+ },
+ "Smoke on the Water": {
+  "title": "Smoke on the Water",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "Smoke on the Water.mid"
  },
  "Iron Man": {
   "title": "Iron Man",
@@ -11185,6 +11124,64 @@
   "has_pdf": true,
   "midi": "Nothing Else Matters.mid"
  },
+ "One Metallica": {
+  "title": "One Metallica",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png"
+  ],
+  "page_count": 4,
+  "has_pdf": true,
+  "midi": "One Metallica.mid"
+ },
+ "Smells Like Teen Spirit": {
+  "title": "Smells Like Teen Spirit",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Smells Like Teen Spirit.mid"
+ },
+ "Come As You Are": {
+  "title": "Come As You Are",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png"
+  ],
+  "page_count": 6,
+  "has_pdf": true,
+  "midi": "Come As You Are.mid"
+ },
+ "Minecraft Haggstrom": {
+  "title": "Minecraft Haggstrom",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Minecraft Haggstrom.mid"
+ },
  "Minecraft Mice on Venus": {
   "title": "Minecraft Mice on Venus",
   "pages": [
@@ -11201,30 +11198,18 @@
   "has_pdf": true,
   "midi": "Minecraft Mice on Venus.mid"
  },
- "Minecraft Danny": {
-  "title": "Minecraft Danny",
+ "Deltarune Smart Race": {
+  "title": "Deltarune Smart Race",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "005.png"
   ],
-  "page_count": 8,
+  "page_count": 5,
   "has_pdf": true,
-  "midi": "Minecraft Danny.mid"
- },
- "Undertale Memory": {
-  "title": "Undertale Memory",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "Undertale Memory.mid"
+  "midi": "Deltarune Smart Race.mid"
  },
  "Hollow Knight": {
   "title": "Hollow Knight",
@@ -11251,19 +11236,8 @@
   "has_pdf": true,
   "midi": "Celeste.mid"
  },
- "Geometry Dash": {
-  "title": "Geometry Dash",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png"
-  ],
-  "page_count": 3,
-  "has_pdf": true,
-  "midi": "Geometry Dash.mid"
- },
- "Stardew Valley": {
-  "title": "Stardew Valley",
+ "Cuphead": {
+  "title": "Cuphead",
   "pages": [
    "001.png",
    "002.png",
@@ -11276,7 +11250,34 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Stardew Valley.mid"
+  "midi": "Cuphead.mid"
+ },
+ "Geometry Dash Electroman": {
+  "title": "Geometry Dash Electroman",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png"
+  ],
+  "page_count": 3,
+  "has_pdf": true,
+  "midi": "Geometry Dash Electroman.mid"
+ },
+ "Terraria": {
+  "title": "Terraria",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Terraria.mid"
  },
  "FNAF": {
   "title": "FNAF",
@@ -11573,6 +11574,35 @@
   "has_pdf": true,
   "midi": "Binks Sake.mid"
  },
+ "One Piece Opening": {
+  "title": "One Piece Opening",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png"
+  ],
+  "page_count": 5,
+  "has_pdf": true,
+  "midi": "One Piece Opening.mid"
+ },
+ "Attack on Titan": {
+  "title": "Attack on Titan",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Attack on Titan.mid"
+ },
  "Shinzou wo Sasageyo": {
   "title": "Shinzou wo Sasageyo",
   "pages": [
@@ -11605,27 +11635,6 @@
   "has_pdf": true,
   "midi": "Rumbling.mid"
  },
- "Bocchi the Rock": {
-  "title": "Bocchi the Rock",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png"
-  ],
-  "page_count": 4,
-  "has_pdf": true,
-  "midi": "Bocchi the Rock.mid"
- },
- "Frieren": {
-  "title": "Frieren",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "Frieren.mid"
- },
  "Death Note": {
   "title": "Death Note",
   "pages": [
@@ -11642,17 +11651,21 @@
   "has_pdf": true,
   "midi": "Death Note.mid"
  },
- "Tokyo Drift": {
-  "title": "Tokyo Drift",
+ "Initial D": {
+  "title": "Initial D",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
-   "004.png"
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
   ],
-  "page_count": 4,
+  "page_count": 8,
   "has_pdf": true,
-  "midi": "Tokyo Drift.mid"
+  "midi": "Initial D.mid"
  },
  "Dragon Ball": {
   "title": "Dragon Ball",
@@ -11681,26 +11694,17 @@
   "has_pdf": true,
   "midi": "Hark the Herald Angels Sing.mid"
  },
- "Les Miserables": {
-  "title": "Les Miserables",
+ "Feliz Navidad": {
+  "title": "Feliz Navidad",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "Les Miserables.mid"
+  "midi": "Feliz Navidad.mid"
  },
- "I Dreamed a Dream": {
-  "title": "I Dreamed a Dream",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "I Dreamed a Dream.mid"
- },
- "Beauty and the Beast": {
-  "title": "Beauty and the Beast",
+ "Lacrimosa": {
+  "title": "Lacrimosa",
   "pages": [
    "001.png",
    "002.png",
@@ -11713,7 +11717,32 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Beauty and the Beast.mid"
+  "midi": "Lacrimosa.mid"
+ },
+ "I Dreamed a Dream": {
+  "title": "I Dreamed a Dream",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "I Dreamed a Dream.mid"
+ },
+ "Baby Shark": {
+  "title": "Baby Shark",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Baby Shark.mid"
  },
  "Hakuna Matata": {
   "title": "Hakuna Matata",
@@ -11731,6 +11760,50 @@
   "has_pdf": true,
   "midi": "Hakuna Matata.mid"
  },
+ "Giorno Theme": {
+  "title": "Giorno Theme",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Giorno Theme.mid"
+ },
+ "O Holy Night": {
+  "title": "O Holy Night",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png"
+  ],
+  "page_count": 4,
+  "has_pdf": true,
+  "midi": "O Holy Night.mid"
+ },
+ "Strange World": {
+  "title": "Strange World",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Strange World.mid"
+ },
  "Happy Birthday": {
   "title": "Happy Birthday",
   "pages": [
@@ -11745,15 +11818,6 @@
   "page_count": 7,
   "has_pdf": true,
   "midi": "Happy Birthday.mid"
- },
- "Frosty the Snowman": {
-  "title": "Frosty the Snowman",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "Frosty the Snowman.mid"
  },
  "Music of the Night": {
   "title": "Music of the Night",
@@ -11771,8 +11835,8 @@
   "has_pdf": true,
   "midi": "Music of the Night.mid"
  },
- "Gymnopedie": {
-  "title": "Gymnopedie",
+ "Silent Night": {
+  "title": "Silent Night",
   "pages": [
    "001.png",
    "002.png",
@@ -11785,7 +11849,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Gymnopedie.mid"
+  "midi": "Silent Night.mid"
  },
  "Rondo Alla Turca": {
   "title": "Rondo Alla Turca",
@@ -11800,56 +11864,18 @@
   "has_pdf": true,
   "midi": "Rondo Alla Turca.mid"
  },
- "White Christmas": {
-  "title": "White Christmas",
+ "Prelude in C Major": {
+  "title": "Prelude in C Major",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "005.png"
   ],
-  "page_count": 8,
+  "page_count": 5,
   "has_pdf": true,
-  "midi": "White Christmas.mid"
- },
- "Can You Feel the Love Tonight": {
-  "title": "Can You Feel the Love Tonight",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "Can You Feel the Love Tonight.mid"
- },
- "Deck the Halls": {
-  "title": "Deck the Halls",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "Deck the Halls.mid"
- },
- "Auld Lang Syne": {
-  "title": "Auld Lang Syne",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "Auld Lang Syne.mid"
+  "midi": "Prelude in C Major.mid"
  },
  "A Whole New World": {
   "title": "A Whole New World",
@@ -11868,6 +11894,38 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "Circle of Life.mid"
+ },
+ "The Way You Look Tonight": {
+  "title": "The Way You Look Tonight",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "The Way You Look Tonight.mid"
+ },
+ "Rush E": {
+  "title": "Rush E",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "Rush E.mid"
  },
  "Friend Like Me": {
   "title": "Friend Like Me",
@@ -11957,32 +12015,6 @@
   "has_pdf": true,
   "midi": "Heathers.mid"
  },
- "Misty": {
-  "title": "Misty",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "Misty.mid"
- },
- "Prince Ali": {
-  "title": "Prince Ali",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "Prince Ali.mid"
- },
  "The First Noel": {
   "title": "The First Noel",
   "pages": [
@@ -12024,8 +12056,8 @@
   "has_pdf": true,
   "midi": "Megalovania.mid"
  },
- "Gangnam Style": {
-  "title": "Gangnam Style",
+ "We Wish You a Merry Christmas": {
+  "title": "We Wish You a Merry Christmas",
   "pages": [
    "001.png",
    "002.png",
@@ -12038,7 +12070,25 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Gangnam Style.mid"
+  "midi": "We Wish You a Merry Christmas.mid"
+ },
+ "Mary Had a Little Lamb": {
+  "title": "Mary Had a Little Lamb",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "Mary Had a Little Lamb.mid"
+ },
+ "Frozen Do You Want to Build a Snowman": {
+  "title": "Frozen Do You Want to Build a Snowman",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "Frozen Do You Want to Build a Snowman.mid"
  },
  "What a Wonderful World": {
   "title": "What a Wonderful World",
@@ -12048,32 +12098,6 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "What a Wonderful World.mid"
- },
- "Joy to the World": {
-  "title": "Joy to the World",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "Joy to the World.mid"
- },
- "Georgia On My Mind": {
-  "title": "Georgia On My Mind",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "Georgia On My Mind.mid"
  },
  "One Day More": {
   "title": "One Day More",
@@ -12092,6 +12116,33 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "Winter Wonderland.mid"
+ },
+ "O Come All Ye Faithful": {
+  "title": "O Come All Ye Faithful",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "O Come All Ye Faithful.mid"
+ },
+ "Part of Your World": {
+  "title": "Part of Your World",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png"
+  ],
+  "page_count": 3,
+  "has_pdf": true,
+  "midi": "Part of Your World.mid"
  },
  "Be Our Guest": {
   "title": "Be Our Guest",
@@ -12112,8 +12163,8 @@
   "has_pdf": true,
   "midi": "5733911.mid"
  },
- "5726520": {
-  "title": "Claude Bolling Suite for Flute and Jazz Piano Trio - Veloce",
+ "5182230": {
+  "title": "Jazz Piano Song (aka I Bought A Piano The Other Day)",
   "pages": [
    "001.png",
    "002.png",
@@ -12126,7 +12177,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5726520.mid"
+  "midi": "5182230.mid"
  },
  "5124020": {
   "title": "Caravan - jazz piano",
@@ -12143,6 +12194,15 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "5124020.mid"
+ },
+ "5083230": {
+  "title": "cool jazz piano loop",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5083230.mid"
  },
  "4375044": {
   "title": "Virtual Love - Tanin Jazz [Piano]",
@@ -12173,21 +12233,23 @@
   "has_pdf": true,
   "midi": "4989509.mid"
  },
- "4473475": {
-  "title": "Rush E... but it's Jazz  Piano Tutorial",
+ "4405673": {
+  "title": "jazz piano phantasm",
   "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "001.png"
   ],
-  "page_count": 8,
+  "page_count": 1,
   "has_pdf": true,
-  "midi": "4473475.mid"
+  "midi": "4405673.mid"
+ },
+ "3927587": {
+  "title": "jazz piano riff really short",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "3927587.mid"
  },
  "4381522": {
   "title": "Jazz Piano Demo 1",
@@ -12198,17 +12260,47 @@
   "has_pdf": true,
   "midi": "4381522.mid"
  },
- "4316954": {
-  "title": "Blue Christmas Jazz Piano, 2024",
+ "4381519": {
+  "title": "Jazz Piano Demo 1",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "4381519.mid"
+ },
+ "4281173": {
+  "title": "Jazz Piano Playing",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
-   "004.png"
+   "004.png",
+   "005.png"
   ],
-  "page_count": 4,
+  "page_count": 5,
   "has_pdf": true,
-  "midi": "4316954.mid"
+  "midi": "4281173.mid"
+ },
+ "4224859": {
+  "title": "jazz piano melody",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "4224859.mid"
+ },
+ "3939753": {
+  "title": "Harmony Opus - classical / jazz piano",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "3939753.mid"
  },
  "3854429": {
   "title": "Jazz piano stuff i think might need to edit",
@@ -12228,14 +12320,14 @@
   "has_pdf": true,
   "midi": "3828946.mid"
  },
- "3818634": {
-  "title": "Jazz piano stuff i think might need to edit",
+ "3519419": {
+  "title": "cool jazz piano loop",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "3818634.mid"
+  "midi": "3519419.mid"
  },
  "2989122": {
   "title": "Stay (Jazz Piano Cover)",
@@ -12253,16 +12345,26 @@
   "has_pdf": true,
   "midi": "2989122.mid"
  },
- "2806147": {
-  "title": "jazz piano",
+ "2749646": {
+  "title": "cool jazz piano loop",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "2806147.mid"
+  "midi": "2749646.mid"
  },
- "2529000": {
+ "2619398": {
+  "title": "Harmony Opus - classical / jazz piano",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "2619398.mid"
+ },
+ "2529002": {
   "title": "George Shearing - Lullaby of Birdland (Solo Jazz Piano Synthesia) [Jazz Standard].mp3.mid",
   "pages": [
    "001.png",
@@ -12276,7 +12378,16 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "2529000.mid"
+  "midi": "2529002.mid"
+ },
+ "3240699": {
+  "title": "12 bar blues piano",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "3240699.mid"
  },
  "3130769": {
   "title": "St Louis Blues piano.mid",
@@ -12294,18 +12405,20 @@
   "has_pdf": true,
   "midi": "3130769.mid"
  },
- "4066882": {
-  "title": "We are never ever getting back together by Taylor Swift (Piano Version)",
+ "1654063": {
+  "title": "Blues Piano Riff",
   "pages": [
    "001.png",
-   "002.png"
+   "002.png",
+   "003.png",
+   "004.png"
   ],
-  "page_count": 2,
+  "page_count": 4,
   "has_pdf": true,
-  "midi": "4066882.mid"
+  "midi": "1654063.mid"
  },
- "4002665": {
-  "title": "We are never ever getting back together by Taylor Swift (Piano Version)",
+ "4913183": {
+  "title": "the fate of ophelia - taylor swift/piano",
   "pages": [
    "001.png",
    "002.png",
@@ -12318,10 +12431,10 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4002665.mid"
+  "midi": "4913183.mid"
  },
- "4002659": {
-  "title": "You Belong With Me by Taylor Swift (Piano Version)",
+ "4107265": {
+  "title": "Someone Like You - Adele - Piano Karaoke Instrumental.mp3",
   "pages": [
    "001.png",
    "002.png",
@@ -12334,7 +12447,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4002659.mid"
+  "midi": "4107265.mid"
  },
  "5301416": {
   "title": "Supermarket Flowers - Ed Sheeran  Piano Cover by Angelo Magnaye - Angelo Magnaye (1)",
@@ -12382,7 +12495,7 @@
   "has_pdf": true,
   "midi": "4107157.mid"
  },
- "3485290": {
+ "810314": {
   "title": "Shape Of You - Ed Sheeran(piano version MIDI BY Niko Kotoulas).mid",
   "pages": [
    "001.png",
@@ -12396,25 +12509,10 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "3485290.mid"
+  "midi": "810314.mid"
  },
- "1401737": {
-  "title": "Nancy Mulligan - Ed Sheeran Piano (Tutorial   SHEETS) with Lyrics Synthesia Lesson.mp3.mid",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png"
-  ],
-  "page_count": 7,
-  "has_pdf": true,
-  "midi": "1401737.mid"
- },
- "5727958": {
-  "title": "House Of Balloons - The Weeknd (piano)",
+ "536911": {
+  "title": "Shape Of You - Ed Sheeran(piano version MIDI BY Niko Kotoulas).mid",
   "pages": [
    "001.png",
    "002.png",
@@ -12427,33 +12525,33 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5727958.mid"
+  "midi": "536911.mid"
  },
- "4927139": {
-  "title": "7 Rings - Ariana Grande (Piano Cover) - MIDI.mid",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png"
-  ],
-  "page_count": 4,
-  "has_pdf": true,
-  "midi": "4927139.mid"
- },
- "4856532": {
-  "title": "Q - Imperfect for you - Ariana Grande [PIANO TUTORIAL] [1vO3GPrD4qk] (1)",
+ "4553696": {
+  "title": "bad guy - Billie Eilish (Piano Cover) - MIDI.mid",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
-   "005.png",
-   "006.png"
+   "005.png"
   ],
-  "page_count": 6,
+  "page_count": 5,
   "has_pdf": true,
-  "midi": "4856532.mid"
+  "midi": "4553696.mid"
+ },
+ "2931347": {
+  "title": "bad guy - Billie Eilish (Piano Cover) - MIDI.mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png"
+  ],
+  "page_count": 5,
+  "has_pdf": true,
+  "midi": "2931347.mid"
  },
  "2722211": {
   "title": "7 Rings - Ariana Grande (Piano Cover) - MIDI.mid",
@@ -12509,24 +12607,21 @@
   "has_pdf": true,
   "midi": "3348742.mid"
  },
- "5718608": {
-  "title": "Passionfruit - Drake (Piano Cover) - MIDI.mid",
+ "5052030": {
+  "title": "6icker-passionfruit-drake-piano",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "005.png"
   ],
-  "page_count": 8,
+  "page_count": 5,
   "has_pdf": true,
-  "midi": "5718608.mid"
+  "midi": "5052030.mid"
  },
- "4243468": {
-  "title": "Passionfruit - Drake (Piano Cover) - MIDI.mid",
+ "5051947": {
+  "title": "6icker-passionfruit-drake-piano",
   "pages": [
    "001.png",
    "002.png",
@@ -12539,9 +12634,9 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4243468.mid"
+  "midi": "5051947.mid"
  },
- "3655217": {
+ "4121561": {
   "title": "Passionfruit - Drake (Piano Cover) - MIDI.mid",
   "pages": [
    "001.png",
@@ -12555,10 +12650,10 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "3655217.mid"
+  "midi": "4121561.mid"
  },
- "2865451": {
-  "title": "Passionfruit - Drake (Piano Cover) - MIDI.mid",
+ "4857570": {
+  "title": "AnyConv.com__Mercy (Instrumental) - Shawn Mendes-piano (1) (1)",
   "pages": [
    "001.png",
    "002.png",
@@ -12571,7 +12666,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "2865451.mid"
+  "midi": "4857570.mid"
  },
  "4855615": {
   "title": "AnyConv.com__Mercy (Instrumental) - Shawn Mendes-piano-[AudioTrimmer.com] 60 seconds",
@@ -12587,8 +12682,23 @@
   "has_pdf": true,
   "midi": "4855615.mid"
  },
- "4353914": {
-  "title": "Unstoppable - Sia [Piano]",
+ "5000187": {
+  "title": "LIFETIMES \u2013 Katy Perry (Piano Cover by Stanislav Kovalevskiy)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
+  ],
+  "page_count": 7,
+  "has_pdf": true,
+  "midi": "5000187.mid"
+ },
+ "4308542": {
+  "title": "Firework- Katy Perry (Piano Cover)",
   "pages": [
    "001.png",
    "002.png",
@@ -12601,20 +12711,10 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4353914.mid"
+  "midi": "4308542.mid"
  },
- "4203786": {
-  "title": "Bad Romance - Lady Gaga (piano cover)",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "4203786.mid"
- },
- "3478843": {
-  "title": "SaveTube.io - Always Remember Us This Way - Lady Gaga (Piano Cover by Riyandi Kusuma) (320 kbps)aa.m",
+ "3937449": {
+  "title": "Firework- Katy Perry (Piano Cover)",
   "pages": [
    "001.png",
    "002.png",
@@ -12627,7 +12727,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "3478843.mid"
+  "midi": "3937449.mid"
  },
  "1093929": {
   "title": "Firework- Katy Perry (Piano Cover)",
@@ -12683,26 +12783,22 @@
   "has_pdf": true,
   "midi": "4935192.mid"
  },
- "5179186": {
-  "title": "Enemy Imagine Dragons PIANO - MIDI.mid",
+ "2980846": {
+  "title": "Something Just Like This - The Chainsmokers   Coldplay (Piano Cover) - MIDI.mid",
   "pages": [
-   "001.png"
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png"
   ],
-  "page_count": 1,
+  "page_count": 6,
   "has_pdf": true,
-  "midi": "5179186.mid"
+  "midi": "2980846.mid"
  },
- "5113271": {
-  "title": "Enemy Imagine Dragons PIANO - MIDI.mid",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5113271.mid"
- },
- "5041059": {
-  "title": "Radioactive-imagine dragons(piano), making#4",
+ "5343764": {
+  "title": "Believer - Imagine Dragons (Piano Solo).mid",
   "pages": [
    "001.png",
    "002.png",
@@ -12715,7 +12811,39 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5041059.mid"
+  "midi": "5343764.mid"
+ },
+ "5046014": {
+  "title": "Enemy Imagine Dragons PIANO - MIDI.mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5046014.mid"
+ },
+ "5043393": {
+  "title": "Radioactive-imagine dragons(piano), making#5",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5043393.mid"
  },
  "5041034": {
   "title": "Radioactive-imagine dragons(piano), making#3",
@@ -12733,6 +12861,36 @@
   "has_pdf": true,
   "midi": "5041034.mid"
  },
+ "5038686": {
+  "title": "Radioactive-imagine dragons(piano), making#2",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5038686.mid"
+ },
+ "5025212": {
+  "title": "Wrecked-Imagine Dragons Piano (complete)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png"
+  ],
+  "page_count": 6,
+  "has_pdf": true,
+  "midi": "5025212.mid"
+ },
  "4980719": {
   "title": "Believer - Imagine Dragons (Piano Solo).mid",
   "pages": [
@@ -12749,19 +12907,7 @@
   "has_pdf": true,
   "midi": "4980719.mid"
  },
- "4860788": {
-  "title": "Radioactive-imagine dragons(piano)",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png"
-  ],
-  "page_count": 4,
-  "has_pdf": true,
-  "midi": "4860788.mid"
- },
- "4689693": {
+ "4631853": {
   "title": "Believer - Imagine Dragons (Piano Solo).mid",
   "pages": [
    "001.png",
@@ -12775,34 +12921,9 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4689693.mid"
+  "midi": "4631853.mid"
  },
- "4447467": {
-  "title": "Enemy Imagine Dragons PIANO - MIDI.mid_1650292482809.mid",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "4447467.mid"
- },
- "4324423": {
-  "title": "Believer - Imagine Dragons (Piano Solo).mid",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "4324423.mid"
- },
- "4311043": {
+ "4555901": {
   "title": "Enemy Imagine Dragons PIANO - MIDI.mid",
   "pages": [
    "001.png",
@@ -12816,10 +12937,24 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4311043.mid"
+  "midi": "4555901.mid"
  },
- "4364497": {
-  "title": "Heathens - Twenty One Pilots Piano Cover Ultra nice",
+ "4471787": {
+  "title": "Natural - Imagine Dragons [Piano]",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png"
+  ],
+  "page_count": 6,
+  "has_pdf": true,
+  "midi": "4471787.mid"
+ },
+ "4495346": {
+  "title": "Believer - Imagine Dragons (Piano Solo).mid",
   "pages": [
    "001.png",
    "002.png",
@@ -12832,39 +12967,21 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4364497.mid"
+  "midi": "4495346.mid"
  },
- "2980255": {
-  "title": "Jumpsuit - Twenty One Pilots PIANO/DRUMS arrangement",
+ "4488760": {
+  "title": "Enemy Imagine Dragons PIANO - MIDI.mid",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
    "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "006.png"
   ],
-  "page_count": 8,
+  "page_count": 6,
   "has_pdf": true,
-  "midi": "2980255.mid"
- },
- "1040005": {
-  "title": "Jumpsuit - Twenty One Pilots PIANO/DRUMS arrangement",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "1040005.mid"
+  "midi": "4488760.mid"
  },
  "5520856": {
   "title": "Love From The Other Side by Fall Out Boy (piano cover)",
@@ -12882,33 +12999,6 @@
   "has_pdf": true,
   "midi": "5520856.mid"
  },
- "4305969": {
-  "title": "My Songs Know What You Did in the Dark(Light 'Em Up) - Fall Out Boy (Piano)",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png"
-  ],
-  "page_count": 7,
-  "has_pdf": true,
-  "midi": "4305969.mid"
- },
- "1057792": {
-  "title": "Kingdom Hearts III Dont Think Twice piano",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png"
-  ],
-  "page_count": 4,
-  "has_pdf": true,
-  "midi": "1057792.mid"
- },
  "5777551": {
   "title": "Etude Opus 25 No. 12 (Ocean) - Frederic Chopin",
   "pages": [
@@ -12925,6 +13015,22 @@
   "has_pdf": true,
   "midi": "5777551.mid"
  },
+ "5777405": {
+  "title": "Ballade 3 Chopin",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5777405.mid"
+ },
  "5772345": {
   "title": "Chopin - Nocturne in E Flat Major Op. 9 No. 2",
   "pages": [
@@ -12936,6 +13042,28 @@
   "has_pdf": true,
   "midi": "5772345.mid"
  },
+ "5770183": {
+  "title": "finally writing a birthday present for someone other than Chopin",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5770183.mid"
+ },
+ "5764583": {
+  "title": "Mazurka in G Minor, Op. 24, No. 1 - Fr\u00e9d\u00e9ric Chopin (September 2026 submission)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png"
+  ],
+  "page_count": 5,
+  "has_pdf": true,
+  "midi": "5764583.mid"
+ },
  "5764508": {
   "title": "prelude- frederick chopin reimagined",
   "pages": [
@@ -12944,6 +13072,54 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "5764508.mid"
+ },
+ "5763013": {
+  "title": "Chopin Spring Waltz.mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5763013.mid"
+ },
+ "5759843": {
+  "title": "\u00c9tude Op. 10, No. 11 \"Arpeggio\" in E-flat major - Fr\u00e9d\u00e9ric Chopin",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5759843.mid"
+ },
+ "5753093": {
+  "title": "Fantaisie Impromptu in B Minor Chopin",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5753093.mid"
  },
  "5751348": {
   "title": "Fantaisie Impromptu in C# Minor Chopin",
@@ -12974,16 +13150,6 @@
   "page_count": 6,
   "has_pdf": true,
   "midi": "5752384.mid"
- },
- "5752363": {
-  "title": "Chopin",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5752363.mid"
  },
  "5752055": {
   "title": "Etude Op. 10 No. 4 - Torrent (Chopin)",
@@ -13073,16 +13239,6 @@
   "has_pdf": true,
   "midi": "5739707.mid"
  },
- "5736636": {
-  "title": "chopin",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5736636.mid"
- },
  "5736630": {
   "title": "chopin",
   "pages": [
@@ -13093,16 +13249,6 @@
   "page_count": 3,
   "has_pdf": true,
   "midi": "5736630.mid"
- },
- "5736620": {
-  "title": "chopin",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5736620.mid"
  },
  "5728660": {
   "title": "Chopin",
@@ -13129,6 +13275,22 @@
   "has_pdf": true,
   "midi": "5726750.mid"
  },
+ "5780070": {
+  "title": "Passion | Beethoven virus",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5780070.mid"
+ },
  "5767875": {
   "title": "Beethoven's Fifth Symphony",
   "pages": [
@@ -13144,6 +13306,53 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "5767875.mid"
+ },
+ "5763658": {
+  "title": "Beethoven Virus (insane).mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5763658.mid"
+ },
+ "5756063": {
+  "title": "Beethoven Sonata Op. 2 No. 1 in F minor (1st movement) 8 Bit",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
+  ],
+  "page_count": 7,
+  "has_pdf": true,
+  "midi": "5756063.mid"
+ },
+ "5753703": {
+  "title": "Sonata No. 8 _Path\u00e9tique_. 1st Movement. L. van Beethoven. Op. 13.",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5753703.mid"
  },
  "1500364": {
   "title": "Beethoven / The Ruins of Athens, Turkish March (redone)",
@@ -13177,29 +13386,6 @@
   "has_pdf": true,
   "midi": "5223891.mid"
  },
- "5739321": {
-  "title": "Fur elise by beethoven",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5739321.mid"
- },
- "5737276": {
-  "title": "Moonlight Sonata - Beethoven - Made By Ecstacy",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png"
-  ],
-  "page_count": 5,
-  "has_pdf": true,
-  "midi": "5737276.mid"
- },
  "5736715": {
   "title": "beethoven virus demix",
   "pages": [
@@ -13216,6 +13402,22 @@
   "has_pdf": true,
   "midi": "5736715.mid"
  },
+ "5734768": {
+  "title": "Baby Einstein - Baby Beethoven: Symphony No. 3, 4th Movement",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5734768.mid"
+ },
  "5729129": {
   "title": "Beethoven Sonata Op. 2 No. 3 in C major (1st movement)",
   "pages": [
@@ -13231,22 +13433,6 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "5729129.mid"
- },
- "5342762": {
-  "title": "Baby Einstein: Baby Beethoven: Symphony No. 3, 4th Movement",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5342762.mid"
  },
  "5716382": {
   "title": "Beethoven Virus (WIP)",
@@ -13284,14 +13470,30 @@
   "has_pdf": true,
   "midi": "5712788.mid"
  },
- "5709895": {
-  "title": "Moonlight sonata 1st mvt - beethoven",
+ "5712786": {
+  "title": "Baby Einstein - Contradance No. 10 - Beethoven",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5712786.mid"
+ },
+ "5710924": {
+  "title": "Ode to Joy by Ludwig van Beethoven",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "5709895.mid"
+  "midi": "5710924.mid"
  },
  "5558277": {
   "title": "beethoven virus",
@@ -13330,6 +13532,22 @@
   "has_pdf": true,
   "midi": "5560243.mid"
  },
+ "5559585": {
+  "title": "Beethoven virus",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5559585.mid"
+ },
  "5559584": {
   "title": "Beethoven Virus (insane).mid (1)",
   "pages": [
@@ -13346,17 +13564,23 @@
   "has_pdf": true,
   "midi": "5559584.mid"
  },
- "5474428": {
-  "title": "Mozart's Symphony No. 40/42 in G minor 'Great G minor Symphony', KV. 550",
+ "5558443": {
+  "title": "Beethoven Sonata Op. 2 No. 1 in F minor (1st movement)",
   "pages": [
-   "001.png"
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
   ],
-  "page_count": 1,
+  "page_count": 7,
   "has_pdf": true,
-  "midi": "5474428.mid"
+  "midi": "5558443.mid"
  },
- "5735240": {
-  "title": "Wolfgang Amadeus Mozart - \"The Magic Flute\": Act II, No. 14 \"Der H\u00f6lle Rache kocht in meinem Herzen\"",
+ "3423844": {
+  "title": "Mozart Symphony 40 mvt 1",
   "pages": [
    "001.png",
    "002.png",
@@ -13369,7 +13593,32 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5735240.mid"
+  "midi": "3423844.mid"
+ },
+ "5474428": {
+  "title": "Mozart's Symphony No. 40/42 in G minor 'Great G minor Symphony', KV. 550",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5474428.mid"
+ },
+ "5761712": {
+  "title": "Mozart - Fun Time",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5761712.mid"
  },
  "5761186": {
   "title": "That one mozart song remixed",
@@ -13398,6 +13647,22 @@
   "has_pdf": true,
   "midi": "5760606.mid"
  },
+ "5760008": {
+  "title": "Madamina il catalogo \u00e8 questo - W.A. Mozart . . . . . (Heatvex) III",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5760008.mid"
+ },
  "5754762": {
   "title": "Mozart - Sonata No. 16 1st Movement",
   "pages": [
@@ -13424,17 +13689,23 @@
   "has_pdf": true,
   "midi": "5756338.mid"
  },
- "5755359": {
-  "title": "W.A. Mozart - Sonata for 2 Pianos in D Major, K.448/375a (Andante)",
+ "5752068": {
+  "title": "W. A. Mozart - Der Vogelf\u00e4nger bin ich ja (Die Zauberfl\u00f6te)",
   "pages": [
    "001.png",
-   "002.png"
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
   ],
-  "page_count": 2,
+  "page_count": 8,
   "has_pdf": true,
-  "midi": "5755359.mid"
+  "midi": "5752068.mid"
  },
- "5754927": {
+ "5755330": {
   "title": "W.A. Mozart - Sonata for 2 Pianos in D Major, K.448/375a (Andante)",
   "pages": [
    "001.png",
@@ -13442,7 +13713,7 @@
   ],
   "page_count": 2,
   "has_pdf": true,
-  "midi": "5754927.mid"
+  "midi": "5755330.mid"
  },
  "5754926": {
   "title": "W.A. Mozart - Sonata for 2 Pianos in D Major, K.448/375a (Andante)",
@@ -13453,14 +13724,14 @@
   "has_pdf": true,
   "midi": "5754926.mid"
  },
- "5754923": {
+ "5754922": {
   "title": "W.A. Mozart - Sonata for 2 Pianos in D Major, K.448/375a (Andante)",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "5754923.mid"
+  "midi": "5754922.mid"
  },
  "5754916": {
   "title": "W.A. Mozart - Sonata for 2 Pianos in D Major, K.448/375a (Andante)",
@@ -13470,16 +13741,6 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "5754916.mid"
- },
- "5754909": {
-  "title": "W.A. Mozart - Sonata for 2 Pianos in D Major, K.448/375a (Andante)",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5754909.mid"
  },
  "5754757": {
   "title": "W.A. Mozart - Sonata for 2 Pianos in D Major, K.448/375a (Andante)",
@@ -13508,8 +13769,18 @@
   "has_pdf": true,
   "midi": "5754742.mid"
  },
- "4873234": {
-  "title": "Mozart's Piano Sonata No.2 in F Major, K. 280 (I. Allegro assai)",
+ "5750921": {
+  "title": "Mozart - Turkish march",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "5750921.mid"
+ },
+ "5737673": {
+  "title": "Mozart / Eine Kleine Nachtmusik (Serenade No. 13), Movement 4 Rondo (redone)",
   "pages": [
    "001.png",
    "002.png",
@@ -13522,50 +13793,65 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4873234.mid"
+  "midi": "5737673.mid"
  },
- "4873829": {
-  "title": "Bach (Piano)",
+ "5209158": {
+  "title": "Bach Piano Exercise 13.02.2026",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "4873829.mid"
+  "midi": "5209158.mid"
  },
- "4540754": {
-  "title": "bach piano prelude",
+ "5185314": {
+  "title": "Bach Piano 04022026",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "4540754.mid"
+  "midi": "5185314.mid"
  },
- "3495614": {
-  "title": "BAch Piano Invention",
+ "5171168": {
+  "title": "Bach Piano 29012026",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "3495614.mid"
+  "midi": "5171168.mid"
  },
- "4462176": {
-  "title": "Clair de Lune by Claude Debussy (Piano WIP remake by RevanPianist)",
+ "4303791": {
+  "title": "Bach Piano Bright",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "4303791.mid"
+ },
+ "3680859": {
+  "title": "Bach Piano Composition",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "3680859.mid"
+ },
+ "5439872": {
+  "title": "Attack of the Killer Queen (Piano Cover)",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "005.png"
   ],
-  "page_count": 8,
+  "page_count": 5,
   "has_pdf": true,
-  "midi": "4462176.mid"
+  "midi": "5439872.mid"
  },
  "5318240": {
   "title": "Queen - Killer Queen - Piano",
@@ -13577,31 +13863,18 @@
   "has_pdf": true,
   "midi": "5318240.mid"
  },
- "3562660": {
-  "title": "Queen - Killer Queen - Piano",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "3562660.mid"
- },
- "4359154": {
-  "title": "KANARIA - QUEEN - piano ver",
+ "4709215": {
+  "title": "Attack of the Killer Queen (Piano Cover)",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "005.png"
   ],
-  "page_count": 8,
+  "page_count": 5,
   "has_pdf": true,
-  "midi": "4359154.mid"
+  "midi": "4709215.mid"
  },
  "4135911": {
   "title": "Attack Of The Killer Queen Piano.mid",
@@ -13619,8 +13892,20 @@
   "has_pdf": true,
   "midi": "4135911.mid"
  },
- "3317897": {
-  "title": "KANARIA - QUEEN - piano ver 3",
+ "3987795": {
+  "title": "We will rock you - Queen - Piano.mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png"
+  ],
+  "page_count": 4,
+  "has_pdf": true,
+  "midi": "3987795.mid"
+ },
+ "3876575": {
+  "title": "Dancing Queen (piano & violin)",
   "pages": [
    "001.png",
    "002.png",
@@ -13633,7 +13918,53 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "3317897.mid"
+  "midi": "3876575.mid"
+ },
+ "2898688": {
+  "title": "Love of My Life - Queen (PIANO)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png"
+  ],
+  "page_count": 6,
+  "has_pdf": true,
+  "midi": "2898688.mid"
+ },
+ "3267769": {
+  "title": "Attack Of The Killer Queen Piano.mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "3267769.mid"
+ },
+ "3246938": {
+  "title": "KANARIA - QUEEN - piano ver 2",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "3246938.mid"
  },
  "3202113": {
   "title": "KANARIA - QUEEN - piano ver",
@@ -13650,31 +13981,6 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "3202113.mid"
- },
- "3160371": {
-  "title": "Deltarune Chapter 2 OST - Queen (Piano Cover).mp3 (2).mid",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "3160371.mid"
- },
- "1533432": {
-  "title": "We will rock you - Queen - Piano.mid",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "1533432.mid"
  },
  "1465281": {
   "title": "We will rock you - Queen - Piano.mid",
@@ -13699,7 +14005,7 @@
   "has_pdf": true,
   "midi": "1465279.mid"
  },
- "1465263": {
+ "1465272": {
   "title": "We will rock you - Queen - Piano.mid",
   "pages": [
    "001.png",
@@ -13707,16 +14013,16 @@
   ],
   "page_count": 2,
   "has_pdf": true,
-  "midi": "1465263.mid"
+  "midi": "1465272.mid"
  },
- "1372446": {
-  "title": "Love of my life - Queen (piano)",
+ "1465269": {
+  "title": "We will rock you - Queen - Piano.mid",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "1372446.mid"
+  "midi": "1465269.mid"
  },
  "4888857": {
   "title": "I'm Still Standing Elton John Piano Remake",
@@ -13729,6 +14035,30 @@
   "page_count": 4,
   "has_pdf": true,
   "midi": "4888857.mid"
+ },
+ "3573729": {
+  "title": "elton john piano riff",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "3573729.mid"
+ },
+ "2812448": {
+  "title": "I'm Still Standing Elton John Piano Remake",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
+  ],
+  "page_count": 7,
+  "has_pdf": true,
+  "midi": "2812448.mid"
  },
  "2812397": {
   "title": "I'm Still Standing Elton John Piano Remake",
@@ -13744,22 +14074,6 @@
   "page_count": 7,
   "has_pdf": true,
   "midi": "2812397.mid"
- },
- "4486986": {
-  "title": "Man in The Mirror - Michael Jackson - Piano Remaster Final",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "4486986.mid"
  },
  "1012274": {
   "title": "70 Aladdin Prince Piano 200.mid",
@@ -13783,6 +14097,38 @@
   "page_count": 3,
   "has_pdf": true,
   "midi": "1396870.mid"
+ },
+ "5778969": {
+  "title": "Billy Joel - Piano Man (2)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5778969.mid"
+ },
+ "5277834": {
+  "title": "Billy Joel \u2014 Piano Man",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5277834.mid"
  },
  "5183282": {
   "title": "Billy Joel \u2014 Piano Man",
@@ -13832,38 +14178,6 @@
   "has_pdf": true,
   "midi": "5025806.mid"
  },
- "4970209": {
-  "title": "Billy Joel - Piano Man - Instrumental .mid",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "4970209.mid"
- },
- "4943295": {
-  "title": "Billy Joel - Piano Man - Instrumental .mid",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "4943295.mid"
- },
  "4784585": {
   "title": "Billy Joel - Piano Man",
   "pages": [
@@ -13880,6 +14194,38 @@
   "has_pdf": true,
   "midi": "4784585.mid"
  },
+ "4697115": {
+  "title": "Billy Joel - Piano Man - Zachary M",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "4697115.mid"
+ },
+ "4681885": {
+  "title": "Billy Joel - Piano Man - Zachary M",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "4681885.mid"
+ },
  "4540547": {
   "title": "Billy Joel - Piano Man - Instrumental .mid",
   "pages": [
@@ -13895,22 +14241,6 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "4540547.mid"
- },
- "4539010": {
-  "title": "Billy Joel - Piano Man - Instrumental .mid",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "4539010.mid"
  },
  "4375614": {
   "title": "Billy Joel - Piano Man - Instrumental .mid",
@@ -14104,22 +14434,6 @@
   "has_pdf": true,
   "midi": "3956944.mid"
  },
- "3625337": {
-  "title": "Billy Joel - Piano Man",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "3625337.mid"
- },
  "3519702": {
   "title": "Billy Joel - Piano Man",
   "pages": [
@@ -14136,6 +14450,16 @@
   "has_pdf": true,
   "midi": "3519702.mid"
  },
+ "4813649": {
+  "title": "Hyperion Suite: TSUNAMI Sting (Piano Cover)",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "4813649.mid"
+ },
  "1161182": {
   "title": "Shape of my heart By Sting Piano intro",
   "pages": [
@@ -14144,6 +14468,38 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "1161182.mid"
+ },
+ "3903093": {
+  "title": "Enter Sandman- Metallica (Piano cover)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "3903093.mid"
+ },
+ "5310618": {
+  "title": "Serve The Servants - Nirvana (Piano Rendition)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5310618.mid"
  },
  "3105648": {
   "title": "All apologies - Nirvana (Piano cover WIP)",
@@ -14155,15 +14511,6 @@
   "page_count": 3,
   "has_pdf": true,
   "midi": "3105648.mid"
- },
- "2747956": {
-  "title": "You - Approaching Nirvana (piano parts only)",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "2747956.mid"
  },
  "2747535": {
   "title": "You - Approaching Nirvana (piano part)",
@@ -14183,6 +14530,21 @@
   "has_pdf": true,
   "midi": "3413918.mid"
  },
+ "3114553": {
+  "title": "No Surprises -Radiohead (Piano)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
+  ],
+  "page_count": 7,
+  "has_pdf": true,
+  "midi": "3114553.mid"
+ },
  "2174994": {
   "title": "tragic muse piano breakdown v2",
   "pages": [
@@ -14201,46 +14563,15 @@
   "has_pdf": true,
   "midi": "2175391.mid"
  },
- "2175023": {
-  "title": "tragic muse piano breakdown",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "2175023.mid"
- },
- "203893": {
-  "title": "muse piano thing",
+ "3801364": {
+  "title": "21 Guns Green day piano",
   "pages": [
    "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "002.png"
   ],
-  "page_count": 8,
+  "page_count": 2,
   "has_pdf": true,
-  "midi": "203893.mid"
- },
- "4754243": {
-  "title": "emergency_ paramore (piano rendition by david ross lawn)",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "4754243.mid"
+  "midi": "3801364.mid"
  },
  "2889834": {
   "title": "A Cover of Misery Business by Paramore [PIANO TRACK WITH CHORUS VOCALS]",
@@ -14286,8 +14617,8 @@
   "has_pdf": true,
   "midi": "5455494.mid"
  },
- "4855582": {
-  "title": "Welcome to the Black Parade - My Chemical Romance (Piano Version)",
+ "50581": {
+  "title": "Sleep -- My Chemical Romance -- Piano Cover.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -14300,7 +14631,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4855582.mid"
+  "midi": "50581.mid"
  },
  "5484191": {
   "title": "20th Century-Fox theme 1975 Piano cover Reversed",
@@ -14311,6 +14642,16 @@
   "page_count": 2,
   "has_pdf": true,
   "midi": "5484191.mid"
+ },
+ "5471363": {
+  "title": "20th Century-Fox theme 1975 Piano cover",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "5471363.mid"
  },
  "5467522": {
   "title": "20th Century-Fox theme 1975 Piano cover",
@@ -14332,14 +14673,23 @@
   "has_pdf": true,
   "midi": "4686234.mid"
  },
- "403245": {
-  "title": "john legend piano",
+ "5772547": {
+  "title": "Pink + White Frank Ocean Piano",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "403245.mid"
+  "midi": "5772547.mid"
+ },
+ "4051063": {
+  "title": "Pink + White Frank Ocean Piano",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "4051063.mid"
  },
  "2874713": {
   "title": "Pink + White Frank Ocean Piano",
@@ -14349,6 +14699,26 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "2874713.mid"
+ },
+ "5012266": {
+  "title": "japanese-denim-daniel-caesar-piano-solo",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png"
+  ],
+  "page_count": 3,
+  "has_pdf": true,
+  "midi": "5012266.mid"
+ },
+ "4858567": {
+  "title": "snooze sza piano only",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "4858567.mid"
  },
  "4840031": {
   "title": "snooze sza piano only",
@@ -14370,39 +14740,16 @@
   "has_pdf": true,
   "midi": "5771952.mid"
  },
- "5780270": {
-  "title": "Release cut piano but its glitched",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5780270.mid"
- },
- "5778852": {
-  "title": "Release-Cut Piano test.",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5778852.mid"
- },
- "5780077": {
-  "title": "Piano harpsico vioflute",
+ "5780248": {
+  "title": "1 minute release-cut piano",
   "pages": [
    "001.png",
    "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "003.png"
   ],
-  "page_count": 8,
+  "page_count": 3,
   "has_pdf": true,
-  "midi": "5780077.mid"
+  "midi": "5780248.mid"
  },
  "5780068": {
   "title": "Freedom motif on the new piano",
@@ -14421,15 +14768,6 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "5780020.mid"
- },
- "5780017": {
-  "title": "piano warmup",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5780017.mid"
  },
  "5770708": {
   "title": "release-cut piano breakcore wip",
@@ -14481,7 +14819,7 @@
   "has_pdf": true,
   "midi": "5779940.mid"
  },
- "5779738": {
+ "5779881": {
   "title": "Time Go Fishing Piano Cover",
   "pages": [
    "001.png",
@@ -14490,20 +14828,19 @@
   ],
   "page_count": 3,
   "has_pdf": true,
-  "midi": "5779738.mid"
+  "midi": "5779881.mid"
  },
- "5779676": {
-  "title": "There's release cut piano now?!?!",
+ "5779785": {
+  "title": "Experment with Release-Cut Piano. (MWHAHAHAHHAHAHAHHAH!)",
   "pages": [
-   "001.png",
-   "002.png"
+   "001.png"
   ],
-  "page_count": 2,
+  "page_count": 1,
   "has_pdf": true,
-  "midi": "5779676.mid"
+  "midi": "5779785.mid"
  },
- "5779657": {
-  "title": "Impossible Piano - Runescape - Autumn Voyage bbl news",
+ "5779701": {
+  "title": "piano test final",
   "pages": [
    "001.png",
    "002.png",
@@ -14516,7 +14853,26 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5779657.mid"
+  "midi": "5779701.mid"
+ },
+ "5779676": {
+  "title": "There's release cut piano now?!?!",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "5779676.mid"
+ },
+ "5779674": {
+  "title": "(NEW INSTRUMENT) Release-Cut Piano (AKA all my fellas)",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5779674.mid"
  },
  "5779654": {
   "title": "Impossible Piano - Runescape - Autumn Voyage bbl news",
@@ -14543,32 +14899,6 @@
   "page_count": 2,
   "has_pdf": true,
   "midi": "5779644.mid"
- },
- "5779528": {
-  "title": "new piano???",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5779528.mid"
- },
- "5779750": {
-  "title": "The Weeknd - Blinding Lights",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5779750.mid"
  },
  "5461513": {
   "title": "The weeknd- Blinding lights",
@@ -14638,6 +14968,18 @@
   "has_pdf": true,
   "midi": "5228087.mid"
  },
+ "5160269": {
+  "title": "The Weeknd-Blinding lights piano",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png"
+  ],
+  "page_count": 4,
+  "has_pdf": true,
+  "midi": "5160269.mid"
+ },
  "5115289": {
   "title": "The Weeknd - Blinding Lights",
   "pages": [
@@ -14653,6 +14995,15 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "5115289.mid"
+ },
+ "5007324": {
+  "title": "The Weeknd - Blinding Lights (Full Instrumental - Best on OS)",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5007324.mid"
  },
  "5078598": {
   "title": "The Weeknd - Blinding Lights",
@@ -14686,16 +15037,6 @@
   "has_pdf": true,
   "midi": "5060524.mid"
  },
- "5042688": {
-  "title": "The Weeknd - Blinding Lights.mid",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5042688.mid"
- },
  "4600750": {
   "title": "The Weeknd - Blinding Lights (Intro)",
   "pages": [
@@ -14709,14 +15050,14 @@
   "has_pdf": true,
   "midi": "4600750.mid"
  },
- "4482047": {
+ "4389174": {
   "title": "The Weeknd - Blinding Lights",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "4482047.mid"
+  "midi": "4389174.mid"
  },
  "4368746": {
   "title": "the weeknd - blinding lights but low budget",
@@ -14741,8 +15082,17 @@
   "has_pdf": true,
   "midi": "4331142.mid"
  },
- "4198259": {
+ "4232340": {
   "title": "The Weeknd - Blinding Lights",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "4232340.mid"
+ },
+ "4113263": {
+  "title": "The Weeknd - Blinding Lights 8-Bit Remix",
   "pages": [
    "001.png",
    "002.png",
@@ -14755,16 +15105,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4198259.mid"
- },
- "4113221": {
-  "title": "(WIP) The Weeknd - Blinding Lights 8-Bit Remix",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "4113221.mid"
+  "midi": "4113263.mid"
  },
  "4080974": {
   "title": "Better \"The Weeknd - Blinding Lights\"",
@@ -14782,8 +15123,19 @@
   "has_pdf": true,
   "midi": "4080974.mid"
  },
- "4006390": {
-  "title": "The Weeknd - Blinding Lights",
+ "4039332": {
+  "title": "The Weeknd - Blinding Lights.mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png"
+  ],
+  "page_count": 3,
+  "has_pdf": true,
+  "midi": "4039332.mid"
+ },
+ "3511931": {
+  "title": "Better \"The Weeknd - Blinding Lights\"",
   "pages": [
    "001.png",
    "002.png",
@@ -14796,7 +15148,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4006390.mid"
+  "midi": "3511931.mid"
  },
  "2040939": {
   "title": "TAKE ME HOME, COUNTRY ROADS - John Denver Piano Tutorial by Paul Hankinson.mid",
@@ -14824,6 +15176,15 @@
   "has_pdf": true,
   "midi": "1497174.mid"
  },
+ "5780137": {
+  "title": "Moonlight Sonata III movement",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5780137.mid"
+ },
  "5775738": {
   "title": "Moonlight Sonata - Jazz",
   "pages": [
@@ -14840,32 +15201,6 @@
   "has_pdf": true,
   "midi": "5775738.mid"
  },
- "5549296": {
-  "title": "moonlight sonata 3rd",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5549296.mid"
- },
- "5771774": {
-  "title": "Moonlight Sonata 3rd Movement.midi (piano only)",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5771774.mid"
- },
  "5770011": {
   "title": "Hugo Moonlight Sonata",
   "pages": [
@@ -14875,27 +15210,8 @@
   "has_pdf": true,
   "midi": "5770011.mid"
  },
- "5766245": {
-  "title": "Moonlight Sonata 3rd Movement.midi (piano only)",
-  "pages": [
-   "001.png",
-   "002.png"
-  ],
-  "page_count": 2,
-  "has_pdf": true,
-  "midi": "5766245.mid"
- },
- "5758112": {
-  "title": "moonlight sonata 3rd mvmt",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5758112.mid"
- },
- "5757389": {
-  "title": "Moonlight Sonata 3rd Movement.midi (piano only)",
+ "5755493": {
+  "title": "Moonlight sonata remix",
   "pages": [
    "001.png",
    "002.png",
@@ -14908,7 +15224,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5757389.mid"
+  "midi": "5755493.mid"
  },
  "5754667": {
   "title": "Moonlight Sonata",
@@ -14974,6 +15290,22 @@
   "has_pdf": true,
   "midi": "5751818.mid"
  },
+ "5744287": {
+  "title": "Moonlight sonata",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5744287.mid"
+ },
  "5737244": {
   "title": "MOONLIGHT SONATA 1ST MOVEMENT",
   "pages": [
@@ -14999,8 +15331,8 @@
   "has_pdf": true,
   "midi": "5733707.mid"
  },
- "5728319": {
-  "title": "Moonlight Sonata 3rd Movement.midi but its inverted",
+ "5723505": {
+  "title": "Moonlight sonata",
   "pages": [
    "001.png",
    "002.png",
@@ -15013,10 +15345,10 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5728319.mid"
+  "midi": "5723505.mid"
  },
- "5727108": {
-  "title": "Moonlight Sonata 3rd Movement.midi (piano only)",
+ "5723305": {
+  "title": "Moonlight sonata",
   "pages": [
    "001.png",
    "002.png",
@@ -15029,10 +15361,10 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5727108.mid"
+  "midi": "5723305.mid"
  },
- "5723009": {
-  "title": "Moonlight sonata (3rd Movement)",
+ "5778286": {
+  "title": "Fur Elise (Modern)1",
   "pages": [
    "001.png",
    "002.png",
@@ -15045,23 +15377,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5723009.mid"
- },
- "5775727": {
-  "title": "F\u00fcr Elise - Jazz Version",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5775727.mid"
+  "midi": "5778286.mid"
  },
  "5768667": {
   "title": "F\u00fcr Elise",
@@ -15089,8 +15405,17 @@
   "has_pdf": true,
   "midi": "5760382.mid"
  },
- "5758363": {
-  "title": "F\u00fcr Elise GracieSchreiber Music",
+ "5755775": {
+  "title": "Fur Elise",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5755775.mid"
+ },
+ "5752260": {
+  "title": "F\u00fcr Elise",
   "pages": [
    "001.png",
    "002.png",
@@ -15103,31 +15428,21 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5758363.mid"
+  "midi": "5752260.mid"
  },
- "5755775": {
-  "title": "Fur Elise",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5755775.mid"
- },
- "5344049": {
-  "title": "fur elise",
+ "5752242": {
+  "title": "F\u00fcr Elise",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
    "005.png",
-   "006.png",
-   "007.png"
+   "006.png"
   ],
-  "page_count": 7,
+  "page_count": 6,
   "has_pdf": true,
-  "midi": "5344049.mid"
+  "midi": "5752242.mid"
  },
  "5746188": {
   "title": "fur elise",
@@ -15138,79 +15453,54 @@
   "has_pdf": true,
   "midi": "5746188.mid"
  },
- "5739939": {
-  "title": "Fur Elise trap (WIP)",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5739939.mid"
- },
- "5720532": {
-  "title": "fur elise trap",
+ "5746158": {
+  "title": "fur elise",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "5720532.mid"
+  "midi": "5746158.mid"
  },
- "5162595": {
-  "title": "Fur Elise but Elise has ADHD - Originally by SeeMusicTutorial",
+ "5731819": {
+  "title": "Fur Elise",
   "pages": [
    "001.png",
-   "002.png",
-   "003.png",
-   "004.png"
+   "002.png"
   ],
-  "page_count": 4,
+  "page_count": 2,
   "has_pdf": true,
-  "midi": "5162595.mid"
+  "midi": "5731819.mid"
  },
- "5708223": {
-  "title": "Spot the mistakes - Fur Elise edition",
+ "5552331": {
+  "title": "Fur Elise",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "5708223.mid"
+  "midi": "5552331.mid"
  },
- "5549873": {
-  "title": "really bad fur elise by motzart.",
+ "5510142": {
+  "title": "fur Elise",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "5549873.mid"
+  "midi": "5510142.mid"
  },
- "5515712": {
-  "title": "F\u00fcr Elise Walzer Piano",
+ "5508545": {
+  "title": "unfinished fur elise",
   "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "001.png"
   ],
-  "page_count": 8,
+  "page_count": 1,
   "has_pdf": true,
-  "midi": "5515712.mid"
+  "midi": "5508545.mid"
  },
- "5736739": {
-  "title": "earrape so ahh so i replaced it with clair de lune",
+ "5507343": {
+  "title": "Beethoven Fur Elise",
   "pages": [
    "001.png",
    "002.png",
@@ -15222,7 +15512,55 @@
   ],
   "page_count": 7,
   "has_pdf": true,
-  "midi": "5736739.mid"
+  "midi": "5507343.mid"
+ },
+ "5502512": {
+  "title": "Fur elise",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png"
+  ],
+  "page_count": 6,
+  "has_pdf": true,
+  "midi": "5502512.mid"
+ },
+ "5500178": {
+  "title": "part of f\u00far elise",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5500178.mid"
+ },
+ "5748552": {
+  "title": "La Valse au Clair de Lune",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5748552.mid"
+ },
+ "5739666": {
+  "title": "Claude Debussy - Suite bergamasque, CD 82: III. Clair de lune",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5739666.mid"
  },
  "5548539": {
   "title": "C.A. Debussy - Clair De Lune (Original)",
@@ -15239,22 +15577,6 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "5548539.mid"
- },
- "5460264": {
-  "title": "C. A. Debussy - Clair De Lune (1903)",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5460264.mid"
  },
  "5453049": {
   "title": "Clair De Lune -Grace CST",
@@ -15274,8 +15596,8 @@
   "has_pdf": true,
   "midi": "5450790.mid"
  },
- "4432310": {
-  "title": "Suite Bergamasque No. 3 \"Clair de Lune\" - Claude Debussy",
+ "5421815": {
+  "title": "Clair de Lune (Rhodes Cover) - MIDI.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -15283,28 +15605,29 @@
    "004.png",
    "005.png",
    "006.png",
-   "007.png",
-   "008.png"
+   "007.png"
   ],
-  "page_count": 8,
+  "page_count": 7,
   "has_pdf": true,
-  "midi": "4432310.mid"
+  "midi": "5421815.mid"
  },
- "5383998": {
-  "title": "debussy-clair-de-lune",
+ "5404369": {
+  "title": "C. A. Debussy - Clair De Lune (1903)",
   "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "001.png"
   ],
-  "page_count": 8,
+  "page_count": 1,
   "has_pdf": true,
-  "midi": "5383998.mid"
+  "midi": "5404369.mid"
+ },
+ "5315860": {
+  "title": "clair de lune test",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5315860.mid"
  },
  "5302944": {
   "title": "Clair De Lune",
@@ -15314,6 +15637,58 @@
   "page_count": 1,
   "has_pdf": true,
   "midi": "5302944.mid"
+ },
+ "5289962": {
+  "title": "Clair de lune (music box)",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5289962.mid"
+ },
+ "5288430": {
+  "title": "DebraYume_Eric Christian - La Valse au Clair de Lune",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png"
+  ],
+  "page_count": 4,
+  "has_pdf": true,
+  "midi": "5288430.mid"
+ },
+ "3968619": {
+  "title": "Clair de lune - Claude_Debussy",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "3968619.mid"
+ },
+ "2448167": {
+  "title": "Claude Debussy - Clair de Lune.mid",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
+  ],
+  "page_count": 7,
+  "has_pdf": true,
+  "midi": "2448167.mid"
  },
  "5205721": {
   "title": "Clair de Lune (Concert Band, Synth-sus Remix)",
@@ -15363,62 +15738,25 @@
   "has_pdf": true,
   "midi": "5245136.mid"
  },
- "5239823": {
-  "title": "Debussy - Clair de Lune",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5239823.mid"
- },
- "5238906": {
-  "title": "Clair de Lune",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5238906.mid"
- },
- "5778623": {
-  "title": "La Campanella",
+ "5778941": {
+  "title": "la campanella",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "5778623.mid"
+  "midi": "5778941.mid"
  },
- "5540381": {
-  "title": "Liszt Paganini Etude n3 (la campanella)",
+ "5548815": {
+  "title": "La campanella [LisztFujiko]",
   "pages": [
    "001.png",
    "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "003.png"
   ],
-  "page_count": 8,
+  "page_count": 3,
   "has_pdf": true,
-  "midi": "5540381.mid"
+  "midi": "5548815.mid"
  },
  "5520097": {
   "title": "Liszt- La campanella piano midi by Lokanath R",
@@ -15500,21 +15838,19 @@
   "has_pdf": true,
   "midi": "5454703.mid"
  },
- "5415010": {
-  "title": "La Campanella jz",
+ "5397707": {
+  "title": "La Campanella (\u00c3\u2030tudes d'ex\u00c3\u00a9cution transcendante d'apr\u00c3\u00a8s Paganini No.3) - Franz Liszt (Finished)",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
    "004.png",
    "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "006.png"
   ],
-  "page_count": 8,
+  "page_count": 6,
   "has_pdf": true,
-  "midi": "5415010.mid"
+  "midi": "5397707.mid"
  },
  "5397704": {
   "title": "La Campanella (\u00c3\u2030tudes d'ex\u00c3\u00a9cution transcendante d'apr\u00c3\u00a8s Paganini No.3) - Franz Liszt (Finished)",
@@ -15530,8 +15866,18 @@
   "has_pdf": true,
   "midi": "5397704.mid"
  },
- "5388534": {
-  "title": "La Campanella",
+ "5397371": {
+  "title": "la campanella but i cant hear it",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "5397371.mid"
+ },
+ "5389803": {
+  "title": "la campanella remake",
   "pages": [
    "001.png",
    "002.png",
@@ -15544,7 +15890,17 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5388534.mid"
+  "midi": "5389803.mid"
+ },
+ "5387961": {
+  "title": "La Campanella 2nd to final part",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "5387961.mid"
  },
  "5382820": {
   "title": "Liszt - La Campanella",
@@ -15578,8 +15934,17 @@
   "has_pdf": true,
   "midi": "5374298.mid"
  },
- "5360052": {
-  "title": "Liszt - La Campanella",
+ "5351386": {
+  "title": "La Campanella",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5351386.mid"
+ },
+ "5325156": {
+  "title": "campanella :<",
   "pages": [
    "001.png",
    "002.png",
@@ -15592,7 +15957,16 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5360052.mid"
+  "midi": "5325156.mid"
+ },
+ "5324963": {
+  "title": "la campanella",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5324963.mid"
  },
  "5280800": {
   "title": "La campanella, Op.2 (Egghard, Jules)",
@@ -15619,6 +15993,16 @@
   "page_count": 3,
   "has_pdf": true,
   "midi": "5323493.mid"
+ },
+ "5321444": {
+  "title": "That one part from campanella",
+  "pages": [
+   "001.png",
+   "002.png"
+  ],
+  "page_count": 2,
+  "has_pdf": true,
+  "midi": "5321444.mid"
  },
  "5319729": {
   "title": "La-Campanella  but on 500kg of methamphetamines",
@@ -15662,22 +16046,6 @@
   "has_pdf": true,
   "midi": "5297288.mid"
  },
- "5288414": {
-  "title": "Franz Liszt - La Campanella",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5288414.mid"
- },
  "5529145": {
   "title": "liebestraum",
   "pages": [
@@ -15694,48 +16062,29 @@
   "has_pdf": true,
   "midi": "5529145.mid"
  },
- "5320168": {
-  "title": "Liebestraum no.3 in A-flat (no difficult parts) (my arrangement)",
+ "5317931": {
+  "title": "Liebestraum liszt unfinished",
   "pages": [
    "001.png",
    "002.png",
-   "003.png",
-   "004.png",
-   "005.png"
+   "003.png"
   ],
-  "page_count": 5,
+  "page_count": 3,
   "has_pdf": true,
-  "midi": "5320168.mid"
+  "midi": "5317931.mid"
  },
- "5313645": {
+ "5315846": {
   "title": "Liebestraum liszt unfinished",
   "pages": [
-   "001.png"
+   "001.png",
+   "002.png"
   ],
-  "page_count": 1,
+  "page_count": 2,
   "has_pdf": true,
-  "midi": "5313645.mid"
+  "midi": "5315846.mid"
  },
- "5199987": {
-  "title": "a part I re-re-did from Liebestraum",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5199987.mid"
- },
- "5169593": {
-  "title": "Liszt - Liebestraum - from Flowkey",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "5169593.mid"
- },
- "4918274": {
-  "title": "Liebestraum + Waltz in C sharp minor",
+ "5250563": {
+  "title": "Liszt Liebestraum No.3 (full)",
   "pages": [
    "001.png",
    "002.png",
@@ -15748,7 +16097,64 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4918274.mid"
+  "midi": "5250563.mid"
+ },
+ "5169593": {
+  "title": "Liszt - Liebestraum - from Flowkey",
+  "pages": [
+   "001.png"
+  ],
+  "page_count": 1,
+  "has_pdf": true,
+  "midi": "5169593.mid"
+ },
+ "4985256": {
+  "title": "Liebestraum - Franz Liszt",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "4985256.mid"
+ },
+ "5017899": {
+  "title": "Liebestraum No. 3 - Franz Liszt (Finished) (Audio Decreased)",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5017899.mid"
+ },
+ "3604333": {
+  "title": "Liszt - Liebestraum No.3 in A\u266dMajor, S. 541",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "3604333.mid"
  },
  "4820165": {
   "title": "Liszt Liebestraum No.3 (full)",
@@ -15766,26 +16172,8 @@
   "has_pdf": true,
   "midi": "4820165.mid"
  },
- "4735601": {
-  "title": "Liebestraum",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "4735601.mid"
- },
- "4703172": {
-  "title": "Liebestraum No. 3 - Franz Liszt (Finished) (Audio Decreased)",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "4703172.mid"
- },
- "4690732": {
-  "title": "Liebestraum No. 3 - Franz Liszt (Finished) (Audio Decreased)",
+ "4721550": {
+  "title": "Liszt Liebestraum No. 3 (full)",
   "pages": [
    "001.png",
    "002.png",
@@ -15798,7 +16186,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "4690732.mid"
+  "midi": "4721550.mid"
  },
  "4682405": {
   "title": "Liszt - Liebestraum No.3 in A\u266dMajor, S. 541",
@@ -15889,8 +16277,8 @@
   "has_pdf": true,
   "midi": "5776970.mid"
  },
- "5711634": {
-  "title": "Hungarian-Rhapsody-Nr-2",
+ "5767438": {
+  "title": "Second Hungarian Rhapsody (Recorded December 27th, 1947)",
   "pages": [
    "001.png",
    "002.png",
@@ -15903,7 +16291,21 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5711634.mid"
+  "midi": "5767438.mid"
+ },
+ "5538592": {
+  "title": "hungarian rhapsody nr. 2 theme",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png"
+  ],
+  "page_count": 6,
+  "has_pdf": true,
+  "midi": "5538592.mid"
  },
  "5528131": {
   "title": "Hungarian Rhapsody No 6 (Friska) - Arrangement by kill with boss YT",
@@ -15920,17 +16322,6 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "5528131.mid"
- },
- "5412191": {
-  "title": "Hungarian Rhapsody No. 6",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png"
-  ],
-  "page_count": 3,
-  "has_pdf": true,
-  "midi": "5412191.mid"
  },
  "5463832": {
   "title": "hungarian rhapsody",
@@ -15957,22 +16348,6 @@
   "has_pdf": true,
   "midi": "5436345.mid"
  },
- "5401949": {
-  "title": "Liszt - Hungarian Rhapsody No. 6 (1)",
-  "pages": [
-   "001.png",
-   "002.png",
-   "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
-  ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "5401949.mid"
- },
  "5389842": {
   "title": "Hungarian Rhapsody No. 6",
   "pages": [
@@ -15989,7 +16364,39 @@
   "has_pdf": true,
   "midi": "5389842.mid"
  },
- "5389808": {
+ "5368698": {
+  "title": "Hungarian Rhapsody Number 6",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5368698.mid"
+ },
+ "5351961": {
+  "title": "Franz Liszt - Hungarian Rhapsody No. 2 in C# Minor",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "5351961.mid"
+ },
+ "5037862": {
   "title": "Hungarian Rhapsody No. 2",
   "pages": [
    "001.png",
@@ -16003,6 +16410,48 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "5389808.mid"
+  "midi": "5037862.mid"
+ },
+ "5318464": {
+  "title": "liszt---hungarian-rhapsody-no.-2",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png"
+  ],
+  "page_count": 7,
+  "has_pdf": true,
+  "midi": "5318464.mid"
+ },
+ "3001427": {
+  "title": "Hungarian Rhapsody No. 2 - Franz Liszt",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true,
+  "midi": "3001427.mid"
+ },
+ "5206399": {
+  "title": "Hungarian Rhapsody 6 (Lassan) Remix",
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png"
+  ],
+  "page_count": 3,
+  "has_pdf": true,
+  "midi": "5206399.mid"
  }
 }
