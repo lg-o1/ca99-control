@@ -10327,10 +10327,6 @@ function renderPlayStage() {
         <div id="ps-hw" class="scf-highway"></div>
         <div id="ps-pop" class="scf-pop"></div>
       </div>
-      <div class="ps-inline-sheet" id="ps-inline-sheet" hidden>
-        <div class="ps-inline-sheet-head"><span>📄 五线谱</span><span id="ps-inline-sheet-info"></span><button class="ms-btn" id="ps-inline-sheet-close" title="收起">▲</button></div>
-        <div class="ps-inline-sheet-scroll" id="ps-inline-sheet-scroll"></div>
-      </div>
       <div class="ps-kb-wrap"><div id="ps-kb"></div></div>
     </div>
     <div class="ps-modal" id="ps-modal" hidden>
@@ -10501,28 +10497,24 @@ function renderPlayStage() {
           ).join('');
           modal.hidden = false;
         };
-        // --- inline PNG sheet display ---
-        const inlinePanel = document.getElementById('ps-inline-sheet');
-        const inlineScroll = document.getElementById('ps-inline-sheet-scroll');
-        const inlineInfo = document.getElementById('ps-inline-sheet-info');
-        if (inlinePanel && inlineScroll) {
-          inlineScroll.innerHTML = shInfo.pages.map(pg =>
-            `<img src="${shFolder}/${encodeURIComponent(pg)}" alt="${pg}" class="ps-inline-sheet-img" loading="lazy">`
-          ).join('');
-          inlineInfo.textContent = `${shInfo.page_count}页`;
-          inlinePanel.hidden = false;
+        // 📖 per-measure slices → wire score-follow ribbon (unencoded path; psLoadSheet encodes)
+        if (shInfo.has_measures) {
+          song._sheetPath = SHEET_BASE + '/' + shKey + '/measures';
         }
-      } else {
-        const inlinePanel = document.getElementById('ps-inline-sheet');
-        if (inlinePanel) inlinePanel.hidden = true;
       }
-    } else {
-      const inlinePanel = document.getElementById('ps-inline-sheet');
-      if (inlinePanel) inlinePanel.hidden = true;
     }
     demoPlayed = new Set();
     drawStaff(-LEAD_MS); drawHighway(-LEAD_MS); refreshStat();
     psLoadSheet(song._sheetPath || null);   // 📖 课本谱面
+  }
+
+  // encode path segments only (preserve protocol+host for full URLs)
+  function encPath(p) {
+    if (/^https?:\/\//.test(p)) {
+      const i = p.indexOf('/', p.indexOf('//') + 2);          // end of host
+      return p.slice(0, i) + p.slice(i).split('/').map(s => encodeURIComponent(decodeURIComponent(s))).join('/');
+    }
+    return p.split('/').map(encodeURIComponent).join('/');
   }
 
   // ---- 📖 课本谱面（与曲谱跟弹同一套：真实书本照片按小节切片，跟弹时同步高亮）----
@@ -10535,7 +10527,7 @@ function renderPlayStage() {
     if (!path) return;
     const { folder, index } = shPaths(path);
     try {
-      const url = index.split('/').map(encodeURIComponent).join('/');
+      const url = encPath(index);
       const r = await fetch(url, { cache: 'no-cache' });
       if (!r.ok) return;
       const parsed = shParse(await r.json());
@@ -10551,7 +10543,7 @@ function renderPlayStage() {
     const dispH = sheetActiveH();
     let html = '';
     psSheet.measures.forEach((m, i) => {
-      const src = shPngUrl(psSheet.folder, m.file).split('/').map(encodeURIComponent).join('/');
+      const src = encPath(shPngUrl(psSheet.folder, m.file));
       const w = Math.max(1, Math.round(m.w * psSheetScale));
       html += `<img class="scf-sheet-m${m.lowConf ? ' low-conf' : ''}" data-m="${i}" src="${src}" `
         + `style="width:${w}px;height:${dispH}px" alt="第${m.i}小节" draggable="false" loading="eager" decoding="async">`;
@@ -11184,8 +11176,7 @@ function renderPlayStage() {
     }
   };
   $('#ps-stop').onclick = () => stop();
-  const _inlineSheetClose = document.getElementById('ps-inline-sheet-close');
-  if (_inlineSheetClose) _inlineSheetClose.onclick = () => { document.getElementById('ps-inline-sheet').hidden = true; };
+
   $('#ps-wait').onclick = () => start('wait');
   $('#ps-hint').onclick = doHint;
   $('#ps-tol').onchange = (e) => { psWaitTolerant = e.target.checked; };
