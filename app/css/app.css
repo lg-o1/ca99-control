@@ -2081,6 +2081,15 @@ button.grid-btn:hover { border-color: var(--hi); background: var(--panel2); tran
 .ps-judge { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(251,191,36,.85), transparent); pointer-events: none; z-index: 2; }
 .ps-kb-wrap { width: 100%; overflow-x: auto; }
 
+/* 内联五线谱 PNG 显示区 */
+.ps-inline-sheet { width:100%; background:var(--panel); border:1px solid var(--line); border-radius:10px; margin:6px 0; overflow:hidden; }
+.ps-inline-sheet[hidden] { display:none; }
+.ps-inline-sheet-head { display:flex; align-items:center; gap:8px; padding:6px 12px; font-size:14px; color:var(--text2); border-bottom:1px solid var(--line); }
+.ps-inline-sheet-head span:first-child { font-weight:600; }
+.ps-inline-sheet-scroll { overflow-x:auto; overflow-y:hidden; display:flex; gap:8px; padding:8px; max-height:320px; }
+.ps-inline-sheet-img { height:280px; border-radius:6px; border:1px solid var(--line); background:#fff; flex-shrink:0; }
+@media (max-width:600px) { .ps-inline-sheet-scroll { max-height:200px; } .ps-inline-sheet-img { height:170px; } }
+
 /* 选曲弹窗 */
 .ps-modal { position: fixed; inset: 0; z-index: 200; background: rgba(6,8,18,.72); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 18px; }
 .ps-modal[hidden] { display: none; }

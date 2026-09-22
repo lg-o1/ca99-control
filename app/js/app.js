@@ -10327,6 +10327,10 @@ function renderPlayStage() {
         <div id="ps-hw" class="scf-highway"></div>
         <div id="ps-pop" class="scf-pop"></div>
       </div>
+      <div class="ps-inline-sheet" id="ps-inline-sheet" hidden>
+        <div class="ps-inline-sheet-head"><span>📄 五线谱</span><span id="ps-inline-sheet-info"></span><button class="ms-btn" id="ps-inline-sheet-close" title="收起">▲</button></div>
+        <div class="ps-inline-sheet-scroll" id="ps-inline-sheet-scroll"></div>
+      </div>
       <div class="ps-kb-wrap"><div id="ps-kb"></div></div>
     </div>
     <div class="ps-modal" id="ps-modal" hidden>
@@ -10497,7 +10501,24 @@ function renderPlayStage() {
           ).join('');
           modal.hidden = false;
         };
+        // --- inline PNG sheet display ---
+        const inlinePanel = document.getElementById('ps-inline-sheet');
+        const inlineScroll = document.getElementById('ps-inline-sheet-scroll');
+        const inlineInfo = document.getElementById('ps-inline-sheet-info');
+        if (inlinePanel && inlineScroll) {
+          inlineScroll.innerHTML = shInfo.pages.map(pg =>
+            `<img src="${shFolder}/${encodeURIComponent(pg)}" alt="${pg}" class="ps-inline-sheet-img" loading="lazy">`
+          ).join('');
+          inlineInfo.textContent = `${shInfo.page_count}页`;
+          inlinePanel.hidden = false;
+        }
+      } else {
+        const inlinePanel = document.getElementById('ps-inline-sheet');
+        if (inlinePanel) inlinePanel.hidden = true;
       }
+    } else {
+      const inlinePanel = document.getElementById('ps-inline-sheet');
+      if (inlinePanel) inlinePanel.hidden = true;
     }
     demoPlayed = new Set();
     drawStaff(-LEAD_MS); drawHighway(-LEAD_MS); refreshStat();
@@ -11163,6 +11184,8 @@ function renderPlayStage() {
     }
   };
   $('#ps-stop').onclick = () => stop();
+  const _inlineSheetClose = document.getElementById('ps-inline-sheet-close');
+  if (_inlineSheetClose) _inlineSheetClose.onclick = () => { document.getElementById('ps-inline-sheet').hidden = true; };
   $('#ps-wait').onclick = () => start('wait');
   $('#ps-hint').onclick = doHint;
   $('#ps-tol').onchange = (e) => { psWaitTolerant = e.target.checked; };
