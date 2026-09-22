@@ -64,6 +64,28 @@ docs/
 - **协议**：直接复用 `reference/appui-extract/` 的 JSON 数据表 + `reference/protocol/` 的格式说明
 - **借鉴社区**：尽量用成熟开源方案（WEBMIDI.js、Piano-LED-Visualizer、govee-python-sdk 等，见 research/）
 
+## ⚠️ 部署规则（铁律）
+
+**本 repo 禁止直接部署到 SWA。** Piano 是共享 SWA 门户的子站之一，部署方式如下：
+
+### 正确流程
+1. 更新本 repo 的 `app/` 代码
+2. 将 `app/` 内容复制到 `lg-o1/web` 的 `www/piano/`（排除 `sheets/` 大文件）
+3. 通过 `lg-o1/web` 的 `deploy.bat` 统一部署整个 `www/`（含 api/、board/ 等所有子站）
+
+### 禁止事项
+- ❌ 从本 repo 直接 `swa deploy` 或 `StaticSitesClient upload`
+- ❌ 在本 repo 创建 GitHub Actions 部署 workflow
+- ❌ 在本 repo 存储 SWA deploy token（GitHub Secret 已删除）
+
+### 原因（2026-09-21 事故）
+Azure SWA 部署是**全量替换**——只部署 piano 会删除 board/、work/、api/ 等所有其他内容，导致整个门户瘫痪。此事故在同一天发生两次（手动 CLI + CI workflow）。
+
+### 大文件策略
+- Sheet music PNG/PDF（2.3GB）存在本 repo 的 `app/midi-collection/sheets/`，通过 GitHub raw URL 访问
+- MIDI 文件（~100MB）随 `www/piano/` 部署到 SWA
+- `sheets/index.json`（小文件）需同时部署到 SWA 和保留在 GitHub raw
+
 ## 快速开始
 
 见 `docs/PLAYBOOK.md` 玩法规划，从最简单的开始。
