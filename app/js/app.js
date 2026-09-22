@@ -9341,7 +9341,7 @@ function renderScoreFollow() {
         els.status.textContent = `✅ 已载入「${s.title}」：${info.notes} 个音符${info.handTxt}，约 ${info.bpm} BPM。下面选一档训练开始。`;
         els.status.className = 'scf-lib-status ok';
         // 📄 MuseScore sheet: show bar in main feedback area (not inside modal)
-        const _msSheetData = s._msSheet ? { key: s.file.replace(/\.mid$/i, ''), info: s._msSheet, title: s.title } : null;
+        const _msSheetData = s._msSheet ? { key: s.file.replace(/(\.mid)+$/i, ''), info: s._msSheet, title: s.title } : null;
         const m = $('#scf-modal'); if (m) m.hidden = true;// 选好即关弹窗，回到练习区
         const sec = $('#module-scf'); if (sec && sec.scrollIntoView) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
         // 📄 Show sheet bar in main feedback area after modal closes
@@ -9490,7 +9490,7 @@ function renderScoreFollow() {
           _msSheetIndex = await sr.json();
           if (catalog.songs) {
             for (const s of catalog.songs) {
-              const key = s.file.replace(/\.mid$/i, '');
+              const key = s.file.replace(/(\.mid)+$/i, '');
               if (_msSheetIndex[key]) s._msSheet = _msSheetIndex[key];
             }
           }
@@ -10466,22 +10466,37 @@ function renderPlayStage() {
     }
     $('#ps-hw').style.width = layout.width + 'px';
     $('#ps-title').textContent = song.title || '未命名';
-    // 📄 MuseScore PDF download button next to title
-    const oldPdfBtn = document.querySelector('.ps-pdf-btn');
-    if (oldPdfBtn) oldPdfBtn.remove();
+    // 📄 MuseScore sheet bar (PDF download + PNG viewer) next to title
+    const oldMsBar = document.querySelector('.ps-ms-bar');
+    if (oldMsBar) oldMsBar.remove();
     if (_msSheetIndex) {
       const fileKey = song._midiFile || '';
-      const shKey = fileKey.replace(/\.mid$/i, '');
+      const shKey = fileKey.replace(/(\.mid)+$/i, '');
       const shInfo = shKey && _msSheetIndex[shKey];
-      if (shInfo && shInfo.has_pdf) {
+      if (shInfo) {
         const shFolder = SHEET_BASE + '/' + shKey.split('/').map(encodeURIComponent).join('/');
-        const btn = document.createElement('a');
-        btn.href = shFolder + '/sheet.pdf';
-        btn.download = (song.title || 'sheet').replace(/"/g, '') + '.pdf';
-        btn.className = 'ms-btn ps-pdf-btn';
-        btn.textContent = '⬇️ 下载PDF';
-        btn.style.marginLeft = '12px';
-        $('#ps-title').insertAdjacentElement('afterend', btn);
+        const bar = document.createElement('div');
+        bar.className = 'ms-sheet-bar ps-ms-bar';
+        bar.innerHTML = `<span>📄 五线谱 ${shInfo.page_count}页</span> `
+          + (shInfo.has_pdf ? `<a href="${shFolder}/sheet.pdf" download="${(song.title || 'sheet').replace(/"/g,'')}.pdf" class="ms-btn">⬇️ 下载PDF</a> ` : '')
+          + `<button class="ms-btn ms-view-btn">👁️ 查看</button>`;
+        $('#ps-title').insertAdjacentElement('afterend', bar);
+        bar.querySelector('.ms-view-btn').onclick = (ev) => {
+          ev.stopPropagation();
+          let modal = document.getElementById('ms-sheet-modal');
+          if (!modal) {
+            modal = document.createElement('div'); modal.id = 'ms-sheet-modal'; modal.className = 'ms-sheet-modal';
+            modal.innerHTML = '<div class="ms-sheet-modal-inner"><div class="ms-sheet-close">✕</div><div class="ms-sheet-body"></div></div>';
+            document.body.appendChild(modal);
+            modal.querySelector('.ms-sheet-close').onclick = () => modal.hidden = true;
+            modal.onclick = (e) => { if (e.target === modal) modal.hidden = true; };
+          }
+          const body = modal.querySelector('.ms-sheet-body');
+          body.innerHTML = shInfo.pages.map(pg =>
+            `<img src="${shFolder}/${encodeURIComponent(pg)}" alt="${pg}" class="ms-sheet-page" loading="lazy">`
+          ).join('');
+          modal.hidden = false;
+        };
       }
     }
     demoPlayed = new Set();
