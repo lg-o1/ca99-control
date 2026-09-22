@@ -257,7 +257,6 @@
   "midi": "mario theme (full theme).mid"
  },
  "Minecraft - Sweden": {
-  "title": "Minecraft - Sweden",
   "pages": [
    "001.png",
    "002.png",
@@ -269,8 +268,7 @@
    "008.png"
   ],
   "page_count": 8,
-  "has_pdf": true,
-  "midi": "Minecraft - Sweden.mid"
+  "has_pdf": true
  },
  "[UNDERTALE]---- Megalovania-----------{Orchestral recreation": {
   "title": "[UNDERTALE]---- *****-----------{Orchestral recreation} --WIP",
@@ -304,14 +302,14 @@
   "has_pdf": true,
   "midi": "Il Vento d'oro (Giorno Theme) - Jojo's Bizarre Adventure Ven.mid"
  },
- "Attack on Titan - Vogel im K\u00e4fig": {
-  "title": "Attack on Titan - Vogel im K\u00e4fig.mid",
+ "Attack on Titan - Vogel im Käfig": {
+  "title": "Attack on Titan - Vogel im Käfig.mid",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "Attack on Titan - Vogel im K\u00e4fig.mid.mid"
+  "midi": "Attack on Titan - Vogel im Käfig.mid.mid"
  },
  "Demon Slayer - Gurenge - LiSA": {
   "title": "Demon Slayer - Gurenge - LiSA",
@@ -691,8 +689,8 @@
   "has_pdf": true,
   "midi": "Christina Perri - A Thousand Years.mid"
  },
- "Say Something - A Great Big World, Christina Aguilera \ud53c\uc544\ub178 \uc194\ub85c": {
-  "title": "Say Something - A Great Big World, Christina Aguilera \ud53c\uc544\ub178 \uc194\ub85c.mid",
+ "Say Something - A Great Big World, Christina Aguilera 피아노 솔로": {
+  "title": "Say Something - A Great Big World, Christina Aguilera 피아노 솔로.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -701,7 +699,7 @@
   ],
   "page_count": 4,
   "has_pdf": true,
-  "midi": "Say Something - A Great Big World, Christina Aguilera \ud53c\uc544\ub178 \uc194\ub85c.mid"
+  "midi": "Say Something - A Great Big World, Christina Aguilera 피아노 솔로.mid"
  },
  "Swan Lake, Spanish Dance": {
   "title": "Swan Lake, Spanish Dance",
@@ -1014,8 +1012,8 @@
   "has_pdf": true,
   "midi": "Ave maria.mid"
  },
- "[\ud53c\uc544\ub178] \uc813\uac00\ub77d \ud589\uc9c4\uace1 \uc7ac\uc988\ubc84\uc804 (chopsticks piano jazz version) - \ud53c\uc544\ub178\uce58\uc790 (": {
-  "title": "[\ud53c\uc544\ub178] \uc813\uac00\ub77d \ud589\uc9c4\uace1 \uc7ac\uc988\ubc84\uc804 (chopsticks piano jazz version) - \ud53c\uc544\ub178\uce58\uc790 (128k) (1)",
+ "[피아노] 젓가락 행진곡 재즈버전 (chopsticks piano jazz version) - 피아노치자 (": {
+  "title": "[피아노] 젓가락 행진곡 재즈버전 (chopsticks piano jazz version) - 피아노치자 (128k) (1)",
   "pages": [
    "001.png",
    "002.png",
@@ -1024,7 +1022,7 @@
   ],
   "page_count": 4,
   "has_pdf": true,
-  "midi": "[\ud53c\uc544\ub178] \uc813\uac00\ub77d \ud589\uc9c4\uace1 \uc7ac\uc988\ubc84\uc804 (chopsticks piano jazz version) - \ud53c\uc544\ub178\uce58\uc790 (.mid"
+  "midi": "[피아노] 젓가락 행진곡 재즈버전 (chopsticks piano jazz version) - 피아노치자 (.mid"
  },
  "Heart and Soul 4,463 NOTES!": {
   "title": "Heart and Soul 4,463 NOTES!",
@@ -1136,8 +1134,8 @@
   "has_pdf": true,
   "midi": "Take Five - Dave Brubeck-.mid"
  },
- "\u30a4\u30bf\u30ea\u30a2\u97f3\u697d Bella ciao black midi bbl news": {
-  "title": "\u30a4\u30bf\u30ea\u30a2\u97f3\u697d Bella ciao black midi bbl news",
+ "イタリア音楽 Bella ciao black midi bbl news": {
+  "title": "イタリア音楽 Bella ciao black midi bbl news",
   "pages": [
    "001.png",
    "002.png",
@@ -1150,7 +1148,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "\u30a4\u30bf\u30ea\u30a2\u97f3\u697d Bella ciao black midi bbl news.mid"
+  "midi": "イタリア音楽 Bella ciao black midi bbl news.mid"
  },
  "The Final Countdown": {
   "title": "The Final Countdown",
@@ -1767,8 +1765,8 @@
   "has_pdf": true,
   "midi": "Therefore I am - Billie Eilish.mid"
  },
- "Se\u00f1orita- Shawn Mendes, Camila Cabello": {
-  "title": "Se\u00f1orita- Shawn Mendes, Camila Cabello",
+ "Señorita- Shawn Mendes, Camila Cabello": {
+  "title": "Señorita- Shawn Mendes, Camila Cabello",
   "pages": [
    "001.png",
    "002.png",
@@ -1777,7 +1775,7 @@
   ],
   "page_count": 4,
   "has_pdf": true,
-  "midi": "Se\u00f1orita- Shawn Mendes, Camila Cabello.mid"
+  "midi": "Señorita- Shawn Mendes, Camila Cabello.mid"
  },
  "Havana - Camila Cabello": {
   "title": "Havana - Camila Cabello",
@@ -2442,8 +2440,8 @@
   "has_pdf": true,
   "midi": "Debussy_ Arabesque no. 1 - Music Siren.mid"
  },
- "Debussy - R\u00eaverie": {
-  "title": "Debussy - R\u00eaverie",
+ "Debussy - Rêverie": {
+  "title": "Debussy - Rêverie",
   "pages": [
    "001.png",
    "002.png",
@@ -2452,7 +2450,7 @@
   ],
   "page_count": 4,
   "has_pdf": true,
-  "midi": "Debussy - R\u00eaverie.mid"
+  "midi": "Debussy - Rêverie.mid"
  },
  "Maurice Ravel - Pavane de la Belle au bois dormant, Suite": {
   "title": "Maurice Ravel - Pavane de la Belle au bois dormant, Suite",
@@ -2625,8 +2623,8 @@
   "has_pdf": true,
   "midi": "Brahms Hungarian Dance no.5.mid"
  },
- "Camille Saint-Sa\u00ebns-Danse Macabre-05-29-2023": {
-  "title": "Camille Saint-Sa\u00ebns-Danse Macabre-05-29-2023",
+ "Camille Saint-Saëns-Danse Macabre-05-29-2023": {
+  "title": "Camille Saint-Saëns-Danse Macabre-05-29-2023",
   "pages": [
    "001.png",
    "002.png",
@@ -2639,7 +2637,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Camille Saint-Sa\u00ebns-Danse Macabre-05-29-2023.mid"
+  "midi": "Camille Saint-Saëns-Danse Macabre-05-29-2023.mid"
  },
  "Dvorak_ Humoresque no_ 7 - Music Siren": {
   "title": "Dvorak: Humoresque no. 7 - Music Siren",
@@ -3855,15 +3853,15 @@
   "has_pdf": true,
   "midi": "Helena (MCR).mid"
  },
- "Iris \u2014 Goo Goo Dolls": {
-  "title": "Iris \u2014 Goo Goo Dolls",
+ "Iris — Goo Goo Dolls": {
+  "title": "Iris — Goo Goo Dolls",
   "pages": [
    "001.png",
    "002.png"
   ],
   "page_count": 2,
   "has_pdf": true,
-  "midi": "Iris \u2014 Goo Goo Dolls.mid"
+  "midi": "Iris — Goo Goo Dolls.mid"
  },
  "How to save a life fray": {
   "title": "How to save a life fray",
@@ -4873,8 +4871,8 @@
   "has_pdf": true,
   "midi": "TAYLOR SWIFT CARDIGAN (short).mid"
  },
- "Taylor Swift \u2013 august": {
-  "title": "Taylor Swift \u2013 august",
+ "Taylor Swift – august": {
+  "title": "Taylor Swift – august",
   "pages": [
    "001.png",
    "002.png",
@@ -4883,7 +4881,7 @@
   ],
   "page_count": 4,
   "has_pdf": true,
-  "midi": "Taylor Swift \u2013 august.mid"
+  "midi": "Taylor Swift – august.mid"
  },
  "Taylor Swift - Cruel Summer": {
   "title": "Taylor Swift - Cruel Summer",
@@ -4896,8 +4894,8 @@
   "has_pdf": true,
   "midi": "Taylor Swift - Cruel Summer.mid"
  },
- "\u6cf0\u52d2\u65af\u5a01\u592b\u7279\u98ce\u683c(Taylor Swift - Style)_": {
-  "title": "\u6cf0\u52d2\u65af\u5a01\u592b\u7279\u98ce\u683c(Taylor Swift - Style)_.mid",
+ "泰勒斯威夫特风格(Taylor Swift - Style)_": {
+  "title": "泰勒斯威夫特风格(Taylor Swift - Style)_.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -4910,7 +4908,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "\u6cf0\u52d2\u65af\u5a01\u592b\u7279\u98ce\u683c(Taylor Swift - Style)_.mid.mid"
+  "midi": "泰勒斯威夫特风格(Taylor Swift - Style)_.mid.mid"
  },
  "Taylor Swift - Delicate (Deimon's Version)": {
   "title": "Taylor Swift - Delicate (Deimon's Version)",
@@ -5797,8 +5795,8 @@
   "has_pdf": true,
   "midi": "Pink Floyd - Another Brick in the Wall, Pt. 3 wip.mid"
  },
- "Pink Floyd \u2014 Wish You Were Here": {
-  "title": "Pink Floyd \u2014 Wish You Were Here",
+ "Pink Floyd — Wish You Were Here": {
+  "title": "Pink Floyd — Wish You Were Here",
   "pages": [
    "001.png",
    "002.png",
@@ -5811,7 +5809,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Pink Floyd \u2014 Wish You Were Here.mid"
+  "midi": "Pink Floyd — Wish You Were Here.mid"
  },
  "Led Zeppelin - Kashmir Loop": {
   "title": "Led Zeppelin - Kashmir Loop",
@@ -5875,14 +5873,14 @@
   "has_pdf": true,
   "midi": "AC_DC Thunderstruck.mid"
  },
- "ACDC \u2014 Back in Black (2) [MIDIfind_com]": {
-  "title": "ACDC \u2014 Back in Black (2) [MIDIfind.com]",
+ "ACDC — Back in Black (2) [MIDIfind_com]": {
+  "title": "ACDC — Back in Black (2) [MIDIfind.com]",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
   "has_pdf": true,
-  "midi": "ACDC \u2014 Back in Black (2) [MIDIfind.com].mid"
+  "midi": "ACDC — Back in Black (2) [MIDIfind.com].mid"
  },
  "Highway To Hell by  TriggerHappy  recreation by Bobby Lytle": {
   "title": "Highway To Hell by  TriggerHappy  recreation by Bobby Lytle",
@@ -6078,8 +6076,8 @@
   "has_pdf": true,
   "midi": "Fleetwood Mac - Everywhere.mid"
  },
- "The Police  \u2014 Every Breath You Take": {
-  "title": "The Police  \u2014 Every Breath You Take",
+ "The Police  — Every Breath You Take": {
+  "title": "The Police  — Every Breath You Take",
   "pages": [
    "001.png",
    "002.png",
@@ -6092,7 +6090,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "The Police  \u2014 Every Breath You Take.mid"
+  "midi": "The Police  — Every Breath You Take.mid"
  },
  "what would i do without you": {
   "title": "what would i do without you",
@@ -6995,8 +6993,8 @@
   "has_pdf": true,
   "midi": "beyonce-halo.mid"
  },
- "Beyonce_Beyonc\u00e9 - Crazy In Love Snippet": {
-  "title": "Beyonce/Beyonc\u00e9 - Crazy In Love Snippet",
+ "Beyonce_Beyoncé - Crazy In Love Snippet": {
+  "title": "Beyonce/Beyoncé - Crazy In Love Snippet",
   "pages": [
    "001.png",
    "002.png",
@@ -7009,7 +7007,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Beyonce_Beyonc\u00e9 - Crazy In Love Snippet.mid"
+  "midi": "Beyonce_Beyoncé - Crazy In Love Snippet.mid"
  },
  "Beyonce irreplaceable": {
   "title": "Beyonce irreplaceable",
@@ -7549,8 +7547,8 @@
   "has_pdf": true,
   "midi": "(Setie Lhea) Rag'n'Bone Man - Human.mid.mid"
  },
- "Tom Odell \u2014 Another Love (FIXED!)": {
-  "title": "Tom Odell \u2014 Another Love (FIXED!)",
+ "Tom Odell — Another Love (FIXED!)": {
+  "title": "Tom Odell — Another Love (FIXED!)",
   "pages": [
    "001.png",
    "002.png",
@@ -7563,7 +7561,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Tom Odell \u2014 Another Love (FIXED!).mid"
+  "midi": "Tom Odell — Another Love (FIXED!).mid"
  },
  "George Ezra - Shotgun": {
   "title": "George Ezra - Shotgun",
@@ -8142,38 +8140,31 @@
   "midi": "Mob Psycho - 99 dot 9.mid.mid"
  },
  "Minecraft - Calm 1": {
-  "title": "Minecraft - Calm 1.mid",
   "pages": [
    "001.png"
   ],
   "page_count": 1,
-  "has_pdf": true,
-  "midi": "Minecraft - Calm 1.mid.mid"
+  "has_pdf": true
  },
  "Minecraft - Wet Hands _ C418 _ midi": {
-  "title": "Minecraft - Wet Hands | C418 | midi",
-  "pages": [
-   "001.png"
-  ],
-  "page_count": 1,
-  "has_pdf": true,
-  "midi": "Minecraft - Wet Hands _ C418 _ midi.mid"
- },
- "Minecraft Subwoofer Lullaby": {
-  "title": "Minecraft Subwoofer Lullaby",
   "pages": [
    "001.png",
    "002.png",
    "003.png",
-   "004.png",
-   "005.png",
-   "006.png",
-   "007.png",
-   "008.png"
+   "004.png"
   ],
-  "page_count": 8,
-  "has_pdf": true,
-  "midi": "Minecraft Subwoofer Lullaby.mid"
+  "page_count": 4,
+  "has_pdf": true
+ },
+ "Minecraft Subwoofer Lullaby": {
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png"
+  ],
+  "page_count": 4,
+  "has_pdf": true
  },
  "PIANO ARR_ Minecraft - Aria Math (By C418)": {
   "title": "PIANO ARR. Minecraft - Aria Math (By C418)",
@@ -8776,8 +8767,8 @@
   "has_pdf": true,
   "midi": "EDIT Ace Attorney - Cornered, Pressing Pursuit.mid.mid"
  },
- "\u300c \ua564 \u300d The Great Ace Attorney - Objection! (2015)": {
-  "title": "\u300c \ua564 \u300d The Great Ace Attorney - Objection! (2015)",
+ "「 ꕤ 」 The Great Ace Attorney - Objection! (2015)": {
+  "title": "「 ꕤ 」 The Great Ace Attorney - Objection! (2015)",
   "pages": [
    "001.png",
    "002.png",
@@ -8790,7 +8781,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "\u300c \ua564 \u300d The Great Ace Attorney - Objection! (2015).mid"
+  "midi": "「 ꕤ 」 The Great Ace Attorney - Objection! (2015).mid"
  },
  "Phoenix Wright Pursuit - Cornered": {
   "title": "Phoenix Wright Pursuit - Cornered",
@@ -8860,8 +8851,8 @@
   "has_pdf": true,
   "midi": "sounds like a Music Box theme from Tomodachi Life.mid"
  },
- "Pok\u00e9mon Red_Blue - Battle! (Trainer) _ORCHESTRAL REMIX_": {
-  "title": "Pok\u00e9mon Red/Blue - Battle! (Trainer) *ORCHESTRAL REMIX*",
+ "Pokémon Red_Blue - Battle! (Trainer) _ORCHESTRAL REMIX_": {
+  "title": "Pokémon Red/Blue - Battle! (Trainer) *ORCHESTRAL REMIX*",
   "pages": [
    "001.png",
    "002.png",
@@ -8874,17 +8865,17 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Pok\u00e9mon Red_Blue - Battle! (Trainer) _ORCHESTRAL REMIX_.mid"
+  "midi": "Pokémon Red_Blue - Battle! (Trainer) _ORCHESTRAL REMIX_.mid"
  },
- "Azalea Town - Pok\u00e9mon Gold & Silver (Piano Cover)": {
-  "title": "Azalea Town - Pok\u00e9mon Gold & Silver (Piano Cover)",
+ "Azalea Town - Pokémon Gold & Silver (Piano Cover)": {
+  "title": "Azalea Town - Pokémon Gold & Silver (Piano Cover)",
   "pages": [
    "001.png",
    "002.png"
   ],
   "page_count": 2,
   "has_pdf": true,
-  "midi": "Azalea Town - Pok\u00e9mon Gold & Silver (Piano Cover).mid"
+  "midi": "Azalea Town - Pokémon Gold & Silver (Piano Cover).mid"
  },
  "Pokemon Ruby & Sapphire - Littleroot Town [Cover]": {
   "title": "Pokemon Ruby & Sapphire - Littleroot Town [Cover]",
@@ -8927,8 +8918,8 @@
   "has_pdf": true,
   "midi": "Victory Lies Before You - Pokemon Black_White.mid"
  },
- "Pok\u00e9mon Sun & Moon Theme (Online Sequencer MIDI)": {
-  "title": "Pok\u00e9mon Sun & Moon Theme (Online Sequencer MIDI)",
+ "Pokémon Sun & Moon Theme (Online Sequencer MIDI)": {
+  "title": "Pokémon Sun & Moon Theme (Online Sequencer MIDI)",
   "pages": [
    "001.png",
    "002.png",
@@ -8941,7 +8932,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Pok\u00e9mon Sun & Moon Theme (Online Sequencer MIDI).mid"
+  "midi": "Pokémon Sun & Moon Theme (Online Sequencer MIDI).mid"
  },
  "Terraria - Boss 1": {
   "title": "Terraria - Boss 1",
@@ -9325,8 +9316,8 @@
   "has_pdf": true,
   "midi": "Tenet Theme.mid"
  },
- "Yann Tiersen - Amelie _ Comptine d'un autre \u00e9t\u00e9": {
-  "title": "Yann Tiersen - Amelie | Comptine d'un autre \u00e9t\u00e9",
+ "Yann Tiersen - Amelie _ Comptine d'un autre été": {
+  "title": "Yann Tiersen - Amelie | Comptine d'un autre été",
   "pages": [
    "001.png",
    "002.png",
@@ -9338,7 +9329,7 @@
   ],
   "page_count": 7,
   "has_pdf": true,
-  "midi": "Yann Tiersen - Amelie _ Comptine d'un autre \u00e9t\u00e9.mid"
+  "midi": "Yann Tiersen - Amelie _ Comptine d'un autre été.mid"
  },
  "La valse d'amelie - Yann Tiersen (Patte au synthe )": {
   "title": "La valse d'amelie - Yann Tiersen (Patte au synthe )",
@@ -9394,8 +9385,8 @@
   "has_pdf": true,
   "midi": "Grave Of The Fireflies-Setsuko and Seita.mid"
  },
- "DebraYume_Qing Feng Wu \u5433\u9752\u5cf0 - The Wind Rises (\u8d77\u98a8\u4e86)": {
-  "title": "DebraYume_Qing Feng Wu \u5433\u9752\u5cf0 - The Wind Rises (\u8d77\u98a8\u4e86)",
+ "DebraYume_Qing Feng Wu 吳青峰 - The Wind Rises (起風了)": {
+  "title": "DebraYume_Qing Feng Wu 吳青峰 - The Wind Rises (起風了)",
   "pages": [
    "001.png",
    "002.png",
@@ -9408,7 +9399,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "DebraYume_Qing Feng Wu \u5433\u9752\u5cf0 - The Wind Rises (\u8d77\u98a8\u4e86).mid"
+  "midi": "DebraYume_Qing Feng Wu 吳青峰 - The Wind Rises (起風了).mid"
  },
  "Toy Story _ You Got A Friend in Me": {
   "title": "Toy Story | You Got A Friend in Me",
@@ -9989,8 +9980,8 @@
   "has_pdf": true,
   "midi": "GAS GAS GAS - Piano Tutorial.mid"
  },
- "Astronomia piano tutorial with FREE Midi! (1 min) \u2013 Kopi": {
-  "title": "Astronomia piano tutorial with FREE Midi! (1 min) \u2013 Kopi.mid",
+ "Astronomia piano tutorial with FREE Midi! (1 min) – Kopi": {
+  "title": "Astronomia piano tutorial with FREE Midi! (1 min) – Kopi.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -10003,7 +9994,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "Astronomia piano tutorial with FREE Midi! (1 min) \u2013 Kopi.mid.mid"
+  "midi": "Astronomia piano tutorial with FREE Midi! (1 min) – Kopi.mid.mid"
  },
  "Nyan Cat Piano": {
   "title": "Nyan Cat Piano",
@@ -10195,8 +10186,8 @@
   "has_pdf": true,
   "midi": "Auld Lang Syne (Piano Tiles 2) _ 034.mid"
  },
- "F\u00fcr Elise Remix": {
-  "title": "F\u00fcr Elise Remix",
+ "Für Elise Remix": {
+  "title": "Für Elise Remix",
   "pages": [
    "001.png",
    "002.png",
@@ -10209,7 +10200,7 @@
   ],
   "page_count": 8,
   "has_pdf": true,
-  "midi": "F\u00fcr Elise Remix.mid"
+  "midi": "Für Elise Remix.mid"
  },
  "Moonlight sonata remix": {
   "title": "Moonlight sonata remix",
@@ -11167,7 +11158,6 @@
   "midi": "Come As You Are.mid"
  },
  "Minecraft Haggstrom": {
-  "title": "Minecraft Haggstrom",
   "pages": [
    "001.png",
    "002.png",
@@ -11179,11 +11169,9 @@
    "008.png"
   ],
   "page_count": 8,
-  "has_pdf": true,
-  "midi": "Minecraft Haggstrom.mid"
+  "has_pdf": true
  },
  "Minecraft Mice on Venus": {
-  "title": "Minecraft Mice on Venus",
   "pages": [
    "001.png",
    "002.png",
@@ -11195,8 +11183,7 @@
    "008.png"
   ],
   "page_count": 8,
-  "has_pdf": true,
-  "midi": "Minecraft Mice on Venus.mid"
+  "has_pdf": true
  },
  "Deltarune Smart Race": {
   "title": "Deltarune Smart Race",
@@ -12683,7 +12670,7 @@
   "midi": "4855615.mid"
  },
  "5000187": {
-  "title": "LIFETIMES \u2013 Katy Perry (Piano Cover by Stanislav Kovalevskiy)",
+  "title": "LIFETIMES – Katy Perry (Piano Cover by Stanislav Kovalevskiy)",
   "pages": [
    "001.png",
    "002.png",
@@ -13052,7 +13039,7 @@
   "midi": "5770183.mid"
  },
  "5764583": {
-  "title": "Mazurka in G Minor, Op. 24, No. 1 - Fr\u00e9d\u00e9ric Chopin (September 2026 submission)",
+  "title": "Mazurka in G Minor, Op. 24, No. 1 - Frédéric Chopin (September 2026 submission)",
   "pages": [
    "001.png",
    "002.png",
@@ -13090,7 +13077,7 @@
   "midi": "5763013.mid"
  },
  "5759843": {
-  "title": "\u00c9tude Op. 10, No. 11 \"Arpeggio\" in E-flat major - Fr\u00e9d\u00e9ric Chopin",
+  "title": "Étude Op. 10, No. 11 \"Arpeggio\" in E-flat major - Frédéric Chopin",
   "pages": [
    "001.png",
    "002.png",
@@ -13267,7 +13254,7 @@
   "midi": "5728660.mid"
  },
  "5726750": {
-  "title": "Waltz in A Minor, Op. 34, No. 2 - Fr\u00e9d\u00e9ric Chopin",
+  "title": "Waltz in A Minor, Op. 34, No. 2 - Frédéric Chopin",
   "pages": [
    "001.png"
   ],
@@ -13339,7 +13326,7 @@
   "midi": "5756063.mid"
  },
  "5753703": {
-  "title": "Sonata No. 8 _Path\u00e9tique_. 1st Movement. L. van Beethoven. Op. 13.",
+  "title": "Sonata No. 8 _Pathétique_. 1st Movement. L. van Beethoven. Op. 13.",
   "pages": [
    "001.png",
    "002.png",
@@ -13444,7 +13431,7 @@
   "midi": "5716382.mid"
  },
  "5716576": {
-  "title": "Marsch f\u00fcr die B\u00f6hmische Landwehr / Yorkscher Marsch (Ludwig van Beethoven, 1808/09) All Strings",
+  "title": "Marsch für die Böhmische Landwehr / Yorkscher Marsch (Ludwig van Beethoven, 1808/09) All Strings",
   "pages": [
    "001.png",
    "002.png",
@@ -13632,7 +13619,7 @@
   "midi": "5761186.mid"
  },
  "5760606": {
-  "title": "W. A. Mozart - Pa-pa- pa-Papagena/Papageno Duet (Die Zauberfl\u00f6te) (WIP)",
+  "title": "W. A. Mozart - Pa-pa- pa-Papagena/Papageno Duet (Die Zauberflöte) (WIP)",
   "pages": [
    "001.png",
    "002.png",
@@ -13648,7 +13635,7 @@
   "midi": "5760606.mid"
  },
  "5760008": {
-  "title": "Madamina il catalogo \u00e8 questo - W.A. Mozart . . . . . (Heatvex) III",
+  "title": "Madamina il catalogo è questo - W.A. Mozart . . . . . (Heatvex) III",
   "pages": [
    "001.png",
    "002.png",
@@ -13690,7 +13677,7 @@
   "midi": "5756338.mid"
  },
  "5752068": {
-  "title": "W. A. Mozart - Der Vogelf\u00e4nger bin ich ja (Die Zauberfl\u00f6te)",
+  "title": "W. A. Mozart - Der Vogelfänger bin ich ja (Die Zauberflöte)",
   "pages": [
    "001.png",
    "002.png",
@@ -14115,7 +14102,7 @@
   "midi": "5778969.mid"
  },
  "5277834": {
-  "title": "Billy Joel \u2014 Piano Man",
+  "title": "Billy Joel — Piano Man",
   "pages": [
    "001.png",
    "002.png",
@@ -14131,7 +14118,7 @@
   "midi": "5277834.mid"
  },
  "5183282": {
-  "title": "Billy Joel \u2014 Piano Man",
+  "title": "Billy Joel — Piano Man",
   "pages": [
    "001.png",
    "002.png",
@@ -15380,7 +15367,7 @@
   "midi": "5778286.mid"
  },
  "5768667": {
-  "title": "F\u00fcr Elise",
+  "title": "Für Elise",
   "pages": [
    "001.png",
    "002.png",
@@ -15415,7 +15402,7 @@
   "midi": "5755775.mid"
  },
  "5752260": {
-  "title": "F\u00fcr Elise",
+  "title": "Für Elise",
   "pages": [
    "001.png",
    "002.png",
@@ -15431,7 +15418,7 @@
   "midi": "5752260.mid"
  },
  "5752242": {
-  "title": "F\u00fcr Elise",
+  "title": "Für Elise",
   "pages": [
    "001.png",
    "002.png",
@@ -15529,7 +15516,7 @@
   "midi": "5502512.mid"
  },
  "5500178": {
-  "title": "part of f\u00far elise",
+  "title": "part of fúr elise",
   "pages": [
    "001.png"
   ],
@@ -15839,7 +15826,7 @@
   "midi": "5454703.mid"
  },
  "5397707": {
-  "title": "La Campanella (\u00c3\u2030tudes d'ex\u00c3\u00a9cution transcendante d'apr\u00c3\u00a8s Paganini No.3) - Franz Liszt (Finished)",
+  "title": "La Campanella (Ã‰tudes d'exÃ©cution transcendante d'aprÃ¨s Paganini No.3) - Franz Liszt (Finished)",
   "pages": [
    "001.png",
    "002.png",
@@ -15853,7 +15840,7 @@
   "midi": "5397707.mid"
  },
  "5397704": {
-  "title": "La Campanella (\u00c3\u2030tudes d'ex\u00c3\u00a9cution transcendante d'apr\u00c3\u00a8s Paganini No.3) - Franz Liszt (Finished)",
+  "title": "La Campanella (Ã‰tudes d'exÃ©cution transcendante d'aprÃ¨s Paganini No.3) - Franz Liszt (Finished)",
   "pages": [
    "001.png",
    "002.png",
@@ -16141,7 +16128,7 @@
   "midi": "5017899.mid"
  },
  "3604333": {
-  "title": "Liszt - Liebestraum No.3 in A\u266dMajor, S. 541",
+  "title": "Liszt - Liebestraum No.3 in A♭Major, S. 541",
   "pages": [
    "001.png",
    "002.png",
@@ -16189,7 +16176,7 @@
   "midi": "4721550.mid"
  },
  "4682405": {
-  "title": "Liszt - Liebestraum No.3 in A\u266dMajor, S. 541",
+  "title": "Liszt - Liebestraum No.3 in A♭Major, S. 541",
   "pages": [
    "001.png",
    "002.png",
@@ -17626,7 +17613,7 @@
   "midi": "2572762.mid"
  },
  "3449782": {
-  "title": "ATEEZ (\uc5d0\uc774\ud2f0\uc988) - INCEPTION [PIANO COVER] (w_ sheet).mp3.mid",
+  "title": "ATEEZ (에이티즈) - INCEPTION [PIANO COVER] (w_ sheet).mp3.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -17642,7 +17629,7 @@
   "midi": "3449782.mid"
  },
  "2102458": {
-  "title": "ATEEZ (\uc5d0\uc774\ud2f0\uc988) - INCEPTION [PIANO COVER] (w_ sheet).mp3.mid",
+  "title": "ATEEZ (에이티즈) - INCEPTION [PIANO COVER] (w_ sheet).mp3.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -18209,7 +18196,7 @@
   "midi": "3916405.mid"
  },
  "5107976": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18225,7 +18212,7 @@
   "midi": "5107976.mid"
  },
  "4872211": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png"
   ],
@@ -18234,7 +18221,7 @@
   "midi": "4872211.mid"
  },
  "4857372": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18250,7 +18237,7 @@
   "midi": "4857372.mid"
  },
  "4593466": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18282,7 +18269,7 @@
   "midi": "4495987.mid"
  },
  "4255307": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18298,7 +18285,7 @@
   "midi": "4255307.mid"
  },
  "4255260": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18314,7 +18301,7 @@
   "midi": "4255260.mid"
  },
  "4251131": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18330,7 +18317,7 @@
   "midi": "4251131.mid"
  },
  "4250440": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18346,7 +18333,7 @@
   "midi": "4250440.mid"
  },
  "4250235": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18362,7 +18349,7 @@
   "midi": "4250235.mid"
  },
  "4159628": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png"
@@ -18372,7 +18359,7 @@
   "midi": "4159628.mid"
  },
  "4088357": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png"
   ],
@@ -18381,7 +18368,7 @@
   "midi": "4088357.mid"
  },
  "4088309": {
-  "title": "Wicked \u2014 piano tutorial crusher",
+  "title": "Wicked — piano tutorial crusher",
   "pages": [
    "001.png",
    "002.png",
@@ -18821,7 +18808,7 @@
   "midi": "5001895.mid"
  },
  "5761282": {
-  "title": "vs Susie \u00d7 ***** \u2502 Toby Fox",
+  "title": "vs Susie × ***** │ Toby Fox",
   "pages": [
    "001.png",
    "002.png",
@@ -20381,7 +20368,7 @@
   "midi": "4833436.mid"
  },
  "1673501": {
-  "title": "Ed Sheeran - Shape of you - Piano Arrangement by Kim Ho\u00c3\u00a0ng Huy.mid",
+  "title": "Ed Sheeran - Shape of you - Piano Arrangement by Kim HoÃ ng Huy.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -20397,7 +20384,7 @@
   "midi": "1673501.mid"
  },
  "1673500": {
-  "title": "Ed Sheeran - Shape of you - Piano Arrangement by Kim Ho\u00c3\u00a0ng Huy.mid",
+  "title": "Ed Sheeran - Shape of you - Piano Arrangement by Kim HoÃ ng Huy.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -20413,7 +20400,7 @@
   "midi": "1673500.mid"
  },
  "1001564": {
-  "title": "Ed Sheeran - Shape of you - Piano Arrangement by Kim Ho\u00c3\u00a0ng Huy.mid",
+  "title": "Ed Sheeran - Shape of you - Piano Arrangement by Kim HoÃ ng Huy.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -21047,7 +21034,7 @@
   "midi": "4757373.mid"
  },
  "4617355": {
-  "title": "Red Alert \u2014 Soviet March Piano Version [MIDISTOCK.RU].mid",
+  "title": "Red Alert — Soviet March Piano Version [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -21219,7 +21206,7 @@
   "midi": "2120591.mid"
  },
  "2076285": {
-  "title": "Red Alert \u2014 Soviet March Piano Version [MIDISTOCK.RU].mid",
+  "title": "Red Alert — Soviet March Piano Version [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22627,7 +22614,7 @@
   "midi": "1546907.mid"
  },
  "1436233": {
-  "title": "Astronomia piano tutorial with FREE Midi! (1 min) \u2013 Kopi.mid",
+  "title": "Astronomia piano tutorial with FREE Midi! (1 min) – Kopi.mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22670,7 +22657,7 @@
   "midi": "5475330.mid"
  },
  "5418047": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22714,7 +22701,7 @@
   "midi": "5411186.mid"
  },
  "5070759": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png"
   ],
@@ -22755,7 +22742,7 @@
   "midi": "4772273.mid"
  },
  "4710695": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22767,7 +22754,7 @@
   "midi": "4710695.mid"
  },
  "4611943": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22779,7 +22766,7 @@
   "midi": "4611943.mid"
  },
  "4434683": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22806,7 +22793,7 @@
   "midi": "4290151.mid"
  },
  "4131490": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22829,7 +22816,7 @@
   "midi": "4127862.mid"
  },
  "4097413": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22841,7 +22828,7 @@
   "midi": "4097413.mid"
  },
  "4080361": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22853,7 +22840,7 @@
   "midi": "4080361.mid"
  },
  "4005775": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22865,7 +22852,7 @@
   "midi": "4005775.mid"
  },
  "3679956": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22880,7 +22867,7 @@
   "midi": "3679956.mid"
  },
  "3447692": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22892,7 +22879,7 @@
   "midi": "3447692.mid"
  },
  "3217845": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22952,7 +22939,7 @@
   "midi": "3202810.mid"
  },
  "3175797": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -22973,7 +22960,7 @@
   "midi": "2846212.mid"
  },
  "2451130": {
-  "title": "\u041f\u0438\u0440\u0430\u0442\u044b \u041a\u0430\u0440\u0438\u0431\u0441\u043a\u043e\u0433\u043e \u043c\u043e\u0440\u044f - He's a Pirate (piano) [MIDISTOCK.RU].mid",
+  "title": "Пираты Карибского моря - He's a Pirate (piano) [MIDISTOCK.RU].mid",
   "pages": [
    "001.png",
    "002.png",
@@ -23435,7 +23422,7 @@
   "midi": "5517878.mid"
  },
  "5496798": {
-  "title": "\u044f\u043f\u043e\u043d\u0441\u043a\u0438\u0435 \u043c\u0443\u0437\u044b\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u0432\u0438\u0434\u0435\u043e\u0438\u0433\u0440\u044b kingdom hearts Dearly Beloved bbl news",
+  "title": "японские музыкальные видеоигры kingdom hearts Dearly Beloved bbl news",
   "pages": [
    "001.png",
    "002.png",
@@ -26113,5 +26100,30 @@
   "page_count": 8,
   "has_pdf": true,
   "midi": "4289414.mid"
+ },
+ "PIANO ARR. Minecraft - Aria Math (By C418)": {
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png",
+   "006.png",
+   "007.png",
+   "008.png"
+  ],
+  "page_count": 8,
+  "has_pdf": true
+ },
+ "Minecraft Danny": {
+  "pages": [
+   "001.png",
+   "002.png",
+   "003.png",
+   "004.png",
+   "005.png"
+  ],
+  "page_count": 5,
+  "has_pdf": true
  }
 }
