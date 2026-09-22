@@ -16,6 +16,7 @@ import { Metronome, TempoTracker } from './metronome.js';
 
 // Sheet music assets hosted on GitHub (SWA has 250MB limit, sheets are 2GB+)
 const SHEET_BASE = 'https://raw.githubusercontent.com/lg-o1/ca99-control/main/app/midi-collection/sheets';
+let _msSheetIndex = null; // MuseScore sheet index {key: {pages, has_pdf, ...}} — top-level for cross-function access
 import * as MetroKit from './metro-kit.js';
 import { Recorder } from './recorder.js';
 import { SCALE_TYPES, buildScale, buildScaleUpDown, ScaleSession } from './scale-trainer.js';
@@ -9469,7 +9470,7 @@ function renderScoreFollow() {
     run();
   }
 
-  let _msSheetIndex = null; // MuseScore sheet index {key: {pages, has_pdf, ...}}
+  // _msSheetIndex declared at top level (line 19)
 
   // 🎵 流行曲库：载入 midi-collection/catalog.json（2417 首下载 MIDI）
   async function setupPopularLibrary() {
